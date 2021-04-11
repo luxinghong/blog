@@ -59,7 +59,7 @@ kramdown:
 
 
 # Disqus settings
-disqus_username: hux
+disqus_username:
 
 # Netease settings
 netease_comment: false
@@ -78,7 +78,7 @@ ga_domain: huangxuan.me
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "一个Java程序员.|有只猫，名叫妞妞.喜欢篮球，美食."
+sidebar-about-description: "一个Java程序员.<br/>有只猫,名叫妞妞.<br/>编码之外:打篮球,吃饭,睡觉."
 sidebar-avatar: /blog/img/me.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
