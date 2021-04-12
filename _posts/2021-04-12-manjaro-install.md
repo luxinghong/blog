@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Manjaro安装配置踩坑123"
+title: "Manjaro安装配置踩坑"
 subtitle: ""
 author: ""
 header-style: text
