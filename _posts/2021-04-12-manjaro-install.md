@@ -6,7 +6,6 @@ author: ""
 header-style: text
 tags:
   - Manjaro
-  - Linux
 ---
 
 ### LVM方式的安装
