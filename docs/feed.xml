@@ -5,12 +5,12 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>https://luxinghong.github.io/blog/</link>
     <atom:link href="https://luxinghong.github.io/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Tue, 13 Apr 2021 03:59:33 +0800</pubDate>
-    <lastBuildDate>Tue, 13 Apr 2021 03:59:33 +0800</lastBuildDate>
+    <pubDate>Tue, 13 Apr 2021 04:14:57 +0800</pubDate>
+    <lastBuildDate>Tue, 13 Apr 2021 04:14:57 +0800</lastBuildDate>
     <generator>Jekyll v4.2.0</generator>
     
       <item>
-        <title>Manjaro安装配置踩坑</title>
+        <title>Manjaro安装配置踩坑123</title>
         <description>&lt;h3 id=&quot;lvm方式的安装&quot;&gt;LVM方式的安装&lt;/h3&gt;
 
 &lt;p&gt;我安装的版本是Manjaro 21 KDE，常规安装按图形界面方式很快，没有任何问题。但 &lt;a href=&quot;https://github.com/calamares/calamares&quot;&gt;calamares&lt;/a&gt;当前版本对 lvm 的支持还不是很好，直接在图形界面采用 lvm 点下一步后会马上闪退，或者进入安装过程后报各种卷创建的错误，实在无招，只能曲线救国。&lt;/p&gt;
