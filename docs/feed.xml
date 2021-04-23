@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>https://luxinghong.github.io/blog/</link>
     <atom:link href="https://luxinghong.github.io/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 14 Apr 2021 20:45:40 +0800</pubDate>
-    <lastBuildDate>Wed, 14 Apr 2021 20:45:40 +0800</lastBuildDate>
+    <pubDate>Fri, 23 Apr 2021 23:39:28 +0800</pubDate>
+    <lastBuildDate>Fri, 23 Apr 2021 23:39:28 +0800</lastBuildDate>
     <generator>Jekyll v4.2.0</generator>
     
       <item>
@@ -278,7 +278,7 @@ a.txt
 13
 14
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;❯ git &lt;span class=&quot;nb&quot;&gt;rm&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--cached&lt;/span&gt; a.txt
-&lt;span class=&quot;nb&quot;&gt;rm&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'a.txt'&lt;/span&gt;
+&lt;span class=&quot;nb&quot;&gt;rm&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;a.txt&apos;&lt;/span&gt;
 ❯ 
 ❯ 
 ❯ git status
@@ -1000,6 +1000,8 @@ D       a.txt
 
 &lt;p&gt;&lt;a href=&quot;https://github.com/Askannz/optimus-manager&quot;&gt;optimus-manager&lt;/a&gt; ( A Linux program to handle GPU switching on Optimus laptops)&lt;/p&gt;
 
+&lt;p&gt;&lt;strong&gt;文档中有关于 &lt;a href=&quot;https://github.com/Askannz/optimus-manager#important--gnome-and-gdm-users&quot;&gt;Gnome and GDM users&lt;/a&gt; 和 &lt;a href=&quot;https://github.com/Askannz/optimus-manager#important--manjaro-kde-users&quot;&gt;IMPORTANT : Manjaro KDE users&lt;/a&gt; 的注意事项，一定要看，否则可能会导致切换后黑屏、无法启动的问题，我在这浪费了好多时间…&lt;/strong&gt;&lt;/p&gt;
+
 &lt;h3 id=&quot;换源&quot;&gt;换源&lt;/h3&gt;
 
 &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sudo pacman-mirros -i -c China -m rank &lt;/code&gt; 	 选中一个&lt;/p&gt;
@@ -1040,13 +1042,17 @@ XMODIFIERS=@im=fcitx
 
 &lt;p&gt;重启完成&lt;/p&gt;
 
-&lt;h3 id=&quot;微信聊天框中文乱码&quot;&gt;微信聊天框中文乱码&lt;/h3&gt;
+&lt;h3 id=&quot;安装微信&quot;&gt;安装微信&lt;/h3&gt;
 
-&lt;p&gt;原因是缺失字体。&lt;/p&gt;
+&lt;p&gt;文档写的很详细：&lt;a href=&quot;https://github.com/countstarlight/deepin-wine-wechat-arch&quot;&gt;deepin-wine-wechat-arch&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;下载字体 链接: https://pan.baidu.com/s/1OkeEGR4hivnWur3fDuJxrQ  密码: k4ge&lt;/p&gt;
+&lt;p&gt;大多数问题都可以通过 &lt;a href=&quot;https://github.com/countstarlight/deepin-wine-wechat-arch#%E5%88%87%E6%8D%A2%E5%88%B0-deepin-wine&quot;&gt;切换到 deepin-wine&lt;/a&gt; 解决&lt;/p&gt;
 
-&lt;p&gt;放到 ～/.deepinwine/Deepin-WeChat/drive_c/Windows/Fonts 目录下，点击安装即可。&lt;/p&gt;
+&lt;h3 id=&quot;使用-oh-my-zsh&quot;&gt;使用 oh-my-zsh&lt;/h3&gt;
+
+&lt;p&gt;https://gist.github.com/yovko/becf16eecd3a1f69a4e320a95689249e&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/romkatv/powerlevel10k#arch-linux&quot;&gt;主题美化&lt;/a&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;idea-ultimate-输入法候选框不跟随鼠标一直在左下角&quot;&gt;IDEA Ultimate 输入法候选框不跟随鼠标，一直在左下角&lt;/h3&gt;
 
@@ -1071,6 +1077,8 @@ XMODIFIERS=@im=fcitx
 &lt;h3 id=&quot;美化&quot;&gt;美化&lt;/h3&gt;
 
 &lt;p&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=exQh0_JKBJQ&quot;&gt;Make Your KDE Plasma Desktop Look Better&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;参考着来，不需要完全照搬&lt;/p&gt;
 </description>
         <pubDate>Mon, 12 Apr 2021 00:00:00 +0800</pubDate>
         <link>https://luxinghong.github.io/blog/2021/04/12/manjaro-install/</link>

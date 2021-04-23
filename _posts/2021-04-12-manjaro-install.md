@@ -30,7 +30,7 @@ tags:
 
 [optimus-manager](https://github.com/Askannz/optimus-manager) ( A Linux program to handle GPU switching on Optimus laptops)
 
-
+**文档中有关于 [Gnome and GDM users](https://github.com/Askannz/optimus-manager#important--gnome-and-gdm-users) 和 [IMPORTANT : Manjaro KDE users](https://github.com/Askannz/optimus-manager#important--manjaro-kde-users) 的注意事项，一定要看，否则可能会导致切换后黑屏、无法启动的问题，我在这浪费了好多时间...**
 
 
 
@@ -83,13 +83,21 @@ XMODIFIERS=@im=fcitx
 
 
 
-### 微信聊天框中文乱码
+### 安装微信
 
-原因是缺失字体。
+文档写的很详细：[deepin-wine-wechat-arch](https://github.com/countstarlight/deepin-wine-wechat-arch)
 
-下载字体 链接: https://pan.baidu.com/s/1OkeEGR4hivnWur3fDuJxrQ  密码: k4ge
+大多数问题都可以通过 [切换到 deepin-wine](https://github.com/countstarlight/deepin-wine-wechat-arch#%E5%88%87%E6%8D%A2%E5%88%B0-deepin-wine) 解决
 
-放到 ～/.deepinwine/Deepin-WeChat/drive_c/Windows/Fonts 目录下，点击安装即可。
+
+
+
+
+### 使用 oh-my-zsh
+
+https://gist.github.com/yovko/becf16eecd3a1f69a4e320a95689249e
+
+[主题美化](https://github.com/romkatv/powerlevel10k#arch-linux)
 
 
 
@@ -113,6 +121,8 @@ XMODIFIERS=@im=fcitx
 
 
 
+
+
 ###  IDEA 不会显示全局系统菜单 
 
 Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部的全局系统菜单显示，但 IDEA 不会。
@@ -128,3 +138,5 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
 ### 美化
 
 [Make Your KDE Plasma Desktop Look Better](https://www.youtube.com/watch?v=exQh0_JKBJQ)
+
+参考着来，不需要完全照搬
