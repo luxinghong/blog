@@ -11,26 +11,28 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="Manjaro安装配置踩坑 - 陆星宏的博客 | Coding Life">
+    <meta property="og:title" content="正确理解浮点数 - 陆星宏的博客 | Coding Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="LVM方式的安装
+    <meta property="og:description" content="首先，浮点数是一种数字的表示方式，而不是指小数
 ">
     
-    <meta property="article:published_time" content="2021-04-12T00:00:00Z">
+    <meta property="article:published_time" content="2021-04-25T00:00:00Z">
     
     
     <meta property="article:author" content="">
     
     
-    <meta property="article:tag" content="Manjaro">
+    <meta property="article:tag" content="浮点数">
+    
+    <meta property="article:tag" content="数据类型">
     
     
     <meta property="og:image" content="https://luxinghong.github.io/blog/img/me.jpg">
-    <meta property="og:url" content="https://luxinghong.github.io/2021/04/12/manjaro-install/">
+    <meta property="og:url" content="https://luxinghong.github.io/2021/04/25/float/">
     <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
     
-    <title>Manjaro安装配置踩坑 - 陆星宏的博客 | Coding Life</title>
+    <title>正确理解浮点数 - 陆星宏的博客 | Coding Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -39,7 +41,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://luxinghong.github.io/blog/2021/04/12/manjaro-install/">
+    <link rel="canonical" href="https://luxinghong.github.io/blog/2021/04/25/float/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -238,13 +240,15 @@
                 <div class="post-heading">
                     <div class="tags">
                         
-                        <a class="tag" href="/blog/archive/?tag=Manjaro" title="Manjaro">Manjaro</a>
+                        <a class="tag" href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0" title="浮点数">浮点数</a>
+                        
+                        <a class="tag" href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B" title="数据类型">数据类型</a>
                         
                     </div>
-                    <h1>Manjaro安装配置踩坑</h1>
+                    <h1>正确理解浮点数</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">April 12, 2021</span>
+                    <span class="meta">April 25, 2021</span>
                 </div>
             </div>
         </div>
@@ -271,117 +275,66 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h3 id="lvm方式的安装">LVM方式的安装</h3>
+				<h3 id="首先浮点数是一种数字的表示方式而不是指小数">首先，浮点数是一种数字的表示方式，而不是指小数</h3>
 
-<p>我安装的版本是Manjaro 21 KDE，常规安装按图形界面方式很快，没有任何问题。但 <a href="https://github.com/calamares/calamares">calamares</a>当前版本对 lvm 的支持还不是很好，直接在图形界面采用 lvm 点下一步后会马上闪退，或者进入安装过程后报各种卷创建的错误，实在无招，只能曲线救国。</p>
+<p>很多人一提到浮点数，就说是小数，这是不对的。浮点数只是一种数字的表示方式，数字是多少就是多少，它就在那里不会改变，改变的只是人类表示它们的方式。</p>
 
-<p>最开始手动创建卷，然后进图形界面选择文件系统和挂载点，安装倒是没问题了，最后也提示安装成功。但重启后找不到系统，还是会继续进入U盘。推测是 calamares 在 lvm 方式下创建 efi 分区有bug，gitHub上也有很多相关issue。</p>
+<p>比如给定一个数 10，能确定它是浮点数还是定点数吗？</p>
 
-<p>试了N遍之后，最后的办法是先按常规方式安装一遍，保证重启后能正常进入系统。再用U盘进入live environment，在已分区的基础上手动创建物理卷，卷组和逻辑卷。efi 和 swap 不要动(注意在后续图形安装界面中 efi 千万别选择格式化，要的就是保留 efi 之前的内容)，其他分区可自由分配卷组和逻辑卷。最后进入图形安装界面选择挂载点和文件系统安装即可。</p>
+<p>不能！我们必须知道这个数是如何存储的，即底层是如何来表示这个数的，才能说它是定点数还是浮点数。</p>
 
-<h3 id="intel核显--nvidia独显-的问题">Intel核显 + NVIDIA独显 的问题</h3>
+<p>这其实类似于十进制中的科学计数法，比如 1234.5678这个数，这个数本身不会改变，是多少永远是多少，变的是表示它的方式，我们可以以多种不同的方式来表示这个数：</p>
 
-<blockquote>
-  <p>Linus Torvalds:  NVIDIA, fuck u!</p>
-</blockquote>
+<ul>
+  <li>$1.2345678 \times 10^3$</li>
+  <li>$123.45678 \times 10$</li>
+  <li>$0.12345678 \times 10^4$</li>
+  <li>$12345678 \times 10^{-4}$</li>
+</ul>
 
-<p>安装完之后一开始正常使用没什么问题，但是一竖屏后就有撕裂现象。</p>
+<p>可以看到，小数点的位置是浮动的，这才是浮点数名字的由来。<strong>再次强调，浮点数指的是表示数字的方式，而不是数字本身</strong>。</p>
 
-<p>解决办法：安装 optimus-manager 和 optimus-manager-qt ，切换为 NVIDIA 之后就没问题了。大黄蜂方案已经过时且不再维护了，不建议使用。</p>
+<p>至于大家常提到的IEEE754，它是一个标准，即规定了大家统一采用哪种方式来表示和存储数据，它规定尾数部分格式为 1.xxxx，具体存储时1省略，其他细节不再赘述。</p>
 
-<p><a href="https://github.com/Askannz/optimus-manager">optimus-manager</a> ( A Linux program to handle GPU switching on Optimus laptops)</p>
+<h3 id="为什么要使用浮点数">为什么要使用浮点数</h3>
 
-<p><strong>文档中有关于 <a href="https://github.com/Askannz/optimus-manager#important--gnome-and-gdm-users">Gnome and GDM users</a> 和 <a href="https://github.com/Askannz/optimus-manager#important--manjaro-kde-users">IMPORTANT : Manjaro KDE users</a> 的注意事项，一定要看，否则可能会导致切换后黑屏、无法启动的问题，我在这浪费了好多时间…</strong></p>
+<p>简单来说，同样的位数，浮点数表示的范围更大</p>
 
-<h3 id="换源">换源</h3>
+<p>比如 int 和 float 同是 32bit</p>
 
-<p><code class="language-plaintext highlighter-rouge">sudo pacman-mirros -i -c China -m rank </code> 	 选中一个</p>
+<p>int的最大值为 $2^{31}-1 = 2.147483647E9 = 2147483647$</p>
 
-<p><code class="language-plaintext highlighter-rouge">sudo pacman -Syy</code>  	更新软件源</p>
+<p>float的最大值为 $(2-2^{23})\cdot2^{127} = 0\mbox{x}1.fffffeP+127f = 3.4028235E38f$ 		这表示范围可比 int 大多了</p>
 
-<p><code class="language-plaintext highlighter-rouge">sudo pacman -Syu</code> 	 更新全部软件</p>
+<h3 id="为什么float的精度是67位">为什么float的精度是6~7位？</h3>
 
-<h3 id="安装搜狗拼音">安装搜狗拼音</h3>
+<p>因为float的尾数部分有23位，即可以用23位二进制来表示一个数，指数部分不影响精度，只影响范围，因为有效数字是从第一个非0位算起。</p>
 
-<p>添加 archlinuxcn 软件源，/etc/pacman.conf 在最后加入</p>
+<p>事实上还要加上规格化尾数省略的1，所以问题就变成24位二进制位可以表示多少位十进制？</p>
 
-<pre><code class="language-[archlinuxcn]">SigLevel = Optional TrustAll 
-Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/$arch
-</code></pre>
+\[\begin{align*}
+2^{24}  &amp;= 10^x\\
 
-<p><code class="language-plaintext highlighter-rouge">sudo pacman -Syy</code>  	更新软件源</p>
+x  &amp;= {log_102^{24}} = 24 \cdot log_102 = 7.22471989594
+\end{align*}\]
 
-<p><code class="language-plaintext highlighter-rouge">sudo pacman -S archlinux-keyring</code>	 更新软件密钥</p>
-
-<p><code class="language-plaintext highlighter-rouge">sudo pacman -S fcitx-im</code>	 安装输入法框架</p>
-
-<p><code class="language-plaintext highlighter-rouge">sudo pacman -S fcitx-configtool</code>	 安装输入法配置工具</p>
-
-<p>在软件中心找到并安装 <code class="language-plaintext highlighter-rouge">fcitx-sogoupinyin</code></p>
-
-<p><u>( 注意：一定要按顺序安装，不能直接安装最后一个，会导致依赖缺失，不能配置等问题)</u></p>
-
-<p>在 /etc/environment 中加入</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
-3
-</pre></td><td class="rouge-code"><pre>GTK_IM_MODULE=fcitx
-QT_IM_MODULE=fcitx
-XMODIFIERS=@im=fcitx
+</pre></td><td class="rouge-code"><pre><span class="kt">float</span> <span class="n">f</span> <span class="o">=</span> <span class="mf">0.123456789f</span><span class="o">;</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">f</span><span class="o">);</span> <span class="c1">// 0.12345679  只能保证7位精度</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
-
-<p>重启完成</p>
-
-<h3 id="安装微信">安装微信</h3>
-
-<p>文档写的很详细：<a href="https://github.com/countstarlight/deepin-wine-wechat-arch">deepin-wine-wechat-arch</a></p>
-
-<p>大多数问题都可以通过 <a href="https://github.com/countstarlight/deepin-wine-wechat-arch#%E5%88%87%E6%8D%A2%E5%88%B0-deepin-wine">切换到 deepin-wine</a> 解决</p>
-
-<h3 id="使用-oh-my-zsh">使用 oh-my-zsh</h3>
-
-<p>https://gist.github.com/yovko/becf16eecd3a1f69a4e320a95689249e</p>
-
-<p><a href="https://github.com/romkatv/powerlevel10k#arch-linux">主题美化</a></p>
-
-<h3 id="idea-ultimate-输入法候选框不跟随鼠标一直在左下角">IDEA Ultimate 输入法候选框不跟随鼠标，一直在左下角</h3>
-
-<p>这是一个 idea 古老又没人管的bug</p>
-
-<p>解决办法参考：https://ld246.com/article/1601280084643</p>
-
-<p>下载修改过的  JetBrainsRuntime ，在 idea.sh 启动脚本开头添加</p>
-
-<p><code class="language-plaintext highlighter-rouge">export IDEA_JDK=xport IDEA_JDK=目录/java-11.0.7-jetbrain</code></p>
-
-<p>但是有个新的问题，markdown文件 的预览按钮不见了，也懒得折腾了，写 markdown 用专门的编辑器吧，比如 Typoar</p>
-
-<h3 id="idea-不会显示全局系统菜单">IDEA 不会显示全局系统菜单</h3>
-
-<p>Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部的全局系统菜单显示，但 IDEA 不会。</p>
-
-<p>官方解决办法： idea中安装 JavaFX Runtime for Plugins 插件。</p>
-
-<p>但是有点延迟，打开 idea 后要过一会菜单才会出来，也是很烦。</p>
-
-<h3 id="美化">美化</h3>
-
-<p><a href="https://www.youtube.com/watch?v=exQh0_JKBJQ">Make Your KDE Plasma Desktop Look Better</a></p>
-
-<p>参考着来，不需要完全照搬</p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
-                    
-                    <li class="next">
+                    <li class="previous">
                         <a href="/blog/2021/04/13/git/" data-toggle="tooltip" data-placement="top" title="Git基本原理">
-                        Next<br>
+                        Previous<br>
                         <span>Git基本原理</span>
                         </a>
                     </li>
+                    
                     
                 </ul>
                 <hr style="visibility: hidden;">

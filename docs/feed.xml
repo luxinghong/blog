@@ -5,9 +5,71 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>https://luxinghong.github.io/blog/</link>
     <atom:link href="https://luxinghong.github.io/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 23 Apr 2021 23:39:28 +0800</pubDate>
-    <lastBuildDate>Fri, 23 Apr 2021 23:39:28 +0800</lastBuildDate>
+    <pubDate>Mon, 26 Apr 2021 07:06:35 +0800</pubDate>
+    <lastBuildDate>Mon, 26 Apr 2021 07:06:35 +0800</lastBuildDate>
     <generator>Jekyll v4.2.0</generator>
+    
+      <item>
+        <title>正确理解浮点数</title>
+        <description>&lt;h3 id=&quot;首先浮点数是一种数字的表示方式而不是指小数&quot;&gt;首先，浮点数是一种数字的表示方式，而不是指小数&lt;/h3&gt;
+
+&lt;p&gt;很多人一提到浮点数，就说是小数，这是不对的。浮点数只是一种数字的表示方式，数字是多少就是多少，它就在那里不会改变，改变的只是人类表示它们的方式。&lt;/p&gt;
+
+&lt;p&gt;比如给定一个数 10，能确定它是浮点数还是定点数吗？&lt;/p&gt;
+
+&lt;p&gt;不能！我们必须知道这个数是如何存储的，即底层是如何来表示这个数的，才能说它是定点数还是浮点数。&lt;/p&gt;
+
+&lt;p&gt;这其实类似于十进制中的科学计数法，比如 1234.5678这个数，这个数本身不会改变，是多少永远是多少，变的是表示它的方式，我们可以以多种不同的方式来表示这个数：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;$1.2345678 \times 10^3$&lt;/li&gt;
+  &lt;li&gt;$123.45678 \times 10$&lt;/li&gt;
+  &lt;li&gt;$0.12345678 \times 10^4$&lt;/li&gt;
+  &lt;li&gt;$12345678 \times 10^{-4}$&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;可以看到，小数点的位置是浮动的，这才是浮点数名字的由来。&lt;strong&gt;再次强调，浮点数指的是表示数字的方式，而不是数字本身&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;至于大家常提到的IEEE754，它是一个标准，即规定了大家统一采用哪种方式来表示和存储数据，它规定尾数部分格式为 1.xxxx，具体存储时1省略，其他细节不再赘述。&lt;/p&gt;
+
+&lt;h3 id=&quot;为什么要使用浮点数&quot;&gt;为什么要使用浮点数&lt;/h3&gt;
+
+&lt;p&gt;简单来说，同样的位数，浮点数表示的范围更大&lt;/p&gt;
+
+&lt;p&gt;比如 int 和 float 同是 32bit&lt;/p&gt;
+
+&lt;p&gt;int的最大值为 $2^{31}-1 = 2.147483647E9 = 2147483647$&lt;/p&gt;
+
+&lt;p&gt;float的最大值为 $(2-2^{23})\cdot2^{127} = 0\mbox{x}1.fffffeP+127f = 3.4028235E38f$ 		这表示范围可比 int 大多了&lt;/p&gt;
+
+&lt;h3 id=&quot;为什么float的精度是67位&quot;&gt;为什么float的精度是6~7位？&lt;/h3&gt;
+
+&lt;p&gt;因为float的尾数部分有23位，即可以用23位二进制来表示一个数，指数部分不影响精度，只影响范围，因为有效数字是从第一个非0位算起。&lt;/p&gt;
+
+&lt;p&gt;事实上还要加上规格化尾数省略的1，所以问题就变成24位二进制位可以表示多少位十进制？&lt;/p&gt;
+
+\[\begin{align*}
+2^{24}  &amp;amp;= 10^x\\
+
+x  &amp;amp;= {log_102^{24}} = 24 \cdot log_102 = 7.22471989594
+\end{align*}\]
+
+&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;kt&quot;&gt;float&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;0.123456789f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;nc&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;println&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 0.12345679  只能保证7位精度&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+</description>
+        <pubDate>Sun, 25 Apr 2021 00:00:00 +0800</pubDate>
+        <link>https://luxinghong.github.io/blog/2021/04/25/float/</link>
+        <guid isPermaLink="true">https://luxinghong.github.io/blog/2021/04/25/float/</guid>
+        
+        <category>浮点数</category>
+        
+        <category>数据类型</category>
+        
+        
+      </item>
     
       <item>
         <title>Git基本原理</title>
