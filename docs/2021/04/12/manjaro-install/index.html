@@ -339,7 +339,13 @@ XMODIFIERS=@im=fcitx
 
 <p>文档写的很详细：<a href="https://github.com/countstarlight/deepin-wine-wechat-arch">deepin-wine-wechat-arch</a></p>
 
-<p>大多数问题都可以通过 <a href="https://github.com/countstarlight/deepin-wine-wechat-arch#%E5%88%87%E6%8D%A2%E5%88%B0-deepin-wine">切换到 deepin-wine</a> 解决</p>
+<p>中文字体显示为框框：</p>
+
+<ol>
+  <li>默认字体使用文泉驿，添加字体 wqy-microhei（文泉驿-微米黑）、wqy-zenhei（文泉驿-正黑）</li>
+  <li><code class="language-plaintext highlighter-rouge">fc-cache -fv</code> 刷新字体缓存</li>
+  <li>重启微信</li>
+</ol>
 
 <h3 id="使用-oh-my-zsh">使用 oh-my-zsh</h3>
 

@@ -87,7 +87,11 @@ XMODIFIERS=@im=fcitx
 
 文档写的很详细：[deepin-wine-wechat-arch](https://github.com/countstarlight/deepin-wine-wechat-arch)
 
-大多数问题都可以通过 [切换到 deepin-wine](https://github.com/countstarlight/deepin-wine-wechat-arch#%E5%88%87%E6%8D%A2%E5%88%B0-deepin-wine) 解决
+中文字体显示为框框：
+
+1.  默认字体使用文泉驿，添加字体 wqy-microhei（文泉驿-微米黑）、wqy-zenhei（文泉驿-正黑）
+2. `fc-cache -fv` 刷新字体缓存
+3. 重启微信
 
 
 
