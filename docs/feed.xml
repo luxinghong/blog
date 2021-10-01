@@ -3,11 +3,11 @@
   <channel>
     <title>Coding Life</title>
     <description>这是一个Java程序员的博客 | Java Blog</description>
-    <link>https://luxinghong.github.io/blog/</link>
-    <atom:link href="https://luxinghong.github.io/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 01 Sep 2021 16:14:54 +0800</pubDate>
-    <lastBuildDate>Wed, 01 Sep 2021 16:14:54 +0800</lastBuildDate>
-    <generator>Jekyll v4.2.0</generator>
+    <link>http://localhost:4000/blog/</link>
+    <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Sat, 02 Oct 2021 00:42:30 +0800</pubDate>
+    <lastBuildDate>Sat, 02 Oct 2021 00:42:30 +0800</lastBuildDate>
+    <generator>Jekyll v4.2.1</generator>
     
       <item>
         <title>自己写一个starter</title>
@@ -669,8 +669,8 @@
 &lt;p&gt;这个信息也可以自定义成更友好的提示信息，这一part暂时不研究了，结束！&lt;/p&gt;
 </description>
         <pubDate>Sun, 15 Aug 2021 00:00:00 +0800</pubDate>
-        <link>https://luxinghong.github.io/blog/2021/08/15/%E8%87%AA%E5%B7%B1%E5%86%99%E4%B8%80%E4%B8%AAstarter/</link>
-        <guid isPermaLink="true">https://luxinghong.github.io/blog/2021/08/15/%E8%87%AA%E5%B7%B1%E5%86%99%E4%B8%80%E4%B8%AAstarter/</guid>
+        <link>http://localhost:4000/blog/2021/08/15/%E8%87%AA%E5%B7%B1%E5%86%99%E4%B8%80%E4%B8%AAstarter/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2021/08/15/%E8%87%AA%E5%B7%B1%E5%86%99%E4%B8%80%E4%B8%AAstarter/</guid>
         
         <category>springboot</category>
         
@@ -731,8 +731,8 @@ x  &amp;amp;= {log_{10}2^{24}} = 24 \cdot log_{10}2 = 7.22471989594
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 </description>
         <pubDate>Sun, 25 Apr 2021 00:00:00 +0800</pubDate>
-        <link>https://luxinghong.github.io/blog/2021/04/25/float/</link>
-        <guid isPermaLink="true">https://luxinghong.github.io/blog/2021/04/25/float/</guid>
+        <link>http://localhost:4000/blog/2021/04/25/float/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2021/04/25/float/</guid>
         
         <category>浮点数</category>
         
@@ -1702,8 +1702,8 @@ D       a.txt
 &lt;p&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=fWMKue-WBok&amp;amp;list=PL9lx0DXCC4BNUby5H58y6s2TQVLadV8v7&quot;&gt;Git internals&lt;/a&gt;&lt;/p&gt;
 </description>
         <pubDate>Tue, 13 Apr 2021 00:00:00 +0800</pubDate>
-        <link>https://luxinghong.github.io/blog/2021/04/13/git/</link>
-        <guid isPermaLink="true">https://luxinghong.github.io/blog/2021/04/13/git/</guid>
+        <link>http://localhost:4000/blog/2021/04/13/git/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2021/04/13/git/</guid>
         
         <category>Git</category>
         
@@ -1817,10 +1817,68 @@ XMODIFIERS=@im=fcitx
 &lt;p&gt;&lt;a href=&quot;https://www.youtube.com/watch?v=exQh0_JKBJQ&quot;&gt;Make Your KDE Plasma Desktop Look Better&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;参考着来，不需要完全照搬&lt;/p&gt;
+
+&lt;h3 id=&quot;vmware-workstation&quot;&gt;VMware Workstation&lt;/h3&gt;
+
+&lt;h4 id=&quot;第一次启动虚拟机时报错&quot;&gt;第一次启动虚拟机时报错&lt;/h4&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Cannot open /dev/vmmon: No such file or directory. Please make sure that the kernel module vmmon&apos; is loaded。&lt;/code&gt; 原因是内核中没有&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vmmon&lt;/code&gt;模块。首先推荐使用LTS版本，其次较新的版本可能还没有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vmmon&lt;/code&gt;模块的补丁。执行以下命令安装 linux-headers：&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;  &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;pacman &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; &lt;span class=&quot;si&quot;&gt;$(&lt;/span&gt;pacman &lt;span class=&quot;nt&quot;&gt;-Qsq&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;^linux&quot;&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;grep&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;^linux[0-9]*[-rt]*$&quot;&lt;/span&gt; | &lt;span class=&quot;nb&quot;&gt;awk&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;{print $1&quot;-headers&quot;}&apos;&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;ORS&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos; &apos;&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;重启后执行：&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;  &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;vmware-modconfig &lt;span class=&quot;nt&quot;&gt;--console&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--install-all&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://forum.manjaro.org/t/could-not-open-dev-vmmon/21431/2&quot;&gt;参考链接1&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.leeyiding.com/archives/43/&quot;&gt;参考链接2&lt;/a&gt; 　　&lt;/p&gt;
+
+&lt;h4 id=&quot;打开虚拟网络编辑器报错&quot;&gt;打开虚拟网络编辑器报错&lt;/h4&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Fail Network configuration is missing. Ensure that /etc/vmware/-networking exists.&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;执行以下命令启动 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;vmware-networks-configuration&lt;/code&gt; 服务：&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;  systemctl start vmware-networks-configuration.service
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;虚拟机无网络&quot;&gt;虚拟机无网络&lt;/h4&gt;
+
+&lt;p&gt;报错 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Could not connect &apos;Ethernet0&apos; to virtual network &apos;/dev/vmnet0&apos;&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;重装 linux-headers：&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;  &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;pacman &lt;span class=&quot;nt&quot;&gt;-R&lt;/span&gt; linux510-headers
+  
+  &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;pacman &lt;span class=&quot;nt&quot;&gt;-S&lt;/span&gt; linux510-headers
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;重置网卡：&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;  &lt;span class=&quot;nb&quot;&gt;sudo touch&lt;/span&gt; /etc/vmware/x &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;vmware-networks &lt;span class=&quot;nt&quot;&gt;--migrate-network-settings&lt;/span&gt; /etc/vmware/x &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;sudo rm&lt;/span&gt; /etc/vmware/x &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;modprobe vmnet &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;vmware-networks &lt;span class=&quot;nt&quot;&gt;--start&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;查看网卡状态：&lt;/p&gt;
+
+&lt;div class=&quot;language-shell highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;  vmware-networks &lt;span class=&quot;nt&quot;&gt;--status&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;虚拟机设置里选择连接方式和网卡即可。&lt;/p&gt;
 </description>
         <pubDate>Mon, 12 Apr 2021 00:00:00 +0800</pubDate>
-        <link>https://luxinghong.github.io/blog/2021/04/12/manjaro-install/</link>
-        <guid isPermaLink="true">https://luxinghong.github.io/blog/2021/04/12/manjaro-install/</guid>
+        <link>http://localhost:4000/blog/2021/04/12/manjaro-install/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2021/04/12/manjaro-install/</guid>
         
         <category>Manjaro</category>
         

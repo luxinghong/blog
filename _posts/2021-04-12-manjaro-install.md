@@ -144,3 +144,73 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
 [Make Your KDE Plasma Desktop Look Better](https://www.youtube.com/watch?v=exQh0_JKBJQ)
 
 参考着来，不需要完全照搬
+
+
+
+
+
+
+
+### VMware Workstation
+
+
+
+#### 第一次启动虚拟机时报错 
+
+`Cannot open /dev/vmmon: No such file or directory. Please make sure that the kernel module vmmon' is loaded。` 原因是内核中没有`vmmon`模块。首先推荐使用LTS版本，其次较新的版本可能还没有 `vmmon`模块的补丁。执行以下命令安装 linux-headers：
+
+  ```shell
+  sudo pacman -S $(pacman -Qsq "^linux" | grep "^linux[0-9]*[-rt]*$" | awk '{print $1"-headers"}' ORS=' ')
+  ```
+
+  重启后执行：
+
+  ```shell
+  sudo vmware-modconfig --console --install-all
+  ```
+
+  [参考链接1](https://forum.manjaro.org/t/could-not-open-dev-vmmon/21431/2)
+
+  [参考链接2](https://www.leeyiding.com/archives/43/) 　　
+
+  
+
+####  打开虚拟网络编辑器报错 
+
+`Fail Network configuration is missing. Ensure that /etc/vmware/-networking exists.`
+
+  执行以下命令启动 `vmware-networks-configuration` 服务：
+
+  ```shell
+  systemctl start vmware-networks-configuration.service
+  ```
+
+
+
+
+
+#### 虚拟机无网络
+
+报错 `Could not connect 'Ethernet0' to virtual network '/dev/vmnet0'`。
+
+  重装 linux-headers：
+
+  ```shell
+  sudo pacman -R linux510-headers
+  
+  sudo pacman -S linux510-headers
+  ```
+
+  重置网卡：
+
+  ```shell
+  sudo touch /etc/vmware/x && sudo vmware-networks --migrate-network-settings /etc/vmware/x && sudo rm /etc/vmware/x && sudo modprobe vmnet && sudo vmware-networks --start
+  ```
+
+  查看网卡状态：
+
+  ```shell
+  vmware-networks --status
+  ```
+
+  虚拟机设置里选择连接方式和网卡即可。

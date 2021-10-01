@@ -26,8 +26,8 @@
     <meta property="article:tag" content="Manjaro">
     
     
-    <meta property="og:image" content="https://luxinghong.github.io/blog/img/me.jpg">
-    <meta property="og:url" content="https://luxinghong.github.io/2021/04/12/manjaro-install/">
+    <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
+    <meta property="og:url" content="http://localhost:4000/2021/04/12/manjaro-install/">
     <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
     
     <title>Manjaro安装配置踩坑 - 陆星宏的博客 | Coding Life</title>
@@ -39,7 +39,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://luxinghong.github.io/blog/2021/04/12/manjaro-install/">
+    <link rel="canonical" href="http://localhost:4000/blog/2021/04/12/manjaro-install/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -378,6 +378,64 @@ XMODIFIERS=@im=fcitx
 <p><a href="https://www.youtube.com/watch?v=exQh0_JKBJQ">Make Your KDE Plasma Desktop Look Better</a></p>
 
 <p>参考着来，不需要完全照搬</p>
+
+<h3 id="vmware-workstation">VMware Workstation</h3>
+
+<h4 id="第一次启动虚拟机时报错">第一次启动虚拟机时报错</h4>
+
+<p><code class="language-plaintext highlighter-rouge">Cannot open /dev/vmmon: No such file or directory. Please make sure that the kernel module vmmon' is loaded。</code> 原因是内核中没有<code class="language-plaintext highlighter-rouge">vmmon</code>模块。首先推荐使用LTS版本，其次较新的版本可能还没有 <code class="language-plaintext highlighter-rouge">vmmon</code>模块的补丁。执行以下命令安装 linux-headers：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>  <span class="nb">sudo </span>pacman <span class="nt">-S</span> <span class="si">$(</span>pacman <span class="nt">-Qsq</span> <span class="s2">"^linux"</span> | <span class="nb">grep</span> <span class="s2">"^linux[0-9]*[-rt]*$"</span> | <span class="nb">awk</span> <span class="s1">'{print $1"-headers"}'</span> <span class="nv">ORS</span><span class="o">=</span><span class="s1">' '</span><span class="si">)</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>重启后执行：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>  <span class="nb">sudo </span>vmware-modconfig <span class="nt">--console</span> <span class="nt">--install-all</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><a href="https://forum.manjaro.org/t/could-not-open-dev-vmmon/21431/2">参考链接1</a></p>
+
+<p><a href="https://www.leeyiding.com/archives/43/">参考链接2</a> 　　</p>
+
+<h4 id="打开虚拟网络编辑器报错">打开虚拟网络编辑器报错</h4>
+
+<p><code class="language-plaintext highlighter-rouge">Fail Network configuration is missing. Ensure that /etc/vmware/-networking exists.</code></p>
+
+<p>执行以下命令启动 <code class="language-plaintext highlighter-rouge">vmware-networks-configuration</code> 服务：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>  systemctl start vmware-networks-configuration.service
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h4 id="虚拟机无网络">虚拟机无网络</h4>
+
+<p>报错 <code class="language-plaintext highlighter-rouge">Could not connect 'Ethernet0' to virtual network '/dev/vmnet0'</code>。</p>
+
+<p>重装 linux-headers：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>  <span class="nb">sudo </span>pacman <span class="nt">-R</span> linux510-headers
+  
+  <span class="nb">sudo </span>pacman <span class="nt">-S</span> linux510-headers
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>重置网卡：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>  <span class="nb">sudo touch</span> /etc/vmware/x <span class="o">&amp;&amp;</span> <span class="nb">sudo </span>vmware-networks <span class="nt">--migrate-network-settings</span> /etc/vmware/x <span class="o">&amp;&amp;</span> <span class="nb">sudo rm</span> /etc/vmware/x <span class="o">&amp;&amp;</span> <span class="nb">sudo </span>modprobe vmnet <span class="o">&amp;&amp;</span> <span class="nb">sudo </span>vmware-networks <span class="nt">--start</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>查看网卡状态：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>  vmware-networks <span class="nt">--status</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>虚拟机设置里选择连接方式和网卡即可。</p>
 
 
                 <hr style="visibility: hidden;">
