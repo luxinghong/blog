@@ -213,4 +213,17 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
   vmware-networks --status
   ```
 
-  虚拟机设置里选择连接方式和网卡即可。
+  虚拟机设置里选择连接方式和网卡即可。  
+
+
+
+  若后面再次 could not connect，执行
+
+```shell
+systemctl start vmware-networks
+systemctl enable vmware-networks
+```
+
+  保证 vmware-networks 是 loaded 的就行，状态是 inactive 也没关系。
+
+  重新在虚拟机设置里选择连接方式和网卡即可。

@@ -437,6 +437,18 @@ XMODIFIERS=@im=fcitx
 
 <p>虚拟机设置里选择连接方式和网卡即可。</p>
 
+<p>若后面再次 could not connect，执行</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre>systemctl start vmware-networks
+systemctl <span class="nb">enable </span>vmware-networks
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>保证 vmware-networks 是 loaded 的就行，状态是 inactive 也没关系。</p>
+
+<p>重新在虚拟机设置里选择连接方式和网卡即可。</p>
+
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
