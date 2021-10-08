@@ -149,6 +149,14 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
 
 
 
+### pamac 安装软件超时
+
+查看安装超时的地址，手动下载后放到 `/var/tmp/pamac-build- < username> / < AppName>` ` 目录下，再重新安装即可。
+
+
+
+
+
 
 
 ### VMware Workstation
