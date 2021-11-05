@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 08 Oct 2021 12:00:52 +0800</pubDate>
-    <lastBuildDate>Fri, 08 Oct 2021 12:00:52 +0800</lastBuildDate>
+    <pubDate>Fri, 05 Nov 2021 15:22:50 +0800</pubDate>
+    <lastBuildDate>Fri, 05 Nov 2021 15:22:50 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -1781,8 +1781,8 @@ XMODIFIERS=@im=fcitx
 &lt;p&gt;中文字体显示为框框：&lt;/p&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;默认字体使用文泉驿，添加字体 wqy-microhei（文泉驿-微米黑）、wqy-zenhei（文泉驿-正黑）&lt;/li&gt;
-  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fc-cache -fv&lt;/code&gt; 刷新字体缓存&lt;/li&gt;
+  &lt;li&gt;下载宋体字符集文件：https://www.freefonts.io/downloads/simsun/&lt;/li&gt;
+  &lt;li&gt;将解压后的文件复制到如下路径：cp    SIMSUN.ttf    ~/.deepinwine/Deepin-WeChat/drive_c/windows/Fonts/&lt;/li&gt;
   &lt;li&gt;重启微信&lt;/li&gt;
 &lt;/ol&gt;
 

@@ -89,8 +89,8 @@ XMODIFIERS=@im=fcitx
 
 中文字体显示为框框：
 
-1.  默认字体使用文泉驿，添加字体 wqy-microhei（文泉驿-微米黑）、wqy-zenhei（文泉驿-正黑）
-2. `fc-cache -fv` 刷新字体缓存
+1. 下载宋体字符集文件：https://www.freefonts.io/downloads/simsun/
+2. 将解压后的文件复制到如下路径：cp    SIMSUN.ttf    ~/.deepinwine/Deepin-WeChat/drive_c/windows/Fonts/
 3. 重启微信
 
 
