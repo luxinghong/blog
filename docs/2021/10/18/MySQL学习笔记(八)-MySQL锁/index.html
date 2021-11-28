@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, Coding Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | Coding Life">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="MySQL中的锁有三类：全局锁、表级锁、行级锁
+">
+    
+    <meta property="article:published_time" content="2021-10-18T00:00:00Z">
+    
+    
+    <meta property="article:author" content="">
+    
+    
+    <meta property="article:tag" content="mysql">
+    
+    <meta property="article:tag" content="锁">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
+    <meta property="og:url" content="http://localhost:4000/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/">
+    <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
+    
+    <title>MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | Coding Life</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/blog/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/blog/img/favicon.ico">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/blog/css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Mathjax Support -->
+   <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        inlineMath: [['$','$']]
+        }
+    });
+   </script>
+    <script type="text/javascript" async
+       src="https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <!--<script src="//cdn.bootcdn.net/ajax/libs/eruda/2.3.3/eruda.js"></script>-->
+    <!--<script>eruda.init();</script>-->
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top invert">
+    
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/blog/">Coding Life</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/blog/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/blog/img/niuniu.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/blog/img/niuniu.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+<header class="intro-header style-text" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
+                        
+                        <a class="tag" href="/blog/archive/?tag=%E9%94%81" title="锁">锁</a>
+                        
+                    </div>
+                    <h1>MySQL学习笔记(八)：MySQL锁</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">October 18, 2021</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<p><strong>MySQL中的锁有三类：全局锁、表级锁、行级锁</strong></p>
+
+<h3 id="全局锁">全局锁</h3>
+
+<p>即给整个数据库实例上锁，让整个库都处于只读状态，除查询以外的操作都会被阻塞。server层实现。</p>
+
+<blockquote>
+  <p>如果加上全局锁后，客户端由于异常断开，MySQL会自动释放这个锁。</p>
+</blockquote>
+
+<p>加锁：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">flush</span> <span class="n">tables</span> <span class="k">with</span> <span class="k">read</span> <span class="k">lock</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>解锁：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">unlock</span> <span class="n">tables</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>使用场景：做全库逻辑备份</p>
+
+<p>隐患：</p>
+
+<ul>
+  <li>由于只能查询，所以在此期间业务基本停摆</li>
+  <li>如果在主库上备份，业务停摆；如果在备库上备份，在此期间备库不能执行从主库同步过来的 binlog，会导致主从延迟</li>
+</ul>
+
+<p>那如果备份的时候不加全局锁会发生什么情况呢？</p>
+
+<p>不加锁，<strong>会导致备份出来的库不是同一个逻辑时间点的</strong>，数据从业务逻辑上看是不一致的。</p>
+
+<p>比如在备份过程中先备份了A表，然后执行了一个业务操作，再备份B表，这个业务操作会同时更新A表和B表。那么这个时候备份出来的数据A表还是老版本，而B表已经被更新了，这个备份就是有问题的，是逻辑不一致的。</p>
+
+<p><u>为了既不影响业务，也要保证备份视图的逻辑一致性</u>，推荐采用另一种全库备份的方法：<strong><code class="language-plaintext highlighter-rouge">mysqldump -single-transaction</code></strong>。导数据之前会启动一个事务，来确保拿到一致性视图。而且由于 MVCC 的支持，在此期间是可以正常更新的。</p>
+
+<p>当然显而易见，这种方法只适用于支持事务的存储引擎，所以这也是为什么推荐使用 Innodb 而不是 MyISAM 的一个原因。</p>
+
+<h3 id="表级锁">表级锁</h3>
+
+<p><strong>server层实现，分两种：表锁和元数据锁(MDL)。</strong></p>
+
+<h4 id="表锁">表锁</h4>
+
+<blockquote>
+  <p>与全局锁一样，也会在客户端断开时自动释放</p>
+</blockquote>
+
+<p>加锁：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">lock</span> <span class="n">tables</span> <span class="n">t1</span> <span class="k">read</span><span class="p">,</span><span class="n">t2</span> <span class="k">write</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>解锁：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">unlock</span> <span class="n">tables</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>以上述加锁语句为例，t1加了读锁，t2加了写锁：</p>
+
+<ul>
+  <li>任何线程都不能写 t1 ，包括本线程</li>
+  <li>只有本线程能读写 t2</li>
+  <li><strong>本线程甚至不能访问除 t1、t2 之外的任何表</strong>，这点很奇怪，不懂为什么这么设计</li>
+</ul>
+
+<h4 id="元数据锁">元数据锁</h4>
+
+<p>Meta data lock，MDL</p>
+
+<p>不需要显示使用，访问表的时候会自动加上。</p>
+
+<p>从MySQL5.5开始引入，<strong>当做增删查改时，会加MDL读锁；当变更表结构时，会加MDL写锁</strong>。</p>
+
+<ul>
+  <li>
+    <p>读锁不互斥，因此可以有多个线程同时对一张表增删改查</p>
+  </li>
+  <li>
+    <p>读写互斥，即不能有多个线程同时更改表结构，或一个线程在增删改查而另一个线程在更改表结构</p>
+  </li>
+  <li>
+    <p>MDL锁在事务提交时才会释放，在变更表结构时要特别小心，以免锁住线上的查询和更新，导致整张表不能读写。下面是一个示例：</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align: center">session A</th>
+          <th style="text-align: center">session B</th>
+          <th style="text-align: center">session C</th>
+          <th style="text-align: center">session D</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center">begin;</td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center">select * from t limit 1;</td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">select * from t limit 1;</td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">alter table t add f int;</td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">select * from t limit 1;</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>session A 先开启了一个事务，执行了一次查询，并且没有马上提交，这时会对表 t 加一个 MDL 读锁。</p>
+
+    <p>session B 也需要一个 MDL 读锁，读锁之间不互斥，可以正常执行查询。</p>
+
+    <p>session C 要加一个字段，需要一个 MDL 写锁，读锁和写锁互斥，所以必须等待表 t 释放读锁之后才能继续。</p>
+
+    <p>session D 需要一个读锁，这里需要注意的是，<strong>表 t 上会有一个等待获取锁的锁队列，而获取MDL写锁的优先级要比获取读锁的优先级高</strong>，所以导致session D 也被阻塞。</p>
+
+    <p>最后的结果就是表 t 完全被锁住，完全不可读写了。如果客户端还有重试机制，一直在发起重试请求，MySQL的线程很快就会爆满，最后导致整个实例挂掉。</p>
+  </li>
+</ul>
+
+<p>​		解决办法：</p>
+
+<p>​		1、监控长事务(information_schema.innodb_trx)，要么先暂停DDL，要么kill掉这个长事务</p>
+
+<p>​		2、但是对于一些热点表，kill未必管用，可能刚kill掉一个长事务，新的请求立马又来了。这种情况下，理想的办法是为 <code class="language-plaintext highlighter-rouge">alter table</code> 语句设定等待时间，如果在此期间能拿到MDL写锁最好，拿不到也不要阻塞后面的业务语句，先放弃。之后再重试这个命令来重试这个过程。MariaDB 和 AliSQL 已经提供了这个功能，MySQL暂时没有。</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">t</span> <span class="n">NOWAIT</span> <span class="k">add</span> <span class="k">column</span> <span class="p">...</span>
+<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">t</span> <span class="n">WAIT</span> <span class="n">N</span> <span class="k">add</span> <span class="k">column</span> <span class="p">...</span> 
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>MySQL可以通过调整 <strong><code class="language-plaintext highlighter-rouge">lock_wait_timeout</code></strong> 值来控制这个超时时间，默认值是 31536000s，即1年，显然这个时间太长了。</p>
+
+<h3 id="案例一">案例一</h3>
+
+<p>假如正在备库执行一个 <code class="language-plaintext highlighter-rouge">-single-transaction</code> 的逻辑备份，此时在主库上对表 t 执行了一个 DDL，备库会出现什么情况？</p>
+
+<p>备库会根据 DDL 的 binlog 到达的时间点不同而出现不同的情况。</p>
+
+<p>先拆解一下 <code class="language-plaintext highlighter-rouge">mysqldump -single-transaction</code> 在内部的执行逻辑：</p>
+
+<ol>
+  <li>
+    <p>set session transaction isolation level repeatable read;</p>
+  </li>
+  <li>
+    <p>start transaction with consistent snapshot;</p>
+
+    <p>(其他表的备份逻辑)</p>
+  </li>
+  <li>
+    <p>SAVEPOINT sp;</p>
+
+    <p>(时刻1)</p>
+  </li>
+  <li>
+    <p>show create table <code class="language-plaintext highlighter-rouge">t</code>;</p>
+
+    <p>(时刻2)</p>
+  </li>
+  <li>
+    <p>select * from t;</p>
+
+    <p>(时刻3)</p>
+  </li>
+  <li>
+    <p>rollback to savepoint sp;</p>
+
+    <p>(时刻4)</p>
+
+    <p>(其他表的备份逻辑)</p>
+  </li>
+</ol>
+
+<p>在时刻1到达：没有任何影响，此时表 t 上没有任何 MDL 锁，所以可正常执行，备份得到的是新的表结构；</p>
+
+<p>在时刻2到达：此时已经先备份完了 t 的表结构，DDL才到达，在执行第5步的时候会报错：<code class="language-plaintext highlighter-rouge">Table definition has changed,please retry transaction</code> ，mysqldump 终止；</p>
+
+<p>在时刻3到达：此时表结构和数据都已备份完成，但是 MDL 读锁还没释放(会在第6步后才释放)，所以 DDL 操作会阻塞，备份得到的是旧的表结构；</p>
+
+<p>在时刻4到达：MDL 读锁已被释放，DDL 可正常执行，备份得到的是旧的表结构。</p>
+
+<h3 id="行锁">行锁</h3>
+
+<p>由存储引擎实现，Innodb 支持，MyISAM 不支持。如果不支持行锁，就只能使用表级锁，也就意味着锁的粒度太大并发度就会降低。这也是为什么推荐使用 Innodb 的重要原因之一。</p>
+
+<h4 id="两阶段锁">两阶段锁</h4>
+
+<p>之前提到过一个两阶段提交，行锁有一个<strong>两阶段锁</strong>协议，也被称为 2PL。</p>
+
+<h5 id="定义">定义</h5>
+
+<p>两阶段指的是分为加锁阶段和解锁阶段，在加锁阶段只能加锁不能解锁，在解锁阶段只能解锁不能加锁。</p>
+
+<p>单看定义很难理解，换成大白话说就是<strong>行锁在需要的时候才加上，但并不是不需要了就立即释放，而是要事务结束后才会释放。</strong></p>
+
+<h5 id="为什么需要两阶段锁">为什么需要两阶段锁？</h5>
+
+<p>重点就是在事务结束后才会释放所有行锁，而不是用完立即释放。<strong>任何锁的本质就是保证并发操作的正确性，将并行改为串行</strong>。二阶段锁用来保证并发更新操作的正确性，两个并发的更新操作，必须等其中一个提交后另一个才能继续，否则就<strong>会发生更新被覆盖的情况</strong>。</p>
+
+<p>假设不存在两阶段锁协议，会发生如下情况：</p>
+
+<p>同时发起2个操作，向同一个账户打200块，账户原余额有100块。</p>
+
+<ol>
+  <li>sessionA 发起打款操作，获取到写锁，用 <code class="language-plaintext highlighter-rouge">update</code> 更新账户余额为 300</li>
+  <li><code class="language-plaintext highlighter-rouge">update</code> 完毕，假设不存在两阶段锁，用完立即释放，释放写锁，<strong>此时事务尚未提交</strong></li>
+  <li>sessionB 发起打款操作，获取到写锁，根据一致性视图可见性规则：事务未提交，更新不可见。得到的账户余额仍为100，用 <code class="language-plaintext highlighter-rouge">update</code> 更新账户余额为 300</li>
+  <li><code class="language-plaintext highlighter-rouge">update</code> 完毕，立即释放写锁</li>
+  <li>sessionA 提交，账户余额为 300</li>
+  <li>sessionB 提交，账户余额为 300</li>
+</ol>
+
+<p>所以，因为存在两阶段锁协议，在第2步结束后，由于事务尚未提交，写锁仍未释放，则第3步的 <code class="language-plaintext highlighter-rouge">update</code> 操作必须等待 sessionA 提交后才能继续，此时 sessionA 读到的余额为300，再执行 <code class="language-plaintext highlighter-rouge">update</code> 后更新余额为500，这才是符合逻辑的结果。</p>
+
+<h5 id="如何优化">如何优化？</h5>
+
+<p>锁虽然保证了并发操作的正确性，但是由并行改为串行降低了并发度。所以另一个问题就是如何最大限度的提高并发度？</p>
+
+<p>由于行锁是在需要的时候才加上，在事务结束后统一释放。所以针对包含多个更新的事务，可以<strong>调整事务内更新语句的顺序，将会产生行锁竞争的语句尽量往后放，从而让等待行锁的时间最小化</strong>，以达到提高并发度的目的。</p>
+
+<p>示例：</p>
+
+<p>假如有一个在线订票业务，订票逻辑可以简化为下列步骤：</p>
+
+<ol>
+  <li>从账户余额扣掉票钱</li>
+  <li>给系统余额加上票钱</li>
+  <li>记录一条日志</li>
+</ol>
+
+<p>假设同时发起2个订票请求，可以看到，在这个事务中，会产生行锁竞争的是第2步(直白说就是会 <code class="language-plaintext highlighter-rouge">update</code> 同一行)。按这个顺序的话，系统余额表上的行锁会从第2步开始加上，第3步完成后事务提交时释放。</p>
+
+<p>调整下顺序，改为：</p>
+
+<ol>
+  <li>记录一条日志</li>
+  <li>从账户余额扣掉票钱</li>
+  <li>给系统余额加上票钱</li>
+</ol>
+
+<p>这时候系统余额表上的行锁持续时间就缩短为1步了，从第3步开始加上，到第3步完成后事务提交时释放。</p>
+
+<p>虽然在这里看就是少了一小步(一条语句的执行时间)，但如果这个业务请求并发量很大的话，这个优化的效果就会非常明显。</p>
+
+<h4 id="死锁">死锁</h4>
+
+<h5 id="为什么会出现死锁">为什么会出现死锁？</h5>
+
+<p>简单说就是出现<strong>锁的循环等待</strong>。示例如下：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th style="text-align: center">sessionA</th>
+      <th style="text-align: center">sessionB</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td style="text-align: center">begin;</td>
+      <td style="text-align: center">begin;</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td style="text-align: center">update t set k = k+1 where id=1;</td>
+      <td style="text-align: center"> </td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">update t set k = k+1 where id=2;</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td style="text-align: center">update t set k = k+1 where id=2;</td>
+      <td style="text-align: center"> </td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">update t set k = k+1 where id=1;</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>由于事务都尚未提交，行锁还未释放。第4步要获取 <code class="language-plaintext highlighter-rouge">id=2</code> 的行锁，需要等待sessionB提交；第5步要获取 <code class="language-plaintext highlighter-rouge">id=1</code> 行锁，需要等待sessionA提交，死锁产生了。</p>
+
+<h5 id="解决办法">解决办法</h5>
+
+<ol>
+  <li>
+    <h6 id="等待直到超时然后退出">等待直到超时，然后退出</h6>
+
+    <p>Innodb中有个参数用于设置这个超时时间：<code class="language-plaintext highlighter-rouge">innodb_lock_wait_timeout</code>，默认值为 50s。这个默认值对于业务来说是不能接受的，相当于卡顿50s。但是如果设成较小的值，又很有可能造成误伤：如果不是死锁，而就是普通的锁等待，此时并没有循环等待的情况，但是由于超过了阈值而被当成了死锁而提前退出了。所以这种方法一般不采用。</p>
+  </li>
+  <li>
+    <p>主动死锁检测</p>
+
+    <p><code class="language-plaintext highlighter-rouge">innodb_deadlock_detect</code> 用于控制是否打开主动死锁检测，默认是 ON。</p>
+
+    <p>这是一种相对较好的方式，但<strong>需要注意的是它的资源消耗有可能会很大</strong>。对于每个新加入进来的线程，都要先判断会不会由于自己的加入而导致死锁，这是一个时间复杂度为 O($n^2$) 的操作。假设有1000个并发线程同时更新同一行，这个死锁检测就是100万量级的。</p>
+
+    <p>虽然最终检测的结果是没有死锁，但此期间需要消耗大量的CPU资源。所以当出现CPU消耗接近100%，TPS却很低的话，很有可能就是死锁检测导致的。</p>
+
+    <p>那如何优化这种<strong>热点行更新问题</strong>？</p>
+
+    <ul>
+      <li>简单粗暴的方法就是如果确认不会出现死锁，直接关闭死锁检测。但这个方法明显危险系数很高，万一还是出现了死锁的话只能依靠超时机制，而如上面所述，超时机制的阈值很难设置。</li>
+      <li><strong>拆分热点行</strong>。将一行拆分为多行，比如一条账户记录可以拆分为10条子账户记录，账户总额就等于10条子账户余额之和，在需要更新账户余额时，随机选择其中一条进行更新。这样就将一行上的死锁检测成本、锁等待个数、冲突概率都降为了原来的1/10。这种方案属于设计层面上的优化，需要结合业务逻辑做详细的设计和测试。</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="案例二">案例二</h3>
+
+<p>现需要删除前10000行数据，有以下三种方式：</p>
+
+<ul>
+  <li>
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">delete</span> <span class="k">from</span> <span class="n">t</span> <span class="k">limit</span> <span class="mi">10000</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>在一个连接中循环执行20次 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></p>
+  </li>
+  <li>在20个连接中同时执行 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></li>
+</ul>
+
+<p>哪种方式好一些？</p>
+
+<p>第一种：执行时间较长，意味着占用锁(MDL读锁、X锁)的时间会比较长；而且大事务在从库上回放的时间也较长，在此期间会导致主从延迟；</p>
+
+<p>第三种：人为的制造了行锁冲突，而且大概率会重复删除，达不到删除前10000行数据的目的；</p>
+
+<p>第二种方式较好。</p>
+
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/blog/2021/10/11/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%83)-MySQL%E7%B4%A2%E5%BC%95/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(七)：MySQL索引">
+                        Previous<br>
+                        <span>MySQL学习笔记(七)：MySQL索引</span>
+                        </a>
+                    </li>
+                    
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=Manjaro"
+                    title="Manjaro"
+                    rel="1">Manjaro</a>
+        
+                <a data-sort="0004" 
+                    href="/blog/archive/?tag=mysql"
+                    title="mysql"
+                    rel="8">mysql</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
+                    title="事务"
+                    rel="1">事务</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
+                    title="数据类型"
+                    rel="1">数据类型</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
+                    title="浮点数"
+                    rel="1">浮点数</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
+                    title="索引"
+                    rel="1">索引</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E9%94%81"
+                    title="锁"
+                    rel="1">锁</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=Git"
+                    title="Git"
+                    rel="1">Git</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=binlog"
+                    title="binlog"
+                    rel="1">binlog</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=redo"
+                    title="redo"
+                    rel="1">redo</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=springboot"
+                    title="springboot"
+                    rel="1">springboot</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=starter"
+                    title="starter"
+                    rel="1">starter</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                <!--
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+</ul>
+-->
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Coding Life 2021
+                    <br>
+                    模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/blog/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/blog/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/blog/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/blog/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/blog/js/snackbar.js "></script>
+<script src="/blog/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/blog/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/blog/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        // templateMiddleware: function (prop, value, template) {
+        //     if (prop === 'subtitle' || prop === 'title') {
+        //         if (value.indexOf("code")) {
+        //             return htmlDecode(value);
+        //         } else {
+        //             return value;
+        //         }
+        //     }
+        // }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+
+<!-- Image to hack wechat -->
+<img src="/blog/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

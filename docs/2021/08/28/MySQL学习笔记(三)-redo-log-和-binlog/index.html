@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, Coding Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="MySQL学习笔记(三)：redo log 和 binlog - 陆星宏的博客 | Coding Life">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="binlog
+">
+    
+    <meta property="article:published_time" content="2021-08-28T00:00:00Z">
+    
+    
+    <meta property="article:author" content="">
+    
+    
+    <meta property="article:tag" content="mysql">
+    
+    <meta property="article:tag" content="redo">
+    
+    <meta property="article:tag" content="binlog">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
+    <meta property="og:url" content="http://localhost:4000/2021/08/28/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%89)-redo-log-%E5%92%8C-binlog/">
+    <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
+    
+    <title>MySQL学习笔记(三)：redo log 和 binlog - 陆星宏的博客 | Coding Life</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/blog/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/blog/img/favicon.ico">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/blog/2021/08/28/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%89)-redo-log-%E5%92%8C-binlog/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/blog/css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Mathjax Support -->
+   <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        inlineMath: [['$','$']]
+        }
+    });
+   </script>
+    <script type="text/javascript" async
+       src="https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <!--<script src="//cdn.bootcdn.net/ajax/libs/eruda/2.3.3/eruda.js"></script>-->
+    <!--<script>eruda.init();</script>-->
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top invert">
+    
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/blog/">Coding Life</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/blog/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/blog/img/niuniu.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/blog/img/niuniu.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+<header class="intro-header style-text" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
+                        
+                        <a class="tag" href="/blog/archive/?tag=redo" title="redo">redo</a>
+                        
+                        <a class="tag" href="/blog/archive/?tag=binlog" title="binlog">binlog</a>
+                        
+                    </div>
+                    <h1>MySQL学习笔记(三)：redo log 和 binlog</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">August 28, 2021</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h3 id="binlog">binlog</h3>
+
+<p>MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，可理解为sql语句。</p>
+
+<h4 id="主要作用">主要作用：</h4>
+
+<ol>
+  <li>如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。</li>
+  <li>常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用的数据来源通道。</li>
+</ol>
+
+<h4 id="如何查看">如何查看？</h4>
+
+<ol>
+  <li>
+    <p>​	查看binlog 格式</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="k">global</span> <span class="n">variables</span> <span class="k">like</span> <span class="s1">'%binlog_format%'</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>​    查看当前使用的binlog文件</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="n">master</span> <span class="n">status</span> <span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>​    查看所有binlog文件</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="nb">binary</span> <span class="n">logs</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>查看binlong文件内容</p>
+
+    <p>方式一：show 命令</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="n">binlog</span> <span class="n">events</span> <span class="k">in</span> <span class="s1">'binlog.000008'</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>方式二： mysqlbinlog</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>mysqlbinlog <span class="nt">--base64-output</span><span class="o">=</span><span class="s2">"decode-rows"</span> <span class="nt">--verbose</span> binlog.000001
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>binlog 3种格式的区别</p>
+
+    <p>STATEMENT：记录具体执行语句，如 <code class="language-plaintext highlighter-rouge">update t set name = 'newName' where name = 'oldName'</code></p>
+
+    <p>ROW：记录每一行记录的变更，一个 <code class="language-plaintext highlighter-rouge">update</code> 可能产生多条日志（每条记录都会产生一行日志）</p>
+
+    <p>MIXED：当满足某些条件时会自动从 <code class="language-plaintext highlighter-rouge">STATEMENT</code>切换到 <code class="language-plaintext highlighter-rouge">ROW</code></p>
+  </li>
+  <li>
+    <p>选择哪种格式？</p>
+
+    <p><code class="language-plaintext highlighter-rouge">STATEMENT</code>直接记录sql，可能会在某些情况下导致执行结果不一致，比如 <code class="language-plaintext highlighter-rouge">delete</code> 时走的索引不同会导致删除的记录不同；</p>
+
+    <p><code class="language-plaintext highlighter-rouge">ROW</code> 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 <code class="language-plaintext highlighter-rouge">ROW</code>；</p>
+
+    <p><code class="language-plaintext highlighter-rouge">MIXED</code> 需要检查会不会有不在自动切换的条件中，但可能会导致执行结果不一致的特殊情况，自动其实意味着熟悉</p>
+  </li>
+  <li>
+    <p>切换当前连接 binlog 格式</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">SET</span> <span class="k">SESSION</span> <span class="n">binlog_format</span> <span class="o">=</span> <span class="s1">'STATEMENT'</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+  <li>
+    <p>刷新binlog</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">flush</span> <span class="n">logs</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+  </li>
+</ol>
+
+<h4 id="binlog的写入时机">binlog的写入时机</h4>
+
+<p>binlog会首先写到cache里，cache满了就会暂存到磁盘上，这个参数大小由 <code class="language-plaintext highlighter-rouge">binlog_cache_size</code> 控制，默认是32K。<strong>注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。</strong></p>
+
+<p>一个事务的binlog是不能被拆开的，无论一个事务多大，也要确保一次性写入binlog文件。</p>
+
+<p>binlog会被首先<code class="language-plaintext highlighter-rouge">write</code>到操作系统的<code class="language-plaintext highlighter-rouge">page cache</code>中，然后才会被 <code class="language-plaintext highlighter-rouge">fsync</code>到磁盘中。一般可认为只有<code class="language-plaintext highlighter-rouge">fsync</code>才占磁盘的IOPS。</p>
+
+<p><code class="language-plaintext highlighter-rouge">write</code>  和 <code class="language-plaintext highlighter-rouge">fsync</code> 的时机由参数 <code class="language-plaintext highlighter-rouge">sync_binlog</code>控制，默认值是1，总共有3种设置：</p>
+
+<ul>
+  <li>0：每次事务提交时都只write，不fsync。由于只保存到操作系统缓存，所以如果主机重启会丢失数据</li>
+  <li>1：每次事务都 fsync</li>
+  <li>N(N&gt;1)：每次事务提交都write，但只有累计了 N 个事务以后才会 fsync</li>
+</ul>
+
+<p>设为N时，如果主机异常重启会丢失最近N个事务的数据，但是可以提升性能，需评估使用。</p>
+
+<h3 id="redo-log">redo log</h3>
+
+<p>Innodb 特有的日志，存储的是物理日志，即数据页上的改动。</p>
+
+<p>数据页：Innodb 从磁盘读取数据的基本单位，即使只取一行记录，也会将改行所在的整个数据页读入内存。数据页的大小可通过以下参数查看，默认为16k</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="k">global</span> <span class="n">variables</span> <span class="k">like</span> <span class="s1">'innodb_page_size'</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>主要作用：提供事务能力，保证 crash-safe</p>
+
+<h4 id="redo-log-格式">redo log 格式</h4>
+
+<p>采用循环写的方式，有2个游标：checkpoint、writepos。<code class="language-plaintext highlighter-rouge">writepos</code> 表示当前写的位置，<code class="language-plaintext highlighter-rouge">checkpoint</code> 表示要擦除的位置，都是边写边往后推移。</p>
+
+<p><img src="/home/head/图片/16a7950217b3f0f4ed02db5db59562a7.webp" alt="16a7950217b3f0f4ed02db5db59562a7" /></p>
+
+<p>绿色的部分表示空闲的空间。</p>
+
+<h4 id="查看-redo-log-相关设置">查看 redo log 相关设置</h4>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="k">global</span> <span class="n">variables</span> <span class="k">like</span> <span class="s1">'%innodb_log%'</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><img src="/home/head/图片/Screenshot_20211028_111202.png" alt="" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">innodb_log_buffer_size</code>：redo log 缓冲区大小，默认16M</p>
+
+<p><code class="language-plaintext highlighter-rouge">innodb_log_file_size</code>：redo log文件大小，默认48M</p>
+
+<p><code class="language-plaintext highlighter-rouge">innodb_log_files_in_group</code>：每组有多少个redo log 文件，默认2个：ib_logfile0、ib_logfile1</p>
+
+<h4 id="redo-log-一般设多大">redo log 一般设多大？</h4>
+
+<p>redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo log，发挥不出 WAL 的作用。</p>
+
+<p>所以，磁盘空间不是很紧张的话，设大点吧，比如设置为4个文件，每个文件1G。</p>
+
+<h4 id="redo-log-的写入时机">redo log 的写入时机？</h4>
+
+<p>同样，redo log 也分为 <code class="language-plaintext highlighter-rouge">write</code> 和 <code class="language-plaintext highlighter-rouge">fsync</code>，由参数 <code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit</code>控制，默认值为1：</p>
+
+<ul>
+  <li>0：每次事务提交只把redo log保留在 redo log buffer 中</li>
+  <li>1：每次事务提交都 fsync 到磁盘（prepare阶段fsync，commit阶段write就行了）</li>
+  <li>2：每次事务提交都只将redo log 写到 page cache 中</li>
+</ul>
+
+<p><strong>除此之外，后台还会有一个线程，每隔1秒会将redo log buffer中的内容先 write 到 page cache，再 fsync 到磁盘。</strong></p>
+
+<p>没提交的事务也会被 <strong><u>被动的</u></strong> 写入磁盘：</p>
+
+<ul>
+  <li>redo log buffer 占用空间达到 <code class="language-plaintext highlighter-rouge">innodb_log_buffer_size</code> 一半时，后台线程会主动写盘，注意由于没有提交事务，此时只是 write，没有 fsync</li>
+  <li>如果有并行事务，假如A执行了一半，已经写了一些redo log 到 buffer中，此时 B 提交，如果 <code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit</code>=1，B要把buffer里日志全部fsync到磁盘，此时会带上A的内容一起fsync</li>
+</ul>
+
+<p>再次强调，写完内存和rodo log、binlog就算事务提交成功了。所以结合两阶段提交，<strong>当默认值为1时</strong>，在redo log的 <code class="language-plaintext highlighter-rouge">prepare</code> 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 <code class="language-plaintext highlighter-rouge">commit</code>（<strong>但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性</strong>）</p>
+
+<h4 id="最终数据落盘的过程是">最终数据落盘的过程是？</h4>
+
+<p>1、正常运行过程中，MySQL更新完内存后，内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程甚至和redo log 毫无关系。（当然，猜测还会向前推进redo log中 checkpoint的位置）</p>
+
+<p>2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将redo log中的数据更新到内存中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。</p>
+
+<h3 id="什么是mysql中的两阶段提交">什么是MySQL中的两阶段提交？</h3>
+
+<p>一个事务当写完内存和redo log、binlog以后就算提交成功了，并不需要写真正的数据文件。为了保证2个日志文件都写入成功，采用了两阶段提交的方法，如下图所示</p>
+
+<p><img src="/home/head/图片/两阶段提交.svg" alt="两阶段提交" /></p>
+
+<p>两阶段提交并不是MySQL特有的，它是一种分布式事务的策略。其本质说来也很通俗，就是一个人的时候好办，多个人的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了才能继续下一步。</p>
+
+<h3 id="两阶段提交如何保证-crash-safe">两阶段提交如何保证 crash-safe？</h3>
+
+<h4 id="crash-safe具体提供了什么能力">crash-safe具体提供了什么能力？</h4>
+
+<ol>
+  <li>只要客户端收到事务成功的消息，事务就一定持久化了</li>
+  <li>只要客户端收到事务失败的消息，事务就一定失败了</li>
+  <li>如果客户端收到“执行异常”之类的消息，需要应用重连后查询当前状态来执行后续逻辑。数据库内部只要保证数据和日志、主库和备库之间一致就行了</li>
+</ol>
+
+<h4 id="具体如何实现">具体如何实现？</h4>
+
+<p>1、redo log 状态为commit，直接提交事务</p>
+
+<p>2、redo log 状态为prepare，查看对于的binlog是否完整：</p>
+
+<p>​	  a.  不完整，回滚</p>
+
+<p>​      b.  完整，提交事务</p>
+
+<h4 id="如何知道binlog是否完整">如何知道binlog是否完整？</h4>
+
+<p>完整的binlog最后会有个 <code class="language-plaintext highlighter-rouge">XID EVENT</code> 和  <code class="language-plaintext highlighter-rouge">COMMIT</code><img src="/home/head/.config/Typora/typora-user-images/image-20211029160948653.png" alt="image-20211029160948653" /></p>
+
+<p>此外，还提供了一个 <code class="language-plaintext highlighter-rouge">binlog-checksum</code> 参数用于校验binlog的完整性。</p>
+
+<h4 id="redo-log-是怎么和-binlog-对应起来的">redo log 是怎么和 binlog 对应起来的？</h4>
+
+<p>它们都有一个共同的字段 <code class="language-plaintext highlighter-rouge">XID</code></p>
+
+<h4 id="为什么要引入两个日志只用binlog-不就行了">为什么要引入两个日志，只用binlog 不就行了？</h4>
+
+<p>（现在只能理解到这个程度）</p>
+
+<p><strong>binlog不具备 crash-safe 的能力</strong></p>
+
+<p>1、binlog 中没有checkpoint，不能区分哪些是已经落盘到磁盘数据文件（即最终存储数据的文件），哪些是需要应用到内存中用于崩溃恢复的</p>
+
+<p>2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。简而言之，binlog粒度太大。</p>
+
+<h3 id="为什么要写2个日志直接更新数据文件不是更快吗">为什么要写2个日志，直接更新数据文件不是更快吗？</h3>
+
+<p>这种思路叫做 <code class="language-plaintext highlighter-rouge">write ahead log</code>，简称 <code class="language-plaintext highlighter-rouge">WAL</code>，是数据库的通用技术，主要基于以下两点：</p>
+
+<ol>
+  <li>顺序写快于随机写。写日志文件都是顺序写，而直接更新数据文件大多数都是随机写，在机械硬盘时代这个速度差异非常大。</li>
+  <li>虽然是写2个日志，看似意味着一次事务提交要经历两次刷盘，实际上利用了 <code class="language-plaintext highlighter-rouge">组提交</code> 的策略，fsync 的次数会大大减少，而write 到 操作系统page cache 基本上可以认为和写到内存差不多，可认为只有 fsync 会占用磁盘的 IOPS。</li>
+</ol>
+
+<h4 id="说下组提交">说下组提交</h4>
+
+<p>在双1配置下，即<code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit</code>和 <code class="language-plaintext highlighter-rouge">sync_binlog</code> 都为1，也就是默认情况下，redo log 会在 prepare 阶段 fsync。结合两阶段提交，写binlog其实也分为两步：write 和 fsync。MySQL做了一个优化：<code class="language-plaintext highlighter-rouge">拖时间</code>。即将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前。这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。</p>
+
+<p>与此同时，也给了binlog  组提交的机会，因为binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：</p>
+
+<p><code class="language-plaintext highlighter-rouge">binlog_group_commit_sync_delay</code>：表示延迟多少毫秒以后才调用 fsync</p>
+
+<p><code class="language-plaintext highlighter-rouge">binlog_group_commit_no_delay_count</code>：表示积累多少次以后才调用 fsync</p>
+
+<p>第一个参数为0时，第二个参数无效。</p>
+
+<h3 id="如何提高mysql的io性能">如何提高MySQL的IO性能？</h3>
+
+<p>从提高写redo log 和 binlog 的性能入手。</p>
+
+<p>redo log：</p>
+
+<ul>
+  <li>增大redo log buffer 大小</li>
+  <li>增大redo log file 大小</li>
+  <li>将 <code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commt</code> 设为2，表示每次事务提交都只 write 到 page cache，由后台定时线程来fsync。这样做的风险是主机掉电重启后会丢失数据（正常关闭不影响，MySQL在正常关闭前会完成一系列收尾工作）</li>
+</ul>
+
+<p>binlog：</p>
+
+<ul>
+  <li>将 <code class="language-plaintext highlighter-rouge">sync_binlog</code> 设为大于1的值（通常是100-1000），这样做的风险是主机掉电会丢失binlog日志</li>
+  <li>调整 <code class="language-plaintext highlighter-rouge">binlog_group_commit_sync_delay</code> 和 <code class="language-plaintext highlighter-rouge">binlog_group_commit_no_delay_count</code>，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险</li>
+</ul>
+
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/blog/2021/08/23/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%BA%8C)-MySQL%E6%9D%83%E9%99%90%E6%8E%A7%E5%88%B6/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(二)：MySQL权限控制">
+                        Previous<br>
+                        <span>MySQL学习笔记(二)：MySQL权限控制</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/blog/2021/09/05/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%9B%9B)-MySQL%E5%AE%9A%E6%97%B6%E5%A4%87%E4%BB%BD%E5%92%8C%E6%81%A2%E5%A4%8D/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(四)：MySQL定时备份和恢复">
+                        Next<br>
+                        <span>MySQL学习笔记(四)：MySQL定时备份和恢复</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=Manjaro"
+                    title="Manjaro"
+                    rel="1">Manjaro</a>
+        
+                <a data-sort="0004" 
+                    href="/blog/archive/?tag=mysql"
+                    title="mysql"
+                    rel="8">mysql</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
+                    title="事务"
+                    rel="1">事务</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
+                    title="数据类型"
+                    rel="1">数据类型</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
+                    title="浮点数"
+                    rel="1">浮点数</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
+                    title="索引"
+                    rel="1">索引</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=%E9%94%81"
+                    title="锁"
+                    rel="1">锁</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=Git"
+                    title="Git"
+                    rel="1">Git</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=binlog"
+                    title="binlog"
+                    rel="1">binlog</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=redo"
+                    title="redo"
+                    rel="1">redo</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=springboot"
+                    title="springboot"
+                    rel="1">springboot</a>
+        
+                <a data-sort="0011" 
+                    href="/blog/archive/?tag=starter"
+                    title="starter"
+                    rel="1">starter</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                <!--
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+</ul>
+-->
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Coding Life 2021
+                    <br>
+                    模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/blog/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/blog/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/blog/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/blog/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/blog/js/snackbar.js "></script>
+<script src="/blog/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/blog/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/blog/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        // templateMiddleware: function (prop, value, template) {
+        //     if (prop === 'subtitle' || prop === 'title') {
+        //         if (value.indexOf("code")) {
+        //             return htmlDecode(value);
+        //         } else {
+        //             return value;
+        //         }
+        //     }
+        // }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+
+<!-- Image to hack wechat -->
+<img src="/blog/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

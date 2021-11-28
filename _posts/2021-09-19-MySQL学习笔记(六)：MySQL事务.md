@@ -1,0 +1,332 @@
+---
+layout: post
+title: "MySQL学习笔记(六)：MySQL事务"
+subtitle: ""
+author: ""
+header-style: text
+tags:
+  - mysql
+  - 事务
+---
+
+
+
+### 解决的问题
+
+- 脏读：读到还没有提交事务的数据
+
+- 不可重复读：前后读取的记录**内容**不一致
+
+- 幻读：前后读取的记录**数量**不一致
+
+  > 示例：假设存在 person(id,name) 表，含2条数据：(1,"foo")、(2,"bar")
+  >
+  > |                            事务A                             |                          事务B                           |
+  > | :----------------------------------------------------------: | :------------------------------------------------------: |
+  > |           select count(1) from person 查到2条数据            |                                                          |
+  > |                                                              | insert into person(id,name) values(3,"zoo") 插入一条数据 |
+  > |                                                              |                       commit 提交                        |
+  > | insert into person(id,name) values(3,"zoo") 插入一条数据，**报错提示主键重复** |                                                          |
+  > | select * from person where id = 3，又查不到数据，但是又不能insert，就很奇怪，这种现象就被成为“**幻读**” |                                                          |
+  >
+  > 注：使用 select count(1) 并不能看到幻读现象
+
+
+
+
+
+### 隔离级别
+
+- 读未提交
+- 读提交：可解决脏读问题
+- 可重复读：可解决不可重复读问题
+- 串行化：可解决幻读问题
+
+#### 如何查询隔离级别？
+
+```sql
+show global variables like '%isolation%';
+```
+
+![image-20211031200530501](/home/head/.config/Typora/typora-user-images/image-20211031200530501.png)
+
+默认级别为<u>**可重复读**</u>。
+
+
+
+#### 如何更改隔离级别？
+
+```sql
+set global(session) transaction isolation level READ UNCOMMITTED ;
+```
+
+
+
+
+
+
+
+### 如何实现？
+
+`MVCC（Multiple Version Concurrency Control）多版本并发控制`
+
+简而言之，就是一行记录在数据库中存在多个版本，如下图所示：
+
+![image-20211103102036454](/home/head/.config/Typora/typora-user-images/image-20211103102036454.png)
+
+V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，也就是undo日志。当需要上一个版本的数据时，会通过当前记录和undo日志推算出来。其实每行记录都会有一个我们看不到的隐藏字段trx_id。
+
+
+
+#### 一致性视图（一致性读）
+
+有两种开启事务的方式：
+
+- begin/start transaction：并不是一个事务的真正起点，执行第一个语句的时候事务才真正开启
+- start transaction with consistent snapshot：马上开启事务
+
+
+
+事务开启时，会创建一个`一致性视图`。不必纠结于`视图`两个字，可简单理解为这样一个操作：记录下真正开启事务的那一刻，后面会以这个时刻为准来判断一行记录的哪个版本对于当前事务可见。
+
+具体实现上，会在开启事务的那一刻生成一个数组，保存了当前系统正在活跃（启动了还没提交）的事务ID，定义一个低水位：数组里的最小事务ID，高水位：当前系统已经创建过的最大的事务ID+1，这个数组和高低水位即构成了`一致性视图`。后续的操作应该可以猜到，就是拿记录的事务ID和这个高低水位比较来判断是否可见。这是具体的代码逻辑，不方便记忆，可简化为下面的可见性规则：
+
+1. 本事务的更新总是可见
+2. 版本未提交，不可见
+3. 版本已提交，但是在视图创建之后提交的，不可见
+4. 版本已提交，而且是在视图创建之前提交的，可见
+
+以上就是事务具体是如何实现的
+
+
+
+#### 不同隔离级别下的一致性视图生成时机
+
+- 读未提交：直接读取记录的最新版本，没有视图的概念
+- 读提交：每个语句会生成新的一致性视图
+- 可重复读：在事务开启的时候生成一致性视图，在后续的整个事务期间都使用该视图
+- 串行化：直接用加锁的方式来避免并行访问
+
+
+
+#### 当前读
+
+事务使用的是一致性读，这里针对的是查询类操作，**<u>而更新类操作使用的是当前读，即读取记录的最新版本，这个区别这很重要</u>**。
+
+
+
+#### 示例说明
+
+千言万语，不如动手验证一下
+
+假设存在表 t ( id, k)  values (1,1) ( 2, 2)，事务级别为默认级别，即可重复读。
+
+|                    事务A                    |                    事务B                    |             事务C              |
+| :-----------------------------------------: | :-----------------------------------------: | :----------------------------: |
+| start transaction with consistent snapshot; |                                             |                                |
+|                                             | start transaction with consistent snapshot; |                                |
+|                                             |                                             | update t set k=k+1 where id=1; |
+|                                             |       update t set k=k+1 where id=1;        |                                |
+|                                             |         select k from t where id=1;         |                                |
+|         select k from t where id=1;         |                                             |                                |
+|                   commit;                   |                                             |                                |
+|                                             |                   commit;                   |                                |
+
+事务C没有显示开启事务，所以更新完成以后自动提交了，此时k的值是2。
+
+先分析事务A，事务A最先开启，根据可重复读的一致性视图生成时机，在开启的那一刻创建了一致性视图，在此后的整个事务期间都使用该视图。又根据事务可见性规则，事务C的版本虽已提交，但是在视图创建之后提交的，不可见。事务B先不管值是多少，版本尚未提交，仍不可见。所以事务A的查询结果仍是1。
+
+事务B首先执行了一次更新操作，这里的重点就是：此时读取的是哪个版本？**结论是最新版本，即当前读**。因为要保证更新不能丢失。所以读到的值是2，再+1=3。然后再进行一次查询操作，根据事务的可见性规则，本事务的更新总是可见。所以，事务B的查询结果是3。
+
+
+
+如果换成读提交隔离级别，结果是怎样的？
+
+根据读提交的一致性视图生成时机：在每一次执行语句的时候都生成新的视图，所以事务A的视图是在执行到 select 的时候生成。再根据事务的可见性规则，事务C的更新已提交，且是在视图生成之前提交，可见。事务B的更新尚未提交，不可见。所以事务A的查询结果是2。
+
+事务B的查询结果还是3，分析过程和可重复读隔离级别下一样。
+
+
+
+
+
+
+
+将上面的操作步骤稍微改一下，事务C稍后再提交，隔离级别仍是可重复读，看下结果会怎样
+
+|                    事务A                    |                    事务B                    |                    事务C                    |
+| :-----------------------------------------: | :-----------------------------------------: | :-----------------------------------------: |
+| start transaction with consistent snapshot; |                                             |                                             |
+|                                             | start transaction with consistent snapshot; |                                             |
+|                                             |                                             | start transaction with consistent snapshot; |
+|                                             |                                             |       update t set k=k+1 where id=1;        |
+|                                             |       update t set k=k+1 where id=1;        |                                             |
+|                                             |         select k from t where id=1;         |                                             |
+|         select k from t where id=1;         |                                             |                   commit;                   |
+|                   commit;                   |                                             |                                             |
+|                                             |                   commit;                   |                                             |
+
+事务A查询结果：事务B和事务C的更新都尚未提交，不可见，结果是1。
+
+事务B查询结果：重点来了，由于事务C更新后没有马上提交，所以id=1的写锁一直未释放。而事务B是当前读，必须要读最新版本，若读到的记录最终被回滚了，就产生了脏读，这是不可接受的，所以必须确保当前读读到的数据是最终会被提交的数据。具体实现就是加锁，来确保当前读的数据是最新的且已提交的。所以事务B的更新，要等待事务C提交后才能继续。
+
+
+
+
+
+
+
+### 长事务
+
+尽量避免长事务，长事务有以下风险：
+
+- 会产生大量undo日志，会占用大量存储空间。在MySQL 5.5 及以前版本中，回滚日志是和数据字典一起放在ibdata文件中的，即使长事务最终被提交，回滚日志被清理，文件也不会变小。
+
+- 还会占用锁，可能拖垮整个库。如之前对当前读的讨论，当前读会加锁来保证读取到的数据是最新且已被提交的数据，若长事务一直不提交，会导致锁一直被占用，存在很大隐患。
+
+- 甚至可能会导致优化器选错索引。
+
+  案例重现：
+
+  表 `t` 定义如下：
+
+  ```sql
+  CREATE TABLE `t` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `a` int(11) DEFAULT NULL,
+    `b` int(11) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `a` (`a`),
+    KEY `b` (`b`)
+  ) ENGINE=InnoDB;
+  ```
+
+  
+
+  存储过程，插入100000条数据：
+
+  ```sql
+  delimiter ;;
+  create procedure idata()
+  begin
+    declare i int;
+    set i=1;
+    while(i<=100000)do
+      insert into t(a,b) values(i, i);
+      set i=i+1;
+    end while;
+  end;;
+  delimiter ;
+  call idata();
+  ```
+
+  
+
+  插入数据后执行 `select * from t where a between 10000 and 20000`，查询走的是 `a` 索引，没有问题
+
+  ```sql
+  explain select * from t where a between 10000 and 20000
+  ```
+
+  ![image-20211124051211671](/home/head/.config/Typora/typora-user-images/image-20211124051211671.png)
+
+  
+
+  
+
+  `sessionA` 模拟一个长事务，`sessionB` 先清空表，再调用存储过程插入数据
+
+  |                  sessionA                   |                         sessionB                         |
+  | :-----------------------------------------: | :------------------------------------------------------: |
+  | start transaction with consistent snapshot; |                                                          |
+  |                                             |                      delete from t;                      |
+  |                                             |                      call idata();                       |
+  |                                             | explain select * from t where a between 10000 and 20000; |
+  |                   commit                    |                                                          |
+
+  再查看执行计划，会发现没有选择使用索引 `a`，走的是全表扫描
+
+  ![image-20211124051702688](/home/head/.config/Typora/typora-user-images/image-20211124051702688.png)
+
+  为什么？
+
+  选择索引是优化器的工作，它会综合考虑**扫描行数、索引基数、是否使用了临时文件、是否排序等因素**来选择它认为速度最快的索引。
+
+  可通过 `show index from t` 来查看索引基数 cardinality (近似值，并不精确)，结果如下：
+
+  ![image-20211124160802373](/home/head/.config/Typora/typora-user-images/image-20211124160802373.png)
+
+  索引基数越大，说明区分度越高，选择它的概率就越大。图中可以看出主键和 `a` 的差距并不大，`a` 反而是最高的，不选择索引 `a` 肯定还有其他的原因。
+
+  再来看一下扫描行数。查询计划显示走的是全表扫描，rows为105033行。强制使用索引 `a` 看下扫描行数是多少：
+
+  ```sql
+  explain select * from t force index(a) where a between 10000 and 20000;
+  ```
+
+  ![image-20211124161809601](/home/head/.config/Typora/typora-user-images/image-20211124161809601.png)
+
+  rows为39940行。这个差距挺大的，那为什么优化器放着 39940行的 `a` 索引不用而要选择 105033行的全表扫描？
+
+  因为使用索引 `a` 需要回表，而走全表扫描是直接扫描主键索引树，不需要回表，优化器"<u>认为</u>"全表扫描更快。从结果上看，优化器明显选错了，所以优化器也不是百分百可靠的。
+
+  
+
+  **到这里又有一个疑问，为什么开启了一个长事务后，删除再插入数据就会导致扫描行数发生变化？**
+
+  很明显，肯定和这个长事务有关。
+
+  先简单说一下`undo log`，分为两种：`insert undo logs` 和 `update undo logs`，对应 insert操作和update、delete操作(delete本质上也是update操作，delete时并不是直接物理删除，而是先做一个 `deleted` 标记)。`insert undo logs` 只用于回滚操作，**并且在事务提交后便可清除**(事务提交即意味着插入已永久持久化了，不会再有回滚操作，也就不再需要 insert undo logs 了)。而 `update undo logs` **除了用于回滚操作之外，还用于MVCC，且只有当没有任何事务再需要用它来构造数据的早期版本时，方可删除**。
+
+  上面讲到 delete 时并不是直接物理删除，而是先标记。**只有在对应的 `update undo logs` 被清除时才会进行真正的物理删除，这个过程也成为 `purge`。** 
+
+  所以在这个案例中，因为先开启了一个长事务 `sessionA`，为了保证事务的可重复读，在 `sessionB` 中进行的 delete 和 insert 操作所产生的 `upodate undo logs` 会一直保留直到长事务提交。也就意味着原先的10万行数据并没有被真正删除，而是保留在了索引树上。因此每一行都会有两个版本，即总共会有20万数据，从 ibd 文件大小也能看出，大小变为了原来的两倍。而优化器统计扫描行数时会将标记为删除的版本也统计在内，导致扫描行数增加。
+
+  那为什么只有索引 `a` 的扫描行数增加了，主键的扫描行数还是10万行？因为主键的扫描行数是直接按照表的行数来估算的，而表的行数优化器取的是 `show table status like 't'` 中 `rows` 的值。索引的统计则是通过对数据页采样统计估算出来的，所以会算上老版本的数据。
+
+  原因找到了，如何解决？
+
+  - 既然是由长事务引起的，提交或kill掉长事务后便可重新让查询走索引 `a`
+  - 简单粗暴，`force index(a)`  强制使用索引 `a``
+  - `analyze table t` 重新统计索引信息，优化器会更正扫描行数，然后选择使用索引 `a` 。**当发现 explain 预估的 rows 和实际情况差距较大时，都可以采用这个方法来处理**
+
+
+
+#### 如何监控长事务？
+
+下述语句用于监测持续时间超过60s的长事务
+
+```sql
+select * from information_schema.innodb_trx where TIME_TO_SEC(timediff(now(),trx_started))>60
+```
+
+
+
+#### 如何避免长事务？
+
+##### 	应用开发端
+
+1. 确认是否使用了 `set autocommit = 0 `，代表手动提交事物。可先开启 `general_log`，通过 `show global variables like '%general_log%'` 查看 `general_log` 是否开启和日志文件路径。然后随便跑一个业务逻辑，在日志中检查是否有  ` set autocommit = 0`。
+
+2. 确认是否有不必要的只读事务。有些框架会不管什么语句都用 `begin/commit` 包起来。或者有些业务并没什么必要，也要把一堆 `select` 放到事务中。上面提到过，对当前读事务会加锁。所以对于单纯的 `select` 没有必要放到事务中，事务中主要放 `update/insert/delete`，除非是明确需要事务特性的查询，比如明确需要可重复读的查询，才需要放到事务中。
+
+3. 根据对业务的预估，通过 `set max_execution_time` 来设置单个语句的最长执行时间，来避免单个语句意外执行过长时间。
+
+   
+
+   ##### 数据库端
+
+   1. 监控 `information_schema.innodb_trx`表，超过阈值就报警或者kill掉。
+
+   2. 推荐使用 `percona 的 pt-kill` 工具，作用描述如下：
+
+      > **pt-kill** captures queries from SHOW PROCESSLIST, filters them, and then either kills or prints them. This is also known as a “slow query sniper” in some circles. The idea is to watch for queries that might be consuming too many resources, and kill them.
+
+   3. 在测试阶段可要求输出所有的 `general_log`，分析日志提前发现问题。
+
+   4. 在MySQL5.6或更新版本，可将 `innodb_undo_tablespaces` 设置为 2 或更大的值，如果真的出现大事务导致回滚段过大，清理起来更方便。
+
+      > `innodb_undo_tablespaces` ：
+      >
+      > - 0：使用系统表空间，即 ibdata1
+      > - 不为0：使用独立数量的undo表空间，默认为2，即 undo_001、undo_002
