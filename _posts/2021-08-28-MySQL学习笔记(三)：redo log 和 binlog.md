@@ -319,3 +319,91 @@ binlog：
 - 将 `sync_binlog` 设为大于1的值（通常是100-1000），这样做的风险是主机掉电会丢失binlog日志
 - 调整 `binlog_group_commit_sync_delay` 和 `binlog_group_commit_no_delay_count`，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险
 
+
+
+
+
+### sql语句突然变慢了？
+
+有时会遇到这种情况，一条sql平时执行都很快，但有时候不知道为什么突然就变得很慢，而且这个情况还是随机的、持续时间也很短，很难复现。
+
+突然变慢的这一瞬间很有可能是MySQL**在刷脏页**。
+
+以下4种情况会引发刷脏页：
+
+1. 当需要读入新的内存页时，如果系统内存不足，就需要淘汰旧的数据页。如果淘汰的是脏页，就需要把脏页刷到磁盘。当一次淘汰的脏页太多时，就会明显影响性能。
+2. redo log 写满了。此时需要把redo log的 checkpoint 往前推进，并把 write pos 到新的 checkpoint 之间对应的脏页刷到磁盘。**这种情况是很严重的，此时MySQL将不再接受更新，所有更新都会堵住。**
+3. 后台任务 `purge` 会在系统空闲时刷脏页。
+4. MySQL正常关闭时。
+
+
+
+**解决思路：**
+
+主要解决前两种情况，后两种情况不会影响到系统性能。
+
+对于情况二，调整 redo log 的大小即可，默认值明显太小，上文有讲过。
+
+对于情况一，需要先了解下Innodb刷脏页的控制策略和相关参数。
+
+这里主要的参数是 `innodb_io_capacity`，从名字就可以看出是控制 IO 能力的，官方描述如下：
+
+> The [`innodb_io_capacity`](https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_io_capacity) variable defines the number of I/O operations per second (IOPS) available to `InnoDB` background tasks, such as [flushing](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_flush) pages from the [buffer pool](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_buffer_pool) and merging data from the [change buffer](https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_change_buffer).
+
+简单说就是设置 IOPS，**它用来告诉 Innodb 所在主机的 IO 能力**，用于后台任务刷脏页和 `change buffer` 的 `merge`。默认值是**200**，即 Innodb **全力**刷脏页可以达到 200 IOPS。这个值明显太低了，即便是对于机械硬盘。
+
+当然，Innodb 不会完全按照这个值去刷脏页，因为系统还需要处理服务请求。**Innodb的做法是会算出一个百分比，然后按 `innodb_io_capacity` 定义的能力乘以这个百分比来控制刷脏页的速度**。
+
+百分比的大致算法：
+
+1. 根据当前脏页比例再结合 `innodb_max_dirty_pages_pct(脏页比例上限，默认值是90)` 算出一个 0到100 之间的数字
+
+   > 脏页比例可通过下面命令得到：
+   >
+   > ```sql
+   > select VARIABLE_VALUE into @a from global_status where VARIABLE_NAME = 'Innodb_buffer_pool_pages_dirty';
+   > select VARIABLE_VALUE into @b from global_status where VARIABLE_NAME = 'Innodb_buffer_pool_pages_total';
+   > select @a/@b;
+   > ```
+   >
+   >
+   > 计算方法伪代码如下，M 为当前脏页比例：
+   >
+   > ```c
+   > F1(M)
+   > {
+   >   if M>=innodb_max_dirty_pages_pct then
+   >       return 100;
+   >   return 100*M/innodb_max_dirty_pages_pct;
+   > }
+   > ```
+
+2. InnoDB 每次写入的日志都有一个序号(LSN)，当前写入的序号跟 checkpoint 对应的序号之间的差值，假设为 N。InnoDB 会根据这个 N 算出一个范围在 0 到 100 之间的数字，N 越大，算出来的值越大。
+
+3. 取2值较大者作为百分比
+
+从这个过程可以看出，可以介入的部分就是两个参数：`innodb_io_capacity` 和 `innodb_max_dirty_pages_pct`。
+
+- `innodb_io_capacity` 
+
+  建议设置为磁盘的IOPS，磁盘的IOPS可以通过下面的命令来测试，一般参考测试结果中 write 的能力来设置：
+
+  ```bash
+  fio -filename=$filename -direct=1 -iodepth 1 -thread -rw=randrw -ioengine=psync -bs=16k -size=500M -numjobs=10 -runtime=10 -group_reporting -name=mytest 
+  ```
+
+  **注意：一定要熟悉 `fio` 的使用方法，否则可能会把盘都刷了！！！注意，注意，注意，危险的事情说三遍！！！**
+
+  参考：[**fio 命令入门到跑路**](https://blog.51cto.com/shaonian/2319175)
+
+  
+
+- `innodb_max_dirty_pages_pct`
+
+  从上面的伪代码可以看出，当脏页比例≥该参数值时，第一个参数为100；否则取脏页比例/该参数值的百分比。MySQL8.0以后该值默认为90，也就是说当脏页比例≥90时，会百分百按 `innodb_io_capacity`  的能力**全力**刷脏页。为了尽量避免因刷脏页引起的抖动，应经常关注脏页比例，不要让它经常接近90%。或者可以调高一点(其实该值已经调整过了，之前是75，8.0后调为了90。90已经接近100了，可认为该值是一个很合理的值，如果脏页累计过多，刷脏页就会很频繁)。
+
+
+
+除此之外，还有一个参数 `innodb_flush_neighors`，从参数名字可以看出大概意思：刷脏页的时候是只刷自己还是连着附近的脏页也一起刷了，1表示启用，0表示只刷自己。
+
+这个机制对于传统机械硬盘很有用，机械硬盘的IOPS一般只有几百，每次多刷一些可以减少很多随机IO。而SSD的随机IO已不是瓶颈，只刷自己反而会更快些。在MySQL8.0中，该参数的默认值已为0，表示只刷自己。

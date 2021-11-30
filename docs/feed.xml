@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sun, 28 Nov 2021 18:13:54 +0800</pubDate>
-    <lastBuildDate>Sun, 28 Nov 2021 18:13:54 +0800</lastBuildDate>
+    <pubDate>Tue, 30 Nov 2021 10:17:03 +0800</pubDate>
+    <lastBuildDate>Tue, 30 Nov 2021 10:17:03 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -1987,6 +1987,107 @@
   &lt;li&gt;调整 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_sync_delay&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_no_delay_count&lt;/code&gt;，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险&lt;/li&gt;
 &lt;/ul&gt;
 
+&lt;h3 id=&quot;sql语句突然变慢了&quot;&gt;sql语句突然变慢了？&lt;/h3&gt;
+
+&lt;p&gt;有时会遇到这种情况，一条sql平时执行都很快，但有时候不知道为什么突然就变得很慢，而且这个情况还是随机的、持续时间也很短，很难复现。&lt;/p&gt;
+
+&lt;p&gt;突然变慢的这一瞬间很有可能是MySQL&lt;strong&gt;在刷脏页&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;以下4种情况会引发刷脏页：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;当需要读入新的内存页时，如果系统内存不足，就需要淘汰旧的数据页。如果淘汰的是脏页，就需要把脏页刷到磁盘。当一次淘汰的脏页太多时，就会明显影响性能。&lt;/li&gt;
+  &lt;li&gt;redo log 写满了。此时需要把redo log的 checkpoint 往前推进，并把 write pos 到新的 checkpoint 之间对应的脏页刷到磁盘。&lt;strong&gt;这种情况是很严重的，此时MySQL将不再接受更新，所有更新都会堵住。&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;后台任务 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;purge&lt;/code&gt; 会在系统空闲时刷脏页。&lt;/li&gt;
+  &lt;li&gt;MySQL正常关闭时。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;strong&gt;解决思路：&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;主要解决前两种情况，后两种情况不会影响到系统性能。&lt;/p&gt;
+
+&lt;p&gt;对于情况二，调整 redo log 的大小即可，默认值明显太小，上文有讲过。&lt;/p&gt;
+
+&lt;p&gt;对于情况一，需要先了解下Innodb刷脏页的控制策略和相关参数。&lt;/p&gt;
+
+&lt;p&gt;这里主要的参数是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt;，从名字就可以看出是控制 IO 能力的，官方描述如下：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;The &lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_io_capacity&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt;&lt;/a&gt; variable defines the number of I/O operations per second (IOPS) available to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;InnoDB&lt;/code&gt; background tasks, such as &lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_flush&quot;&gt;flushing&lt;/a&gt; pages from the &lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_buffer_pool&quot;&gt;buffer pool&lt;/a&gt; and merging data from the &lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/glossary.html#glos_change_buffer&quot;&gt;change buffer&lt;/a&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;简单说就是设置 IOPS，&lt;strong&gt;它用来告诉 Innodb 所在主机的 IO 能力&lt;/strong&gt;，用于后台任务刷脏页和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;merge&lt;/code&gt;。默认值是&lt;strong&gt;200&lt;/strong&gt;，即 Innodb &lt;strong&gt;全力&lt;/strong&gt;刷脏页可以达到 200 IOPS。这个值明显太低了，即便是对于机械硬盘。&lt;/p&gt;
+
+&lt;p&gt;当然，Innodb 不会完全按照这个值去刷脏页，因为系统还需要处理服务请求。&lt;strong&gt;Innodb的做法是会算出一个百分比，然后按 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt; 定义的能力乘以这个百分比来控制刷脏页的速度&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;百分比的大致算法：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;根据当前脏页比例再结合 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_max_dirty_pages_pct(脏页比例上限，默认值是90)&lt;/code&gt; 算出一个 0到100 之间的数字&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;脏页比例可通过下面命令得到：&lt;/p&gt;
+
+      &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARIABLE_VALUE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;into&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;global_status&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARIABLE_NAME&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Innodb_buffer_pool_pages_dirty&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARIABLE_VALUE&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;into&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;b&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;global_status&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;VARIABLE_NAME&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;Innodb_buffer_pool_pages_total&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;      &lt;/div&gt;
+
+      &lt;p&gt;计算方法伪代码如下，M 为当前脏页比例：&lt;/p&gt;
+
+      &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;n&quot;&gt;F1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_max_dirty_pages_pct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;then&lt;/span&gt;
+      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_max_dirty_pages_pct&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;      &lt;/div&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;InnoDB 每次写入的日志都有一个序号(LSN)，当前写入的序号跟 checkpoint 对应的序号之间的差值，假设为 N。InnoDB 会根据这个 N 算出一个范围在 0 到 100 之间的数字，N 越大，算出来的值越大。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;取2值较大者作为百分比&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;从这个过程可以看出，可以介入的部分就是两个参数：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_max_dirty_pages_pct&lt;/code&gt;。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt;&lt;/p&gt;
+
+    &lt;p&gt;建议设置为磁盘的IOPS，磁盘的IOPS可以通过下面的命令来测试，一般参考测试结果中 write 的能力来设置：&lt;/p&gt;
+
+    &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;fio &lt;span class=&quot;nt&quot;&gt;-filename&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;$filename&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-direct&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;1 &lt;span class=&quot;nt&quot;&gt;-iodepth&lt;/span&gt; 1 &lt;span class=&quot;nt&quot;&gt;-thread&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-rw&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;randrw &lt;span class=&quot;nt&quot;&gt;-ioengine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;psync &lt;span class=&quot;nt&quot;&gt;-bs&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;16k &lt;span class=&quot;nt&quot;&gt;-size&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;500M &lt;span class=&quot;nt&quot;&gt;-numjobs&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;10 &lt;span class=&quot;nt&quot;&gt;-runtime&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;10 &lt;span class=&quot;nt&quot;&gt;-group_reporting&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;mytest 
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+
+    &lt;p&gt;&lt;strong&gt;注意：一定要熟悉 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fio&lt;/code&gt; 的使用方法，否则可能会把盘都刷了！！！注意，注意，注意，危险的事情说三遍！！！&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;参考：&lt;a href=&quot;https://blog.51cto.com/shaonian/2319175&quot;&gt;&lt;strong&gt;fio 命令入门到跑路&lt;/strong&gt;&lt;/a&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_max_dirty_pages_pct&lt;/code&gt;&lt;/p&gt;
+
+    &lt;p&gt;从上面的伪代码可以看出，当脏页比例≥该参数值时，第一个参数为100；否则取脏页比例/该参数值的百分比。MySQL8.0以后该值默认为90，也就是说当脏页比例≥90时，会百分百按 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt;  的能力&lt;strong&gt;全力&lt;/strong&gt;刷脏页。为了尽量避免因刷脏页引起的抖动，应经常关注脏页比例，不要让它经常接近90%。或者可以调高一点(其实该值已经调整过了，之前是75，8.0后调为了90。90已经接近100了，可认为该值是一个很合理的值，如果脏页累计过多，刷脏页就会很频繁)。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;除此之外，还有一个参数 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_neighors&lt;/code&gt;，从参数名字可以看出大概意思：刷脏页的时候是只刷自己还是连着附近的脏页也一起刷了，1表示启用，0表示只刷自己。&lt;/p&gt;
+
+&lt;p&gt;这个机制对于传统机械硬盘很有用，机械硬盘的IOPS一般只有几百，每次多刷一些可以减少很多随机IO。而SSD的随机IO已不是瓶颈，只刷自己反而会更快些。在MySQL8.0中，该参数的默认值已为0，表示只刷自己。&lt;/p&gt;
 </description>
         <pubDate>Sat, 28 Aug 2021 00:00:00 +0800</pubDate>
         <link>http://localhost:4000/blog/2021/08/28/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%89)-redo-log-%E5%92%8C-binlog/</link>
