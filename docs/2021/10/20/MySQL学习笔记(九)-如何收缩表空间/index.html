@@ -11,13 +11,13 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | Coding Life">
+    <meta property="og:title" content="MySQL学习笔记(九)：如何收缩表空间? - 陆星宏的博客 | Coding Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="MySQL中的锁有三类：全局锁、表级锁、行级锁
+    <meta property="og:description" content="使用 delete 删除数据不会使表空间变小
 ">
     
-    <meta property="article:published_time" content="2021-10-18T00:00:00Z">
+    <meta property="article:published_time" content="2021-10-20T00:00:00Z">
     
     
     <meta property="article:author" content="">
@@ -25,14 +25,12 @@
     
     <meta property="article:tag" content="mysql">
     
-    <meta property="article:tag" content="锁">
-    
     
     <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
-    <meta property="og:url" content="http://localhost:4000/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/">
+    <meta property="og:url" content="http://localhost:4000/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/">
     <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
     
-    <title>MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | Coding Life</title>
+    <title>MySQL学习笔记(九)：如何收缩表空间? - 陆星宏的博客 | Coding Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -41,7 +39,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/">
+    <link rel="canonical" href="http://localhost:4000/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -246,13 +244,11 @@
                         
                         <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
                         
-                        <a class="tag" href="/blog/archive/?tag=%E9%94%81" title="锁">锁</a>
-                        
                     </div>
-                    <h1>MySQL学习笔记(八)：MySQL锁</h1>
+                    <h1>MySQL学习笔记(九)：如何收缩表空间?</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">October 18, 2021</span>
+                    <span class="meta">October 20, 2021</span>
                 </div>
             </div>
         </div>
@@ -279,390 +275,145 @@
                 <!-- Multi-Lingual -->
                 
 
-				<p><strong>MySQL中的锁有三类：全局锁、表级锁、行级锁</strong></p>
+				<h3 id="使用-delete-删除数据不会使表空间变小"><strong>使用 <code class="language-plaintext highlighter-rouge">delete</code> 删除数据不会使表空间变小</strong></h3>
 
-<h3 id="全局锁">全局锁</h3>
+<p>前文有提过，<code class="language-plaintext highlighter-rouge">delete</code> 只是将记录标记为删除，并没有真正删除。只有当其对应的 <code class="language-plaintext highlighter-rouge">update undo logs</code> 被清除时才会由后台 <code class="language-plaintext highlighter-rouge">purge</code> 任务物理删除，<u>即没有事务再需要这些版本的记录时</u>会执行物理删除。</p>
 
-<p>即给整个数据库实例上锁，让整个库都处于只读状态，除查询以外的操作都会被阻塞。server层实现。</p>
+<p><strong>即便是物理删除，也不会把磁盘空间返还给操作系统。</strong>究其原因，出于性能考虑，物理删除后的空间会被<strong>复用</strong>。删除记录后，当插入符合范围条件的数据时，原空间会被复用。删除一整个数据页上的所有记录后，当需要使用新页的时候，原数据页会被复用。</p>
 
-<blockquote>
-  <p>如果加上全局锁后，客户端由于异常断开，MySQL会自动释放这个锁。</p>
-</blockquote>
-
-<p>加锁：</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="n">flush</span> <span class="n">tables</span> <span class="k">with</span> <span class="k">read</span> <span class="k">lock</span><span class="p">;</span>
-</pre></td></tr></tbody></table></code></pre></div></div>
-
-<p>解锁：</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="n">unlock</span> <span class="n">tables</span><span class="p">;</span>
-</pre></td></tr></tbody></table></code></pre></div></div>
-
-<p>使用场景：做全库逻辑备份</p>
-
-<p>隐患：</p>
-
-<ul>
-  <li>由于只能查询，所以在此期间业务基本停摆</li>
-  <li>如果在主库上备份，业务停摆；如果在备库上备份，在此期间备库不能执行从主库同步过来的 binlog，会导致主从延迟</li>
-</ul>
-
-<p>那如果备份的时候不加全局锁会发生什么情况呢？</p>
-
-<p>不加锁，<strong>会导致备份出来的库不是同一个逻辑时间点的</strong>，数据从业务逻辑上看是不一致的。</p>
-
-<p>比如在备份过程中先备份了A表，然后执行了一个业务操作，再备份B表，这个业务操作会同时更新A表和B表。那么这个时候备份出来的数据A表还是老版本，而B表已经被更新了，这个备份就是有问题的，是逻辑不一致的。</p>
-
-<p><u>为了既不影响业务，也要保证备份视图的逻辑一致性</u>，推荐采用另一种全库备份的方法：<strong><code class="language-plaintext highlighter-rouge">mysqldump -single-transaction</code></strong>。导数据之前会启动一个事务，来确保拿到一致性视图。而且由于 MVCC 的支持，在此期间是可以正常更新的。</p>
-
-<p>当然显而易见，这种方法只适用于支持事务的存储引擎，所以这也是为什么推荐使用 Innodb 而不是 MyISAM 的一个原因。</p>
-
-<h3 id="表级锁">表级锁</h3>
-
-<p><strong>server层实现，分两种：表锁和元数据锁(MDL)。</strong></p>
-
-<h4 id="表锁">表锁</h4>
+<p>可通过 <code class="language-plaintext highlighter-rouge">show table status like 't'</code> 来查看表碎片大小，如果过大，可通过重建表来释放表空间。</p>
 
 <blockquote>
-  <p>与全局锁一样，也会在客户端断开时自动释放</p>
+  <p>几个字段的含义，都是针对 Innodb，MyISAM略有不同：</p>
+
+  <ul>
+    <li><code class="language-plaintext highlighter-rouge">data_length</code>：聚簇索引大小近似值，单位是字节。</li>
+    <li><code class="language-plaintext highlighter-rouge">index_length</code>：非聚簇索引大小近似值，单位是字节。</li>
+    <li><code class="language-plaintext highlighter-rouge">data_free</code>：已分配但未使用的空间大小近似值，单位是字节。表碎片大小即是查看这个字段。</li>
+  </ul>
+
+  <p>这三个值之和近似接近 ibd 文件大小。</p>
 </blockquote>
 
-<p>加锁：</p>
+<h3 id="重建表">重建表</h3>
+
+<p>不光删除数据会造成<strong>空洞</strong>(可被复用但没被使用的空间)，插入和更新也会。</p>
+
+<p>因为插入数据往往都是随机的，即<strong>基本不可能按索引递增顺序插入</strong>，就很有可能造成数据页的分裂。比如当一个数据页满了，此时再插入一行数据到此节点就会造成数据页分裂，原数据页末尾就会产生空洞。</p>
+
+<p>更新可理解为先删除后插入，同理。</p>
+
+<p>重建表就是通过<strong>去掉这些空洞，来达到收缩表空间的目的</strong>。</p>
+
+<p>命令如下：</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="k">lock</span> <span class="n">tables</span> <span class="n">t1</span> <span class="k">read</span><span class="p">,</span><span class="n">t2</span> <span class="k">write</span><span class="p">;</span>
+</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>解锁：</p>
+<h4 id="56版本之前">5.6版本之前</h4>
 
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="n">unlock</span> <span class="n">tables</span><span class="p">;</span>
-</pre></td></tr></tbody></table></code></pre></div></div>
+<p>内部流程如下：</p>
 
-<p>以上述加锁语句为例，t1加了读锁，t2加了写锁：</p>
+<ol>
+  <li>新建一张与原表结构相同的临时表</li>
+  <li>按主键ID递增的顺序，将数据一行一行的从原表读出来再插入到临时表中。<strong>这一步就可以去掉原表主键索引上的空洞。</strong></li>
+  <li>用临时表替换掉原表</li>
+</ol>
 
-<ul>
-  <li>任何线程都不能写 t1 ，包括本线程</li>
-  <li>只有本线程能读写 t2</li>
-  <li><strong>本线程甚至不能访问除 t1、t2 之外的任何表</strong>，这点很奇怪，不懂为什么这么设计</li>
-</ul>
+<p>这个流程有个问题，在第2步中，原表不能有更新操作。也就是说，这个ddl不是online的。</p>
 
-<h4 id="元数据锁">元数据锁</h4>
+<h4 id="从56版本开始">从5.6版本开始</h4>
 
-<p>Meta data lock，MDL</p>
+<ol>
+  <li>建立一个临时文件，扫描原表的所有数据页</li>
+  <li>用数据页中原表的记录生成B+树，存储到临时文件中</li>
+  <li>在生成临时文件的过程中，将对原表的操作记录在一个日志文件(row log)中</li>
+  <li>临时文件生成后，将日志文件中的操作应用到临时文件</li>
+  <li>用临时文件替换掉原表的数据文件</li>
+</ol>
 
-<p>不需要显示使用，访问表的时候会自动加上。</p>
+<p>很明显，在该过程执行中是允许对原表做增删改操作的，<strong>这也是 Online DDL 名字的由来</strong>。</p>
 
-<p>从MySQL5.5开始引入，<strong>当做增删查改时，会加MDL读锁；当变更表结构时，会加MDL写锁</strong>。</p>
+<p><strong><u>注意</u></strong>：对于大表来说，因为需要扫描原表数据和构建临时文件，这个步骤是很消耗IO和CPU资源的。尤其对于线上业务，要很小心的<strong>控制操作时间</strong>。如果想要安全操作的话，推荐使用 github 的 <a href="https://github.com/github/gh-ost">gh-ost</a>。</p>
 
-<ul>
-  <li>
-    <p>读锁不互斥，因此可以有多个线程同时对一张表增删改查</p>
-  </li>
-  <li>
-    <p>读写互斥，即不能有多个线程同时更改表结构，或一个线程在增删改查而另一个线程在更改表结构</p>
-  </li>
-  <li>
-    <p>MDL锁在事务提交时才会释放，在变更表结构时要特别小心，以免锁住线上的查询和更新，导致整张表不能读写。下面是一个示例：</p>
+<h3 id="online-和-inplace">online 和 inplace</h3>
 
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align: center">session A</th>
-          <th style="text-align: center">session B</th>
-          <th style="text-align: center">session C</th>
-          <th style="text-align: center">session D</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="text-align: center">begin;</td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-        </tr>
-        <tr>
-          <td style="text-align: center">select * from t limit 1;</td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-        </tr>
-        <tr>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center">select * from t limit 1;</td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-        </tr>
-        <tr>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center">alter table t add f int;</td>
-          <td style="text-align: center"> </td>
-        </tr>
-        <tr>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center"> </td>
-          <td style="text-align: center">select * from t limit 1;</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p>session A 先开启了一个事务，执行了一次查询，并且没有马上提交，这时会对表 t 加一个 MDL 读锁。</p>
-
-    <p>session B 也需要一个 MDL 读锁，读锁之间不互斥，可以正常执行查询。</p>
-
-    <p>session C 要加一个字段，需要一个 MDL 写锁，读锁和写锁互斥，所以必须等待表 t 释放读锁之后才能继续。</p>
-
-    <p>session D 需要一个读锁，这里需要注意的是，<strong>表 t 上会有一个等待获取锁的锁队列，而获取MDL写锁的优先级要比获取读锁的优先级高</strong>，所以导致session D 也被阻塞。</p>
-
-    <p>最后的结果就是表 t 完全被锁住，完全不可读写了。如果客户端还有重试机制，一直在发起重试请求，MySQL的线程很快就会爆满，最后导致整个实例挂掉。</p>
-  </li>
-</ul>
-
-<p>​		解决办法：</p>
-
-<p>​		1、监控长事务(information_schema.innodb_trx)，要么先暂停DDL，要么kill掉这个长事务</p>
-
-<p>​		2、但是对于一些热点表，kill未必管用，可能刚kill掉一个长事务，新的请求立马又来了。这种情况下，理想的办法是为 <code class="language-plaintext highlighter-rouge">alter table</code> 语句设定等待时间，如果在此期间能拿到MDL写锁最好，拿不到也不要阻塞后面的业务语句，先放弃。之后再重试这个命令来重试这个过程。MariaDB 和 AliSQL 已经提供了这个功能，MySQL暂时没有。</p>
+<p>online ddl 构建的临时文件位于 Innodb 内部，整个过程也都是在 Innodb 内部完成。<strong>对于 Server 层来说</strong>，没有把数据挪动到临时表(5.6版本之前的操作流程)，相当于是一个 “原地” 操作，因此叫做 <strong>inplace</strong>。</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
-</pre></td><td class="rouge-code"><pre><span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">t</span> <span class="n">NOWAIT</span> <span class="k">add</span> <span class="k">column</span> <span class="p">...</span>
-<span class="k">ALTER</span> <span class="k">TABLE</span> <span class="n">t</span> <span class="n">WAIT</span> <span class="n">N</span> <span class="k">add</span> <span class="k">column</span> <span class="p">...</span> 
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">;</span>
+
+<span class="err">其实隐含的意思是</span>
+
+<span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">,</span><span class="n">ALGORITHM</span><span class="o">=</span><span class="n">inplace</span><span class="p">;</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>MySQL可以通过调整 <strong><code class="language-plaintext highlighter-rouge">lock_wait_timeout</code></strong> 值来控制这个超时时间，默认值是 31536000s，即1年，显然这个时间太长了。</p>
+<p>相对的，就有</p>
 
-<h3 id="案例一">案例一</h3>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">,</span><span class="n">ALGORITHM</span><span class="o">=</span><span class="k">copy</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>假如正在备库执行一个 <code class="language-plaintext highlighter-rouge">-single-transaction</code> 的逻辑备份，此时在主库上对表 t 执行了一个 DDL，备库会出现什么情况？</p>
+<p>对应的就是5.6版本之前的操作流程。</p>
 
-<p>备库会根据 DDL 的 binlog 到达的时间点不同而出现不同的情况。</p>
+<p>所以，如果现在有一个1TB的表，磁盘空间为1.2TB，能不能做一个inplace的ddl呢？</p>
 
-<p>先拆解一下 <code class="language-plaintext highlighter-rouge">mysqldump -single-transaction</code> 在内部的执行逻辑：</p>
+<p>答案是不能，因为临时文件也是要占用空间的。</p>
 
-<ol>
-  <li>
-    <p>set session transaction isolation level repeatable read;</p>
-  </li>
-  <li>
-    <p>start transaction with consistent snapshot;</p>
+<p>总结来说，online 是指在操作过程会不会阻塞对原表的增删改操作。inplace 指的是在 Serve 层建临时表还是直接在存储引擎内建临时文件。</p>
 
-    <p>(其他表的备份逻辑)</p>
-  </li>
-  <li>
-    <p>SAVEPOINT sp;</p>
-
-    <p>(时刻1)</p>
-  </li>
-  <li>
-    <p>show create table <code class="language-plaintext highlighter-rouge">t</code>;</p>
-
-    <p>(时刻2)</p>
-  </li>
-  <li>
-    <p>select * from t;</p>
-
-    <p>(时刻3)</p>
-  </li>
-  <li>
-    <p>rollback to savepoint sp;</p>
-
-    <p>(时刻4)</p>
-
-    <p>(其他表的备份逻辑)</p>
-  </li>
-</ol>
-
-<p>在时刻1到达：没有任何影响，此时表 t 上没有任何 MDL 锁，所以可正常执行，备份得到的是新的表结构；</p>
-
-<p>在时刻2到达：此时已经先备份完了 t 的表结构，DDL才到达，在执行第5步的时候会报错：<code class="language-plaintext highlighter-rouge">Table definition has changed,please retry transaction</code> ，mysqldump 终止；</p>
-
-<p>在时刻3到达：此时表结构和数据都已备份完成，但是 MDL 读锁还没释放(会在第6步后才释放)，所以 DDL 操作会阻塞，备份得到的是旧的表结构；</p>
-
-<p>在时刻4到达：MDL 读锁已被释放，DDL 可正常执行，备份得到的是旧的表结构。</p>
-
-<h3 id="行锁">行锁</h3>
-
-<p>由存储引擎实现，Innodb 支持，MyISAM 不支持。如果不支持行锁，就只能使用表级锁，也就意味着锁的粒度太大并发度就会降低。这也是为什么推荐使用 Innodb 的重要原因之一。</p>
-
-<h4 id="两阶段锁">两阶段锁</h4>
-
-<p>之前提到过一个两阶段提交，行锁有一个<strong>两阶段锁</strong>协议，也被称为 2PL。</p>
-
-<h5 id="定义">定义</h5>
-
-<p>两阶段指的是分为加锁阶段和解锁阶段，在加锁阶段只能加锁不能解锁，在解锁阶段只能解锁不能加锁。</p>
-
-<p>单看定义很难理解，换成大白话说就是<strong>行锁在需要的时候才加上，但并不是不需要了就立即释放，而是要事务结束后才会释放。</strong></p>
-
-<h5 id="为什么需要两阶段锁">为什么需要两阶段锁？</h5>
-
-<p>重点就是在事务结束后才会释放所有行锁，而不是用完立即释放。<strong>任何锁的本质就是保证并发操作的正确性，将并行改为串行</strong>。二阶段锁用来保证并发更新操作的正确性，两个并发的更新操作，必须等其中一个提交后另一个才能继续，否则就<strong>会发生更新被覆盖的情况</strong>。</p>
-
-<p>假设不存在两阶段锁协议，会发生如下情况：</p>
-
-<p>同时发起2个操作，向同一个账户打200块，账户原余额有100块。</p>
-
-<ol>
-  <li>sessionA 发起打款操作，获取到写锁，用 <code class="language-plaintext highlighter-rouge">update</code> 更新账户余额为 300</li>
-  <li><code class="language-plaintext highlighter-rouge">update</code> 完毕，假设不存在两阶段锁，用完立即释放，释放写锁，<strong>此时事务尚未提交</strong></li>
-  <li>sessionB 发起打款操作，获取到写锁，根据一致性视图可见性规则：事务未提交，更新不可见。得到的账户余额仍为100，用 <code class="language-plaintext highlighter-rouge">update</code> 更新账户余额为 300</li>
-  <li><code class="language-plaintext highlighter-rouge">update</code> 完毕，立即释放写锁</li>
-  <li>sessionA 提交，账户余额为 300</li>
-  <li>sessionB 提交，账户余额为 300</li>
-</ol>
-
-<p>所以，因为存在两阶段锁协议，在第2步结束后，由于事务尚未提交，写锁仍未释放，则第3步的 <code class="language-plaintext highlighter-rouge">update</code> 操作必须等待 sessionA 提交后才能继续，此时 sessionA 读到的余额为300，再执行 <code class="language-plaintext highlighter-rouge">update</code> 后更新余额为500，这才是符合逻辑的结果。</p>
-
-<h5 id="如何优化">如何优化？</h5>
-
-<p>锁虽然保证了并发操作的正确性，但是由并行改为串行降低了并发度。所以另一个问题就是如何最大限度的提高并发度？</p>
-
-<p>由于行锁是在需要的时候才加上，在事务结束后统一释放。所以针对包含多个更新的事务，可以<strong>调整事务内更新语句的顺序，将会产生行锁竞争的语句尽量往后放，从而让等待行锁的时间最小化</strong>，以达到提高并发度的目的。</p>
-
-<p>示例：</p>
-
-<p>假如有一个在线订票业务，订票逻辑可以简化为下列步骤：</p>
-
-<ol>
-  <li>从账户余额扣掉票钱</li>
-  <li>给系统余额加上票钱</li>
-  <li>记录一条日志</li>
-</ol>
-
-<p>假设同时发起2个订票请求，可以看到，在这个事务中，会产生行锁竞争的是第2步(直白说就是会 <code class="language-plaintext highlighter-rouge">update</code> 同一行)。按这个顺序的话，系统余额表上的行锁会从第2步开始加上，第3步完成后事务提交时释放。</p>
-
-<p>调整下顺序，改为：</p>
-
-<ol>
-  <li>记录一条日志</li>
-  <li>从账户余额扣掉票钱</li>
-  <li>给系统余额加上票钱</li>
-</ol>
-
-<p>这时候系统余额表上的行锁持续时间就缩短为1步了，从第3步开始加上，到第3步完成后事务提交时释放。</p>
-
-<p>虽然在这里看就是少了一小步(一条语句的执行时间)，但如果这个业务请求并发量很大的话，这个优化的效果就会非常明显。</p>
-
-<h4 id="死锁">死锁</h4>
-
-<h5 id="为什么会出现死锁">为什么会出现死锁？</h5>
-
-<p>简单说就是出现<strong>锁的循环等待</strong>。示例如下：</p>
-
-<table>
-  <thead>
-    <tr>
-      <th> </th>
-      <th style="text-align: center">sessionA</th>
-      <th style="text-align: center">sessionB</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td style="text-align: center">begin;</td>
-      <td style="text-align: center">begin;</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td style="text-align: center">update t set k = k+1 where id=1;</td>
-      <td style="text-align: center"> </td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td style="text-align: center"> </td>
-      <td style="text-align: center">update t set k = k+1 where id=2;</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td style="text-align: center">update t set k = k+1 where id=2;</td>
-      <td style="text-align: center"> </td>
-    </tr>
-    <tr>
-      <td>5</td>
-      <td style="text-align: center"> </td>
-      <td style="text-align: center">update t set k = k+1 where id=1;</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>由于事务都尚未提交，行锁还未释放。第4步要获取 <code class="language-plaintext highlighter-rouge">id=2</code> 的行锁，需要等待sessionB提交；第5步要获取 <code class="language-plaintext highlighter-rouge">id=1</code> 行锁，需要等待sessionA提交，死锁产生了。</p>
-
-<h5 id="解决办法">解决办法</h5>
-
-<ol>
-  <li>
-    <h6 id="等待直到超时然后退出">等待直到超时，然后退出</h6>
-
-    <p>Innodb中有个参数用于设置这个超时时间：<code class="language-plaintext highlighter-rouge">innodb_lock_wait_timeout</code>，默认值为 50s。这个默认值对于业务来说是不能接受的，相当于卡顿50s。但是如果设成较小的值，又很有可能造成误伤：如果不是死锁，而就是普通的锁等待，此时并没有循环等待的情况，但是由于超过了阈值而被当成了死锁而提前退出了。所以这种方法一般不采用。</p>
-  </li>
-  <li>
-    <p>主动死锁检测</p>
-
-    <p><code class="language-plaintext highlighter-rouge">innodb_deadlock_detect</code> 用于控制是否打开主动死锁检测，默认是 ON。</p>
-
-    <p>这是一种相对较好的方式，但<strong>需要注意的是它的资源消耗有可能会很大</strong>。对于每个新加入进来的线程，都要先判断会不会由于自己的加入而导致死锁，这是一个时间复杂度为 O($n^2$) 的操作。假设有1000个并发线程同时更新同一行，这个死锁检测就是100万量级的。</p>
-
-    <p>虽然最终检测的结果是没有死锁，但此期间需要消耗大量的CPU资源。所以当出现CPU消耗接近100%，TPS却很低的话，很有可能就是死锁检测导致的。</p>
-
-    <p>那如何优化这种<strong>热点行更新问题</strong>？</p>
-
-    <ul>
-      <li>简单粗暴的方法就是如果确认不会出现死锁，直接关闭死锁检测。但这个方法明显危险系数很高，万一还是出现了死锁的话只能依靠超时机制，而如上面所述，超时机制的阈值很难设置。</li>
-      <li><strong>拆分热点行</strong>。将一行拆分为多行，比如一条账户记录可以拆分为10条子账户记录，账户总额就等于10条子账户余额之和，在需要更新账户余额时，随机选择其中一条进行更新。这样就将一行上的死锁检测成本、锁等待个数、冲突概率都降为了原来的1/10。这种方案属于设计层面上的优化，需要结合业务逻辑做详细的设计和测试。</li>
-    </ul>
-  </li>
-</ol>
-
-<h3 id="案例二">案例二</h3>
-
-<p>现需要删除前10000行数据，有以下三种方式：</p>
+<h3 id="两种重建表的方式及区别">两种重建表的方式及区别</h3>
 
 <ul>
   <li>
-    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="k">delete</span> <span class="k">from</span> <span class="n">t</span> <span class="k">limit</span> <span class="mi">10000</span><span class="p">;</span>
-</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p><code class="language-plaintext highlighter-rouge">alter table A engine=InnoDB</code></p>
+
+    <p>如上文所述</p>
   </li>
   <li>
-    <p>在一个连接中循环执行20次 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></p>
+    <p><code class="language-plaintext highlighter-rouge">optimize table A</code></p>
+
+    <p>等同于 <code class="language-plaintext highlighter-rouge">alter table A engine=InnoDB</code> + <code class="language-plaintext highlighter-rouge">analyze table A</code> (<code class="language-plaintext highlighter-rouge">analyze</code>：重新统计索引信息)</p>
   </li>
-  <li>在20个连接中同时执行 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></li>
 </ul>
 
-<p>哪种方式好一些？</p>
+<h3 id="什么情况下重建表空间反而变大了">什么情况下重建表空间反而变大了？</h3>
 
-<p>第一种：执行时间较长，意味着占用锁(MDL读锁、X锁)的时间会比较长；而且大事务在从库上回放的时间也较长，在此期间会导致主从延迟；</p>
+<ol>
+  <li>
+    <p>表本身已经没有空洞了，比如刚刚重建过一次，这时候再重建，如果恰好在重建期间有外部的 DML 在执行，就有可能会引入新的空洞。</p>
+  </li>
+  <li>
+    <p>而且重建表的时候并不是把每个数据页都占满，而是会留下 $1/16$ 的<strong>预留空间</strong>给后续的更新用，也就是说重建后的表并不是百分百紧凑的。</p>
 
-<p>第三种：人为的制造了行锁冲突，而且大概率会重复删除，达不到删除前10000行数据的目的；</p>
+    <p>以下过程就可能会出现这种情况：</p>
 
-<p>第二种方式较好。</p>
+    <ol>
+      <li>重建一次</li>
+      <li>插入一部分数据，但是这部分数据使用的是预留空间</li>
+      <li>再重建一次。</li>
+    </ol>
 
+    <p>这时由于预留空间被使用了，再次重建时就需要再额外留出 $1/16$ 的预留空间，所以空间反而变大了。</p>
+  </li>
+</ol>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/blog/2021/10/11/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%83)-MySQL%E7%B4%A2%E5%BC%95/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(七)：MySQL索引">
+                        <a href="/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(八)：MySQL锁">
                         Previous<br>
-                        <span>MySQL学习笔记(七)：MySQL索引</span>
+                        <span>MySQL学习笔记(八)：MySQL锁</span>
                         </a>
                     </li>
                     
-                    
-                    <li class="next">
-                        <a href="/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(九)：如何收缩表空间?">
-                        Next<br>
-                        <span>MySQL学习笔记(九)：如何收缩表空间?</span>
-                        </a>
-                    </li>
                     
                 </ul>
                 <hr style="visibility: hidden;">

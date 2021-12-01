@@ -5,9 +5,148 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Tue, 30 Nov 2021 10:17:03 +0800</pubDate>
-    <lastBuildDate>Tue, 30 Nov 2021 10:17:03 +0800</lastBuildDate>
+    <pubDate>Wed, 01 Dec 2021 19:04:15 +0800</pubDate>
+    <lastBuildDate>Wed, 01 Dec 2021 19:04:15 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
+    
+      <item>
+        <title>MySQL学习笔记(九)：如何收缩表空间?</title>
+        <description>&lt;h3 id=&quot;使用-delete-删除数据不会使表空间变小&quot;&gt;&lt;strong&gt;使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delete&lt;/code&gt; 删除数据不会使表空间变小&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;前文有提过，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delete&lt;/code&gt; 只是将记录标记为删除，并没有真正删除。只有当其对应的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt; 被清除时才会由后台 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;purge&lt;/code&gt; 任务物理删除，&lt;u&gt;即没有事务再需要这些版本的记录时&lt;/u&gt;会执行物理删除。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;即便是物理删除，也不会把磁盘空间返还给操作系统。&lt;/strong&gt;究其原因，出于性能考虑，物理删除后的空间会被&lt;strong&gt;复用&lt;/strong&gt;。删除记录后，当插入符合范围条件的数据时，原空间会被复用。删除一整个数据页上的所有记录后，当需要使用新页的时候，原数据页会被复用。&lt;/p&gt;
+
+&lt;p&gt;可通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show table status like &apos;t&apos;&lt;/code&gt; 来查看表碎片大小，如果过大，可通过重建表来释放表空间。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;几个字段的含义，都是针对 Innodb，MyISAM略有不同：&lt;/p&gt;
+
+  &lt;ul&gt;
+    &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;data_length&lt;/code&gt;：聚簇索引大小近似值，单位是字节。&lt;/li&gt;
+    &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;index_length&lt;/code&gt;：非聚簇索引大小近似值，单位是字节。&lt;/li&gt;
+    &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;data_free&lt;/code&gt;：已分配但未使用的空间大小近似值，单位是字节。表碎片大小即是查看这个字段。&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;这三个值之和近似接近 ibd 文件大小。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;重建表&quot;&gt;重建表&lt;/h3&gt;
+
+&lt;p&gt;不光删除数据会造成&lt;strong&gt;空洞&lt;/strong&gt;(可被复用但没被使用的空间)，插入和更新也会。&lt;/p&gt;
+
+&lt;p&gt;因为插入数据往往都是随机的，即&lt;strong&gt;基本不可能按索引递增顺序插入&lt;/strong&gt;，就很有可能造成数据页的分裂。比如当一个数据页满了，此时再插入一行数据到此节点就会造成数据页分裂，原数据页末尾就会产生空洞。&lt;/p&gt;
+
+&lt;p&gt;更新可理解为先删除后插入，同理。&lt;/p&gt;
+
+&lt;p&gt;重建表就是通过&lt;strong&gt;去掉这些空洞，来达到收缩表空间的目的&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;命令如下：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;alter&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;InnoDB&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h4 id=&quot;56版本之前&quot;&gt;5.6版本之前&lt;/h4&gt;
+
+&lt;p&gt;内部流程如下：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;新建一张与原表结构相同的临时表&lt;/li&gt;
+  &lt;li&gt;按主键ID递增的顺序，将数据一行一行的从原表读出来再插入到临时表中。&lt;strong&gt;这一步就可以去掉原表主键索引上的空洞。&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;用临时表替换掉原表&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;这个流程有个问题，在第2步中，原表不能有更新操作。也就是说，这个ddl不是online的。&lt;/p&gt;
+
+&lt;h4 id=&quot;从56版本开始&quot;&gt;从5.6版本开始&lt;/h4&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;建立一个临时文件，扫描原表的所有数据页&lt;/li&gt;
+  &lt;li&gt;用数据页中原表的记录生成B+树，存储到临时文件中&lt;/li&gt;
+  &lt;li&gt;在生成临时文件的过程中，将对原表的操作记录在一个日志文件(row log)中&lt;/li&gt;
+  &lt;li&gt;临时文件生成后，将日志文件中的操作应用到临时文件&lt;/li&gt;
+  &lt;li&gt;用临时文件替换掉原表的数据文件&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;很明显，在该过程执行中是允许对原表做增删改操作的，&lt;strong&gt;这也是 Online DDL 名字的由来&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;u&gt;注意&lt;/u&gt;&lt;/strong&gt;：对于大表来说，因为需要扫描原表数据和构建临时文件，这个步骤是很消耗IO和CPU资源的。尤其对于线上业务，要很小心的&lt;strong&gt;控制操作时间&lt;/strong&gt;。如果想要安全操作的话，推荐使用 github 的 &lt;a href=&quot;https://github.com/github/gh-ost&quot;&gt;gh-ost&lt;/a&gt;。&lt;/p&gt;
+
+&lt;h3 id=&quot;online-和-inplace&quot;&gt;online 和 inplace&lt;/h3&gt;
+
+&lt;p&gt;online ddl 构建的临时文件位于 Innodb 内部，整个过程也都是在 Innodb 内部完成。&lt;strong&gt;对于 Server 层来说&lt;/strong&gt;，没有把数据挪动到临时表(5.6版本之前的操作流程)，相当于是一个 “原地” 操作，因此叫做 &lt;strong&gt;inplace&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;alter&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;InnoDB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;err&quot;&gt;其实隐含的意思是&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;alter&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;InnoDB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ALGORITHM&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;inplace&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;相对的，就有&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;alter&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;engine&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;InnoDB&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;ALGORITHM&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;copy&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;对应的就是5.6版本之前的操作流程。&lt;/p&gt;
+
+&lt;p&gt;所以，如果现在有一个1TB的表，磁盘空间为1.2TB，能不能做一个inplace的ddl呢？&lt;/p&gt;
+
+&lt;p&gt;答案是不能，因为临时文件也是要占用空间的。&lt;/p&gt;
+
+&lt;p&gt;总结来说，online 是指在操作过程会不会阻塞对原表的增删改操作。inplace 指的是在 Serve 层建临时表还是直接在存储引擎内建临时文件。&lt;/p&gt;
+
+&lt;h3 id=&quot;两种重建表的方式及区别&quot;&gt;两种重建表的方式及区别&lt;/h3&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;alter table A engine=InnoDB&lt;/code&gt;&lt;/p&gt;
+
+    &lt;p&gt;如上文所述&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;optimize table A&lt;/code&gt;&lt;/p&gt;
+
+    &lt;p&gt;等同于 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;alter table A engine=InnoDB&lt;/code&gt; + &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;analyze table A&lt;/code&gt; (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;analyze&lt;/code&gt;：重新统计索引信息)&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;什么情况下重建表空间反而变大了&quot;&gt;什么情况下重建表空间反而变大了？&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;表本身已经没有空洞了，比如刚刚重建过一次，这时候再重建，如果恰好在重建期间有外部的 DML 在执行，就有可能会引入新的空洞。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;而且重建表的时候并不是把每个数据页都占满，而是会留下 $1/16$ 的&lt;strong&gt;预留空间&lt;/strong&gt;给后续的更新用，也就是说重建后的表并不是百分百紧凑的。&lt;/p&gt;
+
+    &lt;p&gt;以下过程就可能会出现这种情况：&lt;/p&gt;
+
+    &lt;ol&gt;
+      &lt;li&gt;重建一次&lt;/li&gt;
+      &lt;li&gt;插入一部分数据，但是这部分数据使用的是预留空间&lt;/li&gt;
+      &lt;li&gt;再重建一次。&lt;/li&gt;
+    &lt;/ol&gt;
+
+    &lt;p&gt;这时由于预留空间被使用了，再次重建时就需要再额外留出 $1/16$ 的预留空间，所以空间反而变大了。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        <pubDate>Wed, 20 Oct 2021 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/</guid>
+        
+        <category>mysql</category>
+        
+        
+      </item>
     
       <item>
         <title>MySQL学习笔记(八)：MySQL锁</title>
@@ -2932,68 +3071,6 @@
         <category>springboot</category>
         
         <category>starter</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>正确理解浮点数</title>
-        <description>&lt;h3 id=&quot;首先浮点数是一种数字的表示方式而不是指小数&quot;&gt;首先，浮点数是一种数字的表示方式，而不是指小数&lt;/h3&gt;
-
-&lt;p&gt;很多人一提到浮点数，就说是小数，这是不对的。浮点数只是一种数字的表示方式，数字是多少就是多少，它就在那里不会改变，改变的只是人类表示它们的方式。&lt;/p&gt;
-
-&lt;p&gt;比如给定一个数 10，能确定它是浮点数还是定点数吗？&lt;/p&gt;
-
-&lt;p&gt;不能！我们必须知道这个数是如何存储的，即底层是如何来表示这个数的，才能说它是定点数还是浮点数。&lt;/p&gt;
-
-&lt;p&gt;这其实类似于十进制中的科学计数法，比如 1234.5678这个数，这个数本身不会改变，是多少永远是多少，变的是表示它的方式，我们可以以多种不同的方式来表示这个数：&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;$1.2345678 \times 10^3$&lt;/li&gt;
-  &lt;li&gt;$123.45678 \times 10$&lt;/li&gt;
-  &lt;li&gt;$0.12345678 \times 10^4$&lt;/li&gt;
-  &lt;li&gt;$12345678 \times 10^{-4}$&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;可以看到，小数点的位置是浮动的，这才是浮点数名字的由来。&lt;strong&gt;再次强调，浮点数指的是表示数字的方式，而不是数字本身&lt;/strong&gt;。&lt;/p&gt;
-
-&lt;p&gt;至于大家常提到的IEEE754，它是一个标准，即规定了大家统一采用哪种方式来表示和存储数据，它规定尾数部分格式为 1.xxxx，具体存储时1省略，其他细节不再赘述。&lt;/p&gt;
-
-&lt;h3 id=&quot;为什么要使用浮点数&quot;&gt;为什么要使用浮点数&lt;/h3&gt;
-
-&lt;p&gt;简单来说，同样的位数，浮点数表示的范围更大&lt;/p&gt;
-
-&lt;p&gt;比如 int 和 float 同是 32bit&lt;/p&gt;
-
-&lt;p&gt;int的最大值为 $2^{31}-1 = 2.147483647E9 = 2147483647$&lt;/p&gt;
-
-&lt;p&gt;float的最大值为 $(2-2^{23})\cdot2^{127} = 0\mbox{x}1.fffffeP+127f = 3.4028235E38f$ 		这表示范围可比 int 大多了&lt;/p&gt;
-
-&lt;h3 id=&quot;为什么float的精度是67位&quot;&gt;为什么float的精度是6~7位？&lt;/h3&gt;
-
-&lt;p&gt;因为float的尾数部分有23位，即可以用23位二进制来表示一个数，指数部分不影响精度，只影响范围，因为有效数字是从第一个非0位算起。&lt;/p&gt;
-
-&lt;p&gt;事实上还要加上规格化尾数省略的1，所以问题就变成24位二进制位可以表示多少位十进制？&lt;/p&gt;
-
-\[\begin{align*}
-2^{24}  &amp;amp;= 10^x\\
-
-x  &amp;amp;= {log_{10}2^{24}} = 24 \cdot log_{10}2 = 7.22471989594
-\end{align*}\]
-
-&lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;kt&quot;&gt;float&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mf&quot;&gt;0.123456789f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
-&lt;span class=&quot;nc&quot;&gt;System&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;out&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;println&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// 0.12345679  只能保证7位精度&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-</description>
-        <pubDate>Sun, 25 Apr 2021 00:00:00 +0800</pubDate>
-        <link>http://localhost:4000/blog/2021/04/25/float/</link>
-        <guid isPermaLink="true">http://localhost:4000/blog/2021/04/25/float/</guid>
-        
-        <category>浮点数</category>
-        
-        <category>数据类型</category>
         
         
       </item>

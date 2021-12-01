@@ -245,6 +245,32 @@
             ">
     			
 <div class="post-preview">
+    <a href="/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/">
+        <h2 class="post-title">
+            MySQL学习笔记(九)：如何收缩表空间?
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                使用 delete 删除数据不会使表空间变小
+
+前文有提过，delete 只是将记录标记为删除，并没有真正删除。只有当其对应的 update undo logs 被清除时才会由后台 purge 任务物理删除，即没有事务再需要这些版本的记录时会执行物理删除。
+
+即便是物理删除，也不会把磁盘空间返还给操作系统。究其原因，出于性能考虑，物理删除后的空间会被复用。删除记录后，当插入符合范围条件的数据...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        October 20, 2021
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/">
         <h2 class="post-title">
             MySQL学习笔记(八)：MySQL锁
@@ -576,36 +602,6 @@ select * from mysql.columns_priv;
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/blog/2021/04/25/float/">
-        <h2 class="post-title">
-            正确理解浮点数
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                首先，浮点数是一种数字的表示方式，而不是指小数
-
-很多人一提到浮点数，就说是小数，这是不对的。浮点数只是一种数字的表示方式，数字是多少就是多少，它就在那里不会改变，改变的只是人类表示它们的方式。
-
-比如给定一个数 10，能确定它是浮点数还是定点数吗？
-
-不能！我们必须知道这个数是如何存储的，即底层是如何来表示这个数的，才能说它是定点数还是浮点数。
-
-这其实类似于十进制中的科学计数法，比如 1...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        April 25, 2021
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -642,7 +638,7 @@ select * from mysql.columns_priv;
         
         
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=Manjaro"
                     title="Manjaro"
                     rel="1">Manjaro</a>
@@ -650,54 +646,54 @@ select * from mysql.columns_priv;
                 <a data-sort="0004" 
                     href="/blog/archive/?tag=mysql"
                     title="mysql"
-                    rel="8">mysql</a>
+                    rel="9">mysql</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
                     title="事务"
                     rel="1">事务</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
                     title="数据类型"
                     rel="1">数据类型</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
                     title="浮点数"
                     rel="1">浮点数</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
                     title="索引"
                     rel="1">索引</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=%E9%94%81"
                     title="锁"
                     rel="1">锁</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=Git"
                     title="Git"
                     rel="1">Git</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=binlog"
                     title="binlog"
                     rel="1">binlog</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=redo"
                     title="redo"
                     rel="1">redo</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=springboot"
                     title="springboot"
                     rel="1">springboot</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0012" 
                     href="/blog/archive/?tag=starter"
                     title="starter"
                     rel="1">starter</a>
