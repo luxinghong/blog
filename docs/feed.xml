@@ -5,13 +5,13 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 02 Dec 2021 15:23:40 +0800</pubDate>
-    <lastBuildDate>Thu, 02 Dec 2021 15:23:40 +0800</lastBuildDate>
+    <pubDate>Thu, 02 Dec 2021 15:27:58 +0800</pubDate>
+    <lastBuildDate>Thu, 02 Dec 2021 15:27:58 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
         <title>MySQL学习笔记(十)：count</title>
-        <description>&lt;h2 id=&quot;count-的实现方式&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count(*)&lt;/code&gt; 的实现方式&lt;/h2&gt;
+        <description>&lt;h1 id=&quot;count-的实现方式&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count(*)&lt;/code&gt; 的实现方式&lt;/h1&gt;
 
 &lt;p&gt;不同引擎实现方式不同：&lt;/p&gt;
 
@@ -72,9 +72,9 @@
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h2 id=&quot;为-count-提速&quot;&gt;为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt; 提速&lt;/h2&gt;
+&lt;h1 id=&quot;为-count-提速&quot;&gt;为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt; 提速&lt;/h1&gt;
 
-&lt;h3 id=&quot;用缓存保存计数&quot;&gt;用缓存保存计数&lt;/h3&gt;
+&lt;h2 id=&quot;用缓存保存计数&quot;&gt;用缓存保存计数&lt;/h2&gt;
 
 &lt;p&gt;这是第一时间会想到的方式，比如使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redis&lt;/code&gt;。更新数据时顺便更新 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redis&lt;/code&gt;中的计数值，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt; 的时候直接查询 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redis&lt;/code&gt; 即可，速度很快。&lt;/p&gt;
 
@@ -128,7 +128,7 @@
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;在数据库保存计数&quot;&gt;在数据库保存计数&lt;/h3&gt;
+&lt;h2 id=&quot;在数据库保存计数&quot;&gt;在数据库保存计数&lt;/h2&gt;
 
 &lt;p&gt;那不存到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redis&lt;/code&gt;  中，存到数据库计数表中，会出现上面的问题吗？&lt;/p&gt;
 
@@ -139,11 +139,11 @@
 
 &lt;p&gt;所以，&lt;strong&gt;对于大表，推荐使用数据库计数表来提速 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt;&lt;/strong&gt; 。&lt;/p&gt;
 
-&lt;h4 id=&quot;进一步优化&quot;&gt;进一步优化&lt;/h4&gt;
+&lt;h3 id=&quot;进一步优化&quot;&gt;进一步优化&lt;/h3&gt;
 
 &lt;p&gt;根据 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;两阶段锁&lt;/code&gt; 协议，可以通过调整事务内更新语句的顺序：&lt;strong&gt;将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 计数表放到最后&lt;/strong&gt;，来减少计数表行锁等待的时间，提高并发度。&lt;/p&gt;
 
-&lt;h2 id=&quot;不同-count-用法的区别&quot;&gt;不同 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt; 用法的区别&lt;/h2&gt;
+&lt;h1 id=&quot;不同-count-用法的区别&quot;&gt;不同 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt; 用法的区别&lt;/h1&gt;
 
 &lt;p&gt;首先，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;count&lt;/code&gt; 是一个聚合函数，它的逻辑是，&lt;strong&gt;对于返回的结果集，一行一行的判断，不为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;NULL&lt;/code&gt; 就+1&lt;/strong&gt;。&lt;/p&gt;
 
