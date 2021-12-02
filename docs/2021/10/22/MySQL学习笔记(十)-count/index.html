@@ -338,7 +338,7 @@
 
 <h1 id="为-count-提速">为 <code class="language-plaintext highlighter-rouge">count</code> 提速</h1>
 
-<h2 id="用缓存保存计数">用缓存保存计数</h2>
+<h3 id="用缓存保存计数">用缓存保存计数</h3>
 
 <p>这是第一时间会想到的方式，比如使用 <code class="language-plaintext highlighter-rouge">redis</code>。更新数据时顺便更新 <code class="language-plaintext highlighter-rouge">redis</code>中的计数值，<code class="language-plaintext highlighter-rouge">count</code> 的时候直接查询 <code class="language-plaintext highlighter-rouge">redis</code> 即可，速度很快。</p>
 
@@ -392,7 +392,7 @@
   </li>
 </ul>
 
-<h2 id="在数据库保存计数">在数据库保存计数</h2>
+<h3 id="在数据库保存计数">在数据库保存计数</h3>
 
 <p>那不存到 <code class="language-plaintext highlighter-rouge">redis</code>  中，存到数据库计数表中，会出现上面的问题吗？</p>
 
@@ -403,7 +403,7 @@
 
 <p>所以，<strong>对于大表，推荐使用数据库计数表来提速 <code class="language-plaintext highlighter-rouge">count</code></strong> 。</p>
 
-<h3 id="进一步优化">进一步优化</h3>
+<h4 id="进一步优化">进一步优化</h4>
 
 <p>根据 <code class="language-plaintext highlighter-rouge">两阶段锁</code> 协议，可以通过调整事务内更新语句的顺序：<strong>将 <code class="language-plaintext highlighter-rouge">update</code> 计数表放到最后</strong>，来减少计数表行锁等待的时间，提高并发度。</p>
 
