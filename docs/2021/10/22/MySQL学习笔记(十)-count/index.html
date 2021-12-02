@@ -11,13 +11,13 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="MySQL学习笔记(五)：MySQL计算QPS和TPS - 陆星宏的博客 | Coding Life">
+    <meta property="og:title" content="MySQL学习笔记(十)：count - 陆星宏的博客 | Coding Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="QPS
+    <meta property="og:description" content="count(*) 的实现方式
 ">
     
-    <meta property="article:published_time" content="2021-09-11T00:00:00Z">
+    <meta property="article:published_time" content="2021-10-22T00:00:00Z">
     
     
     <meta property="article:author" content="">
@@ -27,10 +27,10 @@
     
     
     <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
-    <meta property="og:url" content="http://localhost:4000/2021/09/11/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%BA%94)-MySQL%E8%AE%A1%E7%AE%97QPS%E5%92%8CTPS/">
+    <meta property="og:url" content="http://localhost:4000/2021/10/22/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81)-count/">
     <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
     
-    <title>MySQL学习笔记(五)：MySQL计算QPS和TPS - 陆星宏的博客 | Coding Life</title>
+    <title>MySQL学习笔记(十)：count - 陆星宏的博客 | Coding Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -39,7 +39,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2021/09/11/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%BA%94)-MySQL%E8%AE%A1%E7%AE%97QPS%E5%92%8CTPS/">
+    <link rel="canonical" href="http://localhost:4000/blog/2021/10/22/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81)-count/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -245,10 +245,10 @@
                         <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
                         
                     </div>
-                    <h1>MySQL学习笔记(五)：MySQL计算QPS和TPS</h1>
+                    <h1>MySQL学习笔记(十)：count</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">September 11, 2021</span>
+                    <span class="meta">October 22, 2021</span>
                 </div>
             </div>
         </div>
@@ -275,77 +275,190 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h3 id="qps">QPS</h3>
+				<h3 id="count-的实现方式"><code class="language-plaintext highlighter-rouge">count(*)</code> 的实现方式</h3>
 
-<p>基于 com_select</p>
+<p>不同引擎实现方式不同：</p>
 
-<blockquote>
-  <p>基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准</p>
-</blockquote>
+<ul>
+  <li>
+    <p>MyISAM：将总行数直接存在磁盘上，查询的时候返回，因此速度很快</p>
+  </li>
+  <li>
+    <p>Innodb：因为需要支持事务，而事务是由 MVCC 实现的，一行记录需要先判断对查询事务的可见性，所以<strong>“应该返回多少行” 是不确定的</strong>。因此Innodb的实现方式是把数据一行一行的从引擎中读出来，可见的行才会被累计进来。</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-2
-3
-4
-5
-</pre></td><td class="rouge-code"><pre><span class="c">#!/usr/bin/env bash</span>
-<span class="nv">OLD_QPS</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_select';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nb">sleep</span> <span class="nv">$1</span>
-<span class="nv">NEW_QPS</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_select';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nb">echo</span> <span class="s2">"(</span><span class="nv">$NEW_QPS</span><span class="s2">-</span><span class="nv">$OLD_QPS</span><span class="s2">) / </span><span class="nv">$1</span><span class="s2">"</span> | bc
-</pre></td></tr></tbody></table></code></pre></div></div>
+    <p>举个例子，假设表 <code class="language-plaintext highlighter-rouge">t</code> 有 10000 条数据：</p>
 
-<p><code class="language-plaintext highlighter-rouge">$1</code> 代表添加到shell的第一个参数值，<code class="language-plaintext highlighter-rouge">$2</code> 代表第二个，以此类推。<code class="language-plaintext highlighter-rouge">$0</code> 为shell文件名。</p>
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align: center">sessionA</th>
+          <th style="text-align: center">sessionB</th>
+          <th style="text-align: center">sessionC</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center">begin;</td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center">select count(*) from t;</td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">insert into t(插入一行);</td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">begin;</td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">insert into t(插入一行);</td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center">select count(*) from t; <strong>(返回10000)</strong></td>
+          <td style="text-align: center">select count(*) from t; <strong>(返回10002)</strong></td>
+          <td style="text-align: center">select count(*) from t; <strong>(返回10001)</strong></td>
+        </tr>
+      </tbody>
+    </table>
 
-<p>获取当前时刻的 qps：</p>
+    <p>可见同一时刻的并发查询，返回的结果是不一致的。</p>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre>./qps.sh 1
-</pre></td></tr></tbody></table></code></pre></div></div>
+    <p>由于需要遍历全表，因此对于大表，<code class="language-plaintext highlighter-rouge">count</code> 会变得很慢。</p>
+  </li>
+</ul>
 
-<h3 id="tps">TPS</h3>
+<h3 id="为-count-提速">为 <code class="language-plaintext highlighter-rouge">count</code> 提速</h3>
 
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-</pre></td><td class="rouge-code"><pre><span class="c">#/usr/bin/env bash</span>
-<span class="nv">OLD_COM_INSERT</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_insert';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nv">OLD_COM_UPDATE</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_update';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nv">OLD_COM_DELETE</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_delete';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nb">sleep</span> <span class="nv">$1</span>
-<span class="nv">NEW_COM_INSERT</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_insert';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nv">NEW_COM_UPDATE</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_update';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
-<span class="nv">NEW_COM_DELETE</span><span class="o">=</span><span class="sb">`</span><span class="nb">echo</span> <span class="s2">"show global status where Variable_name='Com_delete';"</span>|mysql <span class="nt">-uroot</span> <span class="nt">-pxxx</span> <span class="nt">-N</span>|awk <span class="s1">'{print $2}'</span><span class="sb">`</span>
+<h4 id="用缓存保存计数">用缓存保存计数</h4>
 
-<span class="nb">echo</span> <span class="s2">"((</span><span class="nv">$NEW_COM_INSERT</span><span class="s2"> - </span><span class="nv">$OLD_COM_INSERT</span><span class="s2">) + (</span><span class="nv">$NEW_COM_UPDATE</span><span class="s2"> - </span><span class="nv">$OLD_COM_UPDATE</span><span class="s2">) + (</span><span class="nv">$NEW_COM_DELETE</span><span class="s2"> - </span><span class="nv">$OLD_COM_DELETE</span><span class="s2">)) / </span><span class="nv">$1</span><span class="s2">"</span> | bc
-</pre></td></tr></tbody></table></code></pre></div></div>
+<p>这是第一时间会想到的方式，比如使用 <code class="language-plaintext highlighter-rouge">redis</code>。更新数据时顺便更新 <code class="language-plaintext highlighter-rouge">redis</code>中的计数值，<code class="language-plaintext highlighter-rouge">count</code> 的时候直接查询 <code class="language-plaintext highlighter-rouge">redis</code> 即可，速度很快。</p>
 
+<p>但是这会有2个问题：</p>
+
+<ul>
+  <li>
+    <p>缓存异常宕机会丢失更新</p>
+
+    <blockquote>
+      <p>redis持久化有RDB和AOF两种方式；RDB按照备份策略，比如60秒1000个k-v被修改，备份过程中宕机，那么这个阶段的所有更新都会丢失；AOF按照备份策略，比如 appendfsync always 策略，同步记录所执行的指令到日志文件，但是它的日志和mysql的WAL(先写日志)不同，它是后写日志，可能指令执行后写日之前宕机，那这个数据就丢失了，虽然丢失数据较少且概率较低，但依然存在这个可能。</p>
+    </blockquote>
+
+    <p>可以在重启后到数据库中执行一次 <code class="language-plaintext highlighter-rouge">count(*)</code>获取行数后填到 <code class="language-plaintext highlighter-rouge">redis</code> 中，毕竟异常宕机重启不会经常发生，偶尔一次全表扫描的成本还是可以接受的。</p>
+  </li>
+  <li>
+    <p>结果可能不准</p>
+
+    <p>由于更新数据和更新 <code class="language-plaintext highlighter-rouge">redis</code> 统计计数不是一个原子操作，可能会出现统计计数和数据不一致的问题。</p>
+
+    <p>比如以下场景：</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align: center">sessionA</th>
+          <th style="text-align: center">sessionB</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center"><code class="language-plaintext highlighter-rouge">redis</code> 计数+1</td>
+          <td style="text-align: center"> </td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">读 <code class="language-plaintext highlighter-rouge">redis</code> 计数</td>
+        </tr>
+        <tr>
+          <td style="text-align: center"> </td>
+          <td style="text-align: center">查询近100条记录</td>
+        </tr>
+        <tr>
+          <td style="text-align: center">插入一行数据</td>
+          <td style="text-align: center"> </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>sessionB 在查询计数时已经加了1，但是查不到新插入的数据(将sessionA的两个操作调换顺序也是类似的)。究其原因， <code class="language-plaintext highlighter-rouge">redis</code> 和数据库可以看做两个不同的数据源，不能保证两个操作的原子性(不可分割)。这类问题属于分布式一致性问题，虽可通过引入其他手段解决，但会使一个简单的计数查询需求变得很复杂，没有必要。</p>
+  </li>
+</ul>
+
+<h4 id="在数据库保存计数">在数据库保存计数</h4>
+
+<p>那不存到 <code class="language-plaintext highlighter-rouge">redis</code>  中，存到数据库计数表中，会出现上面的问题吗？</p>
+
+<ul>
+  <li>首先，Innodb 支持崩溃恢复，所以不存在更新丢失的问题。</li>
+  <li>将上图中 <code class="language-plaintext highlighter-rouge">redis</code>  的操作换成对数据库计数表的操作，不会出现数据不一致的问题。很明显，Innodb的事务保证了操作的原子性。</li>
+</ul>
+
+<p>所以，<strong>对于大表，推荐使用数据库计数表来提速 <code class="language-plaintext highlighter-rouge">count</code></strong> 。</p>
+
+<h5 id="进一步优化">进一步优化</h5>
+
+<p>根据 <code class="language-plaintext highlighter-rouge">两阶段锁</code> 协议，可以通过调整事务内更新语句的顺序：<strong>将 <code class="language-plaintext highlighter-rouge">update</code> 计数表放到最后</strong>，来减少计数表行锁等待的时间，提高并发度。</p>
+
+<h3 id="不同-count-用法的区别">不同 <code class="language-plaintext highlighter-rouge">count</code> 用法的区别</h3>
+
+<p>首先，<code class="language-plaintext highlighter-rouge">count</code> 是一个聚合函数，它的逻辑是，<strong>对于返回的结果集，一行一行的判断，不为 <code class="language-plaintext highlighter-rouge">NULL</code> 就+1</strong>。</p>
+
+<ul>
+  <li>
+    <p>count(主键id)</p>
+
+    <p>遍历整张表，把每一行的 <code class="language-plaintext highlighter-rouge">id</code> 取出来返回给 server 层，server 层判断 <code class="language-plaintext highlighter-rouge">id</code> 不可能为空，+1。</p>
+
+    <blockquote>
+      <p>这里可能会觉得奇怪，<code class="language-plaintext highlighter-rouge">id</code> 根本不可能为空，为什么还要多此一举去判断一下。</p>
+
+      <p>的确是没什么必要，但类似需要优化的地方太多了，MySQL专门对 <code class="language-plaintext highlighter-rouge">count(*)</code> 优化过了，直接使用 <code class="language-plaintext highlighter-rouge">count(*)</code>  就好了。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p>count(1)</p>
+
+    <p>遍历整张表，但不取值。Server 层对于返回的每一行，放一个 “1“ 进去，判断不可能为空，+1。</p>
+
+    <blockquote>
+      <p>很明显，相较于 <code class="language-plaintext highlighter-rouge">count(主键id)</code>，<code class="language-plaintext highlighter-rouge">count(1)</code> 效率更高，因为 <code class="language-plaintext highlighter-rouge">count(id)</code>  还需要解析数据行、拷贝字段值等操作。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p>count(字段)</p>
+
+    <p>遍历整张表，把每一行对应的字段值取出来返回给 server 层，server 层判断是否为空，不为空+1。所以 <code class="language-plaintext highlighter-rouge">count(字段)</code> ≤ <code class="language-plaintext highlighter-rouge">count(*)</code>。</p>
+  </li>
+  <li>
+    <p>count(*)</p>
+
+    <p>做了专门的优化，并不会把全部字段取出来，而是直接不取值，认定<code class="language-plaintext highlighter-rouge">count(*)</code> 肯定不为空，直接按行累加。</p>
+  </li>
+</ul>
+
+<p><strong>按效率排序：count(字段) &lt; count(主键id) &lt; count(1) ≈ count(*)。</strong></p>
+
+<p><strong>推荐直接使用 <code class="language-plaintext highlighter-rouge">count(*)</code></strong>。</p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/blog/2021/09/05/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%9B%9B)-MySQL%E5%AE%9A%E6%97%B6%E5%A4%87%E4%BB%BD%E5%92%8C%E6%81%A2%E5%A4%8D/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(四)：MySQL定时备份和恢复">
+                        <a href="/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(九)：如何收缩表空间?">
                         Previous<br>
-                        <span>MySQL学习笔记(四)：MySQL定时备份和恢复</span>
+                        <span>MySQL学习笔记(九)：如何收缩表空间?</span>
                         </a>
                     </li>
                     
-                    
-                    <li class="next">
-                        <a href="/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(六)：MySQL事务">
-                        Next<br>
-                        <span>MySQL学习笔记(六)：MySQL事务</span>
-                        </a>
-                    </li>
                     
                 </ul>
                 <hr style="visibility: hidden;">
