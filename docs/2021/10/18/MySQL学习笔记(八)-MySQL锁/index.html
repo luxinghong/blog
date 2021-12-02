@@ -642,14 +642,14 @@
 
 <ul>
   <li>
-    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="k">delete</span> <span class="k">from</span> <span class="n">t</span> <span class="k">limit</span> <span class="mi">10000</span><span class="p">;</span>
-</pre></td></tr></tbody></table></code></pre></div>    </div>
+    <p><code class="language-plaintext highlighter-rouge">delete from t limit 10000;</code></p>
   </li>
   <li>
     <p>在一个连接中循环执行20次 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></p>
   </li>
-  <li>在20个连接中同时执行 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></li>
+  <li>
+    <p>在20个连接中同时执行 <code class="language-plaintext highlighter-rouge">delete from t limit 500;</code></p>
+  </li>
 </ul>
 
 <p>哪种方式好一些？</p>
