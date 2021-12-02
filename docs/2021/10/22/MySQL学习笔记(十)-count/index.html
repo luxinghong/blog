@@ -336,6 +336,10 @@
   </li>
 </ul>
 
+<hr />
+
+<p><br /> <br /> <br /></p>
+
 <h1 id="为-count-提速">为 <code class="language-plaintext highlighter-rouge">count</code> 提速</h1>
 
 <h3 id="用缓存保存计数">用缓存保存计数</h3>
@@ -406,6 +410,10 @@
 <h4 id="进一步优化">进一步优化</h4>
 
 <p>根据 <code class="language-plaintext highlighter-rouge">两阶段锁</code> 协议，可以通过调整事务内更新语句的顺序：<strong>将 <code class="language-plaintext highlighter-rouge">update</code> 计数表放到最后</strong>，来减少计数表行锁等待的时间，提高并发度。</p>
+
+<hr />
+
+<p><br /> <br /> <br /></p>
 
 <h1 id="不同-count-用法的区别">不同 <code class="language-plaintext highlighter-rouge">count</code> 用法的区别</h1>
 
