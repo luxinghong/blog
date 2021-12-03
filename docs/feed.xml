@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 03 Dec 2021 00:48:14 +0800</pubDate>
-    <lastBuildDate>Fri, 03 Dec 2021 00:48:14 +0800</lastBuildDate>
+    <pubDate>Sat, 04 Dec 2021 02:31:50 +0800</pubDate>
+    <lastBuildDate>Sat, 04 Dec 2021 02:31:50 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -1346,7 +1346,7 @@
     
       <item>
         <title>MySQL学习笔记(六)：MySQL事务</title>
-        <description>&lt;h3 id=&quot;解决的问题&quot;&gt;解决的问题&lt;/h3&gt;
+        <description>&lt;h1 id=&quot;解决的问题&quot;&gt;解决的问题&lt;/h1&gt;
 
 &lt;ul&gt;
   &lt;li&gt;
@@ -1397,7 +1397,11 @@
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;隔离级别&quot;&gt;隔离级别&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;隔离级别&quot;&gt;隔离级别&lt;/h1&gt;
 
 &lt;ul&gt;
   &lt;li&gt;读未提交&lt;/li&gt;
@@ -1406,7 +1410,7 @@
   &lt;li&gt;串行化：可解决幻读问题&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4 id=&quot;如何查询隔离级别&quot;&gt;如何查询隔离级别？&lt;/h4&gt;
+&lt;h3 id=&quot;如何查询隔离级别&quot;&gt;如何查询隔离级别？&lt;/h3&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variables&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;%isolation%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -1416,7 +1420,7 @@
 
 &lt;p&gt;默认级别为&lt;u&gt;**可重复读**&lt;/u&gt;。&lt;/p&gt;
 
-&lt;h4 id=&quot;如何更改隔离级别&quot;&gt;如何更改隔离级别？&lt;/h4&gt;
+&lt;h3 id=&quot;如何更改隔离级别&quot;&gt;如何更改隔离级别？&lt;/h3&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;set&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;transaction&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;isolation&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;level&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;READ&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;UNCOMMITTED&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -1467,7 +1471,7 @@
 
 &lt;p&gt;事务使用的是一致性读，这里针对的是查询类操作，&lt;strong&gt;&lt;u&gt;而更新类操作使用的是当前读，即读取记录的最新版本，这个区别这很重要&lt;/u&gt;&lt;/strong&gt;。&lt;/p&gt;
 
-&lt;h4 id=&quot;示例说明&quot;&gt;示例说明&lt;/h4&gt;
+&lt;h4 id=&quot;示例一&quot;&gt;示例一&lt;/h4&gt;
 
 &lt;p&gt;千言万语，不如动手验证一下&lt;/p&gt;
 
@@ -1600,7 +1604,135 @@
 
 &lt;p&gt;事务B查询结果：重点来了，由于事务C更新后没有马上提交，所以id=1的写锁一直未释放。而事务B是当前读，必须要读最新版本，若读到的记录最终被回滚了，就产生了脏读，这是不可接受的，所以必须确保当前读读到的数据是最终会被提交的数据。具体实现就是加锁，来确保当前读的数据是最新的且已提交的。所以事务B的更新，要等待事务C提交后才能继续。&lt;/p&gt;
 
-&lt;h3 id=&quot;长事务&quot;&gt;长事务&lt;/h3&gt;
+&lt;h4 id=&quot;示例二&quot;&gt;示例二&lt;/h4&gt;
+
+&lt;p&gt;用事务的可见性来验证一个行为：更新的值与原来的值相同的情况下，MySQL还会执行更新吗？还是看到值相同直接返回了？&lt;/p&gt;
+
+&lt;p&gt;假设存在表 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;t(id,a)&lt;/code&gt;，插入一条数据 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(1,2)&lt;/code&gt;。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;先验证是否还会加写锁(因为行锁是Innodb特有的，如果加写锁，说明还是会调用Innodb引擎的&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update接口&lt;/code&gt;)&lt;/p&gt;
+
+    &lt;table&gt;
+      &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th style=&quot;text-align: center&quot;&gt;sessionA&lt;/th&gt;
+          &lt;th style=&quot;text-align: center&quot;&gt;sessionB&lt;/th&gt;
+        &lt;/tr&gt;
+      &lt;/thead&gt;
+      &lt;tbody&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;begin;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;update t set a=2 where id = 1;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;update t set a=2 where id = 1; (&lt;strong&gt;blocked&lt;/strong&gt;)&lt;/td&gt;
+        &lt;/tr&gt;
+      &lt;/tbody&gt;
+    &lt;/table&gt;
+
+    &lt;p&gt;sessionB的更新被阻塞，说明还是会加写锁。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;再验证Innodb引擎是否会执行更新&lt;/p&gt;
+
+    &lt;p&gt;&lt;strong&gt;注：此时&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_format&lt;/code&gt; 为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;statment&lt;/code&gt;，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_format&lt;/code&gt; 会影响结果，后面会详细分析&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;table&gt;
+      &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th style=&quot;text-align: center&quot;&gt;sessionA&lt;/th&gt;
+          &lt;th style=&quot;text-align: center&quot;&gt;sessionB&lt;/th&gt;
+        &lt;/tr&gt;
+      &lt;/thead&gt;
+      &lt;tbody&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;begin;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;select * from t where id=1; &lt;br /&gt;&lt;strong&gt;返回(1,2)&lt;/strong&gt;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;update t set a=3 where id=1;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;update t set a=3 where id=1;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;select * from t where id=1; &lt;br /&gt;&lt;strong&gt;返回(1,3)&lt;/strong&gt;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+      &lt;/tbody&gt;
+    &lt;/table&gt;
+
+    &lt;p&gt;根据事务的可见性规则，sessionA的第二个&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 是看不到 sessionB 的更新的，但是它读取到的值却是(1,3)，所以这个版本只能是本事务自己更新的，也就证明了sessionA中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 是执行了更新操作的。&lt;/p&gt;
+
+    &lt;p&gt;到这里可能会觉得这不是多此一举吗？判断一下值是否相等，相等的话就不用更新了。&lt;/p&gt;
+
+    &lt;p&gt;事实上，是执行了判断的，&lt;strong&gt;只是这个判断没有办法判断出是否要执行更新&lt;/strong&gt;。因为和具体的 sql 有关，在这句sql里：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set a=3&lt;/code&gt;，这个赋值操作和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 原本的值没有任何关系，所以虽然 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 是当前读，但判断到和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 没有关系，就不会读出 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的值。既然没有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的值，就没有办法判断是否相等，所以只能老老实实执行一遍更新操作。&lt;/p&gt;
+
+    &lt;p&gt;可将sessionA的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update where&lt;/code&gt; 条件加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a=3&lt;/code&gt;，&lt;strong&gt;此时因为读出了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt;的值，Innodb判断到值是相同的，就不会执行更新操作&lt;/strong&gt;。因此第二个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 还是读取的一致性视图，返回 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(1,2)&lt;/code&gt;：&lt;/p&gt;
+
+    &lt;table&gt;
+      &lt;thead&gt;
+        &lt;tr&gt;
+          &lt;th style=&quot;text-align: center&quot;&gt;sessionA&lt;/th&gt;
+          &lt;th style=&quot;text-align: center&quot;&gt;sessionB&lt;/th&gt;
+        &lt;/tr&gt;
+      &lt;/thead&gt;
+      &lt;tbody&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;begin;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;select * from t where id=1; &lt;br /&gt;&lt;strong&gt;返回(1,2)&lt;/strong&gt;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;update t set a=3 where id=1;&lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;update t set a=3 where id=1 and a=3;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+        &lt;tr&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;select * from t where id=1; &lt;br /&gt;&lt;strong&gt;返回(1,3)&lt;/strong&gt;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+        &lt;/tr&gt;
+      &lt;/tbody&gt;
+    &lt;/table&gt;
+
+    &lt;p&gt;这个实验也可以得出一个结论：&lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt;  虽然都是当前读，但不一定都会执行更新操作&lt;/strong&gt;。&lt;/p&gt;
+
+    &lt;p&gt;上面说过，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_format&lt;/code&gt; 会影响结果，将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_format&lt;/code&gt; 改为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;row&lt;/code&gt; 后，会发现 sessionA 的第二个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select &lt;/code&gt; 读取到的都是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(1,2)&lt;/code&gt;。这是因为 &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;row&lt;/code&gt; 格式的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog&lt;/code&gt; 记录的是行数据的变更，需要拿到所有字段，拿到所有字段后就可以进行判断，发现值相同便不执行更新操作&lt;/strong&gt;，所以 sessionA 的第二个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select &lt;/code&gt; 读取到的还是一致性视图中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(1,2)&lt;/code&gt;。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;长事务&quot;&gt;长事务&lt;/h1&gt;
 
 &lt;p&gt;尽量避免长事务，长事务有以下风险：&lt;/p&gt;
 
@@ -1753,7 +1885,7 @@
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4 id=&quot;如何监控长事务&quot;&gt;如何监控长事务？&lt;/h4&gt;
+&lt;h2 id=&quot;如何监控长事务&quot;&gt;如何监控长事务？&lt;/h2&gt;
 
 &lt;p&gt;下述语句用于监测持续时间超过60s的长事务&lt;/p&gt;
 
@@ -1761,49 +1893,43 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;information_schema&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_trx&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;TIME_TO_SEC&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;timediff&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;now&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;trx_started&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;60&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;h4 id=&quot;如何避免长事务&quot;&gt;如何避免长事务？&lt;/h4&gt;
+&lt;h2 id=&quot;如何避免长事务&quot;&gt;如何避免长事务？&lt;/h2&gt;
 
-&lt;h5 id=&quot;应用开发端&quot;&gt;应用开发端&lt;/h5&gt;
+&lt;h3 id=&quot;应用开发端&quot;&gt;应用开发端&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;确认是否使用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set autocommit = 0 &lt;/code&gt;，代表手动提交事物。可先开启 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt;，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show global variables like &apos;%general_log%&apos;&lt;/code&gt; 查看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt; 是否开启和日志文件路径。然后随便跑一个业务逻辑，在日志中检查是否有  ` set autocommit = 0`。&lt;/li&gt;
+  &lt;li&gt;确认是否有不必要的只读事务。有些框架会不管什么语句都用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;begin/commit&lt;/code&gt; 包起来。或者有些业务并没什么必要，也要把一堆 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 放到事务中。上面提到过，对当前读事务会加锁。所以对于单纯的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 没有必要放到事务中，事务中主要放 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update/insert/delete&lt;/code&gt;，除非是明确需要事务特性的查询，比如明确需要可重复读的查询，才需要放到事务中。&lt;/li&gt;
+  &lt;li&gt;根据对业务的预估，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set max_execution_time&lt;/code&gt; 来设置单个语句的最长执行时间，来避免单个语句意外执行过长时间。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3 id=&quot;数据库端&quot;&gt;数据库端&lt;/h3&gt;
 
 &lt;ol&gt;
   &lt;li&gt;
-    &lt;p&gt;确认是否使用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set autocommit = 0 &lt;/code&gt;，代表手动提交事物。可先开启 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt;，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show global variables like &apos;%general_log%&apos;&lt;/code&gt; 查看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt; 是否开启和日志文件路径。然后随便跑一个业务逻辑，在日志中检查是否有  ` set autocommit = 0`。&lt;/p&gt;
+    &lt;p&gt;监控 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;information_schema.innodb_trx&lt;/code&gt;表，超过阈值就报警或者kill掉。&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;确认是否有不必要的只读事务。有些框架会不管什么语句都用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;begin/commit&lt;/code&gt; 包起来。或者有些业务并没什么必要，也要把一堆 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 放到事务中。上面提到过，对当前读事务会加锁。所以对于单纯的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 没有必要放到事务中，事务中主要放 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update/insert/delete&lt;/code&gt;，除非是明确需要事务特性的查询，比如明确需要可重复读的查询，才需要放到事务中。&lt;/p&gt;
+    &lt;p&gt;推荐使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;percona 的 pt-kill&lt;/code&gt; 工具，作用描述如下：&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;&lt;strong&gt;pt-kill&lt;/strong&gt; captures queries from SHOW PROCESSLIST, filters them, and then either kills or prints them. This is also known as a “slow query sniper” in some circles. The idea is to watch for queries that might be consuming too many resources, and kill them.&lt;/p&gt;
+    &lt;/blockquote&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;根据对业务的预估，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set max_execution_time&lt;/code&gt; 来设置单个语句的最长执行时间，来避免单个语句意外执行过长时间。&lt;/p&gt;
+    &lt;p&gt;在测试阶段可要求输出所有的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt;，分析日志提前发现问题。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;在MySQL5.6或更新版本，可将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_undo_tablespaces&lt;/code&gt; 设置为 2 或更大的值，如果真的出现大事务导致回滚段过大，清理起来更方便。&lt;/p&gt;
 
-    &lt;h5 id=&quot;数据库端&quot;&gt;数据库端&lt;/h5&gt;
+    &lt;blockquote&gt;
+      &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_undo_tablespaces&lt;/code&gt; ：&lt;/p&gt;
 
-    &lt;ol&gt;
-      &lt;li&gt;
-        &lt;p&gt;监控 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;information_schema.innodb_trx&lt;/code&gt;表，超过阈值就报警或者kill掉。&lt;/p&gt;
-      &lt;/li&gt;
-      &lt;li&gt;
-        &lt;p&gt;推荐使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;percona 的 pt-kill&lt;/code&gt; 工具，作用描述如下：&lt;/p&gt;
-
-        &lt;blockquote&gt;
-          &lt;p&gt;&lt;strong&gt;pt-kill&lt;/strong&gt; captures queries from SHOW PROCESSLIST, filters them, and then either kills or prints them. This is also known as a “slow query sniper” in some circles. The idea is to watch for queries that might be consuming too many resources, and kill them.&lt;/p&gt;
-        &lt;/blockquote&gt;
-      &lt;/li&gt;
-      &lt;li&gt;
-        &lt;p&gt;在测试阶段可要求输出所有的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt;，分析日志提前发现问题。&lt;/p&gt;
-      &lt;/li&gt;
-      &lt;li&gt;
-        &lt;p&gt;在MySQL5.6或更新版本，可将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_undo_tablespaces&lt;/code&gt; 设置为 2 或更大的值，如果真的出现大事务导致回滚段过大，清理起来更方便。&lt;/p&gt;
-
-        &lt;blockquote&gt;
-          &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_undo_tablespaces&lt;/code&gt; ：&lt;/p&gt;
-
-          &lt;ul&gt;
-            &lt;li&gt;0：使用系统表空间，即 ibdata1&lt;/li&gt;
-            &lt;li&gt;不为0：使用独立数量的undo表空间，默认为2，即 undo_001、undo_002&lt;/li&gt;
-          &lt;/ul&gt;
-        &lt;/blockquote&gt;
-      &lt;/li&gt;
-    &lt;/ol&gt;
+      &lt;ul&gt;
+        &lt;li&gt;0：使用系统表空间，即 ibdata1&lt;/li&gt;
+        &lt;li&gt;不为0：使用独立数量的undo表空间，默认为2，即 undo_001、undo_002&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/blockquote&gt;
   &lt;/li&gt;
 &lt;/ol&gt;
 </description>

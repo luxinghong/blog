@@ -1,4 +1,5 @@
 ---
+
 layout: post
 title: "MySQL学习笔记(六)：MySQL事务"
 subtitle: ""
@@ -11,7 +12,7 @@ tags:
 
 
 
-### 解决的问题
+# 解决的问题
 
 - 脏读：读到还没有提交事务的数据
 
@@ -31,18 +32,20 @@ tags:
   >
   > 注：使用 select count(1) 并不能看到幻读现象
 
+------
+
+<br/><br/><br/>
 
 
 
-
-### 隔离级别
+# 隔离级别
 
 - 读未提交
 - 读提交：可解决脏读问题
 - 可重复读：可解决不可重复读问题
 - 串行化：可解决幻读问题
 
-#### 如何查询隔离级别？
+### 如何查询隔离级别？
 
 ```sql
 show global variables like '%isolation%';
@@ -54,7 +57,7 @@ show global variables like '%isolation%';
 
 
 
-#### 如何更改隔离级别？
+### 如何更改隔离级别？
 
 ```sql
 set global(session) transaction isolation level READ UNCOMMITTED ;
@@ -115,7 +118,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
 
 
 
-#### 示例说明
+#### 示例一
 
 千言万语，不如动手验证一下
 
@@ -176,7 +179,69 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
 
 
 
-### 长事务
+#### 示例二
+
+用事务的可见性来验证一个行为：更新的值与原来的值相同的情况下，MySQL还会执行更新吗？还是看到值相同直接返回了？
+
+假设存在表 `t(id,a)`，插入一条数据 `(1,2)`。
+
+- 先验证是否还会加写锁(因为行锁是Innodb特有的，如果加写锁，说明还是会调用Innodb引擎的`update接口`)
+
+  |            sessionA            |                   sessionB                   |
+  | :----------------------------: | :------------------------------------------: |
+  |             begin;             |                                              |
+  | update t set a=2 where id = 1; |                                              |
+  |                                | update t set a=2 where id = 1; (**blocked**) |
+
+  sessionB的更新被阻塞，说明还是会加写锁。
+
+  
+
+- 再验证Innodb引擎是否会执行更新
+
+  **注：此时`binlog_format` 为 `statment`，`binlog_format` 会影响结果，后面会详细分析**
+
+  |                    sessionA                     |           sessionB           |
+  | :---------------------------------------------: | :--------------------------: |
+  |                     begin;                      |                              |
+  | select * from t where id=1; <br />**返回(1,2)** |                              |
+  |                                                 | update t set a=3 where id=1; |
+  |          update t set a=3 where id=1;           |                              |
+  |                                                 |                              |
+  | select * from t where id=1; <br />**返回(1,3)** |                              |
+
+  根据事务的可见性规则，sessionA的第二个`select` 是看不到 sessionB 的更新的，但是它读取到的值却是(1,3)，所以这个版本只能是本事务自己更新的，也就证明了sessionA中的 `update` 是执行了更新操作的。
+
+  到这里可能会觉得这不是多此一举吗？判断一下值是否相等，相等的话就不用更新了。
+
+  事实上，是执行了判断的，**只是这个判断没有办法判断出是否要执行更新**。因为和具体的 sql 有关，在这句sql里：`set a=3`，这个赋值操作和 `a` 原本的值没有任何关系，所以虽然 `update` 是当前读，但判断到和 `a` 没有关系，就不会读出 `a` 的值。既然没有 `a` 的值，就没有办法判断是否相等，所以只能老老实实执行一遍更新操作。
+
+  可将sessionA的 `update where` 条件加上 `a=3`，**此时因为读出了 `a`的值，Innodb判断到值是相同的，就不会执行更新操作**。因此第二个 `select` 还是读取的一致性视图，返回 `(1,2)`：
+
+  |                    sessionA                     |           sessionB           |
+  | :---------------------------------------------: | :--------------------------: |
+  |                     begin;                      |                              |
+  | select * from t where id=1; <br />**返回(1,2)** |                              |
+  |                                                 | update t set a=3 where id=1; |
+  |      update t set a=3 where id=1 and a=3;       |                              |
+  |                                                 |                              |
+  | select * from t where id=1; <br />**返回(1,3)** |                              |
+
+  这个实验也可以得出一个结论：**`update`  虽然都是当前读，但不一定都会执行更新操作**。
+
+
+  
+  上面说过，`binlog_format` 会影响结果，将 `binlog_format` 改为 `row` 后，会发现 sessionA 的第二个 `select ` 读取到的都是 `(1,2)`。这是因为 **`row` 格式的 `binlog` 记录的是行数据的变更，需要拿到所有字段，拿到所有字段后就可以进行判断，发现值相同便不执行更新操作**，所以 sessionA 的第二个 `select ` 读取到的还是一致性视图中的 `(1,2)`。
+
+------
+
+<br/><br/><br/>
+
+
+
+
+
+# 长事务
 
 尽量避免长事务，长事务有以下风险：
 
@@ -292,7 +357,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
 
 
 
-#### 如何监控长事务？
+## 如何监控长事务？
 
 下述语句用于监测持续时间超过60s的长事务
 
@@ -302,31 +367,27 @@ select * from information_schema.innodb_trx where TIME_TO_SEC(timediff(now(),trx
 
 
 
-#### 如何避免长事务？
+## 如何避免长事务？
 
-##### 	应用开发端
+### 应用开发端
 
 1. 确认是否使用了 `set autocommit = 0 `，代表手动提交事物。可先开启 `general_log`，通过 `show global variables like '%general_log%'` 查看 `general_log` 是否开启和日志文件路径。然后随便跑一个业务逻辑，在日志中检查是否有  ` set autocommit = 0`。
-
 2. 确认是否有不必要的只读事务。有些框架会不管什么语句都用 `begin/commit` 包起来。或者有些业务并没什么必要，也要把一堆 `select` 放到事务中。上面提到过，对当前读事务会加锁。所以对于单纯的 `select` 没有必要放到事务中，事务中主要放 `update/insert/delete`，除非是明确需要事务特性的查询，比如明确需要可重复读的查询，才需要放到事务中。
-
 3. 根据对业务的预估，通过 `set max_execution_time` 来设置单个语句的最长执行时间，来避免单个语句意外执行过长时间。
 
-   
+### 数据库端
 
-   ##### 数据库端
+1. 监控 `information_schema.innodb_trx`表，超过阈值就报警或者kill掉。
 
-   1. 监控 `information_schema.innodb_trx`表，超过阈值就报警或者kill掉。
+2. 推荐使用 `percona 的 pt-kill` 工具，作用描述如下：
 
-   2. 推荐使用 `percona 的 pt-kill` 工具，作用描述如下：
+   > **pt-kill** captures queries from SHOW PROCESSLIST, filters them, and then either kills or prints them. This is also known as a “slow query sniper” in some circles. The idea is to watch for queries that might be consuming too many resources, and kill them.
 
-      > **pt-kill** captures queries from SHOW PROCESSLIST, filters them, and then either kills or prints them. This is also known as a “slow query sniper” in some circles. The idea is to watch for queries that might be consuming too many resources, and kill them.
+3. 在测试阶段可要求输出所有的 `general_log`，分析日志提前发现问题。
 
-   3. 在测试阶段可要求输出所有的 `general_log`，分析日志提前发现问题。
+4. 在MySQL5.6或更新版本，可将 `innodb_undo_tablespaces` 设置为 2 或更大的值，如果真的出现大事务导致回滚段过大，清理起来更方便。
 
-   4. 在MySQL5.6或更新版本，可将 `innodb_undo_tablespaces` 设置为 2 或更大的值，如果真的出现大事务导致回滚段过大，清理起来更方便。
-
-      > `innodb_undo_tablespaces` ：
-      >
-      > - 0：使用系统表空间，即 ibdata1
-      > - 不为0：使用独立数量的undo表空间，默认为2，即 undo_001、undo_002
+   > `innodb_undo_tablespaces` ：
+   >
+   > - 0：使用系统表空间，即 ibdata1
+   > - 不为0：使用独立数量的undo表空间，默认为2，即 undo_001、undo_002
