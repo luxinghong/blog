@@ -245,6 +245,38 @@
             ">
     			
 <div class="post-preview">
+    <a href="/blog/2021/08/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%80)-%E4%B8%80%E6%9D%A1sql%E6%9F%A5%E8%AF%A2%E8%AF%AD%E5%8F%A5%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A7%E8%A1%8C%E7%9A%84/">
+        <h2 class="post-title">
+            MySQL学习笔记(一)：一条sql查询语句是如何执行的？
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                先放一张MySQL架构图，有助理解，一条sql查询语句经历了从上到下的以下过程。
+
+
+
+整体可分为两大块：Server层和存储引擎层。所有跨存储引擎层的功能都在Server层实现，如内置函数（日期、时间、数学、加密函数等）、存储过程、触发器、视图等。
+
+连接器
+
+作用：建立连接、检查权限、维持和管理连接
+
+建立连接时会去查询是否有相应权限，之后的所有权限判断逻辑都依赖于此时读到的权限。这也就...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        August 18, 2021
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/blog/2021/08/15/%E8%87%AA%E5%B7%B1%E5%86%99%E4%B8%80%E4%B8%AAstarter/">
         <h2 class="post-title">
             自己写一个starter
@@ -418,7 +450,7 @@ git init 会在当前目录内创建一个 .git 目录，包含如下内容
         
         
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=Manjaro"
                     title="Manjaro"
                     rel="1">Manjaro</a>
@@ -426,54 +458,54 @@ git init 会在当前目录内创建一个 .git 目录，包含如下内容
                 <a data-sort="0004" 
                     href="/blog/archive/?tag=mysql"
                     title="mysql"
-                    rel="10">mysql</a>
+                    rel="11">mysql</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
                     title="事务"
                     rel="1">事务</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
                     title="数据类型"
                     rel="1">数据类型</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
                     title="浮点数"
                     rel="1">浮点数</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
                     title="索引"
                     rel="1">索引</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=%E9%94%81"
                     title="锁"
                     rel="1">锁</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=Git"
                     title="Git"
                     rel="1">Git</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=binlog"
                     title="binlog"
                     rel="1">binlog</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=redo"
                     title="redo"
                     rel="1">redo</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=springboot"
                     title="springboot"
                     rel="1">springboot</a>
         
-                <a data-sort="0013" 
+                <a data-sort="0014" 
                     href="/blog/archive/?tag=starter"
                     title="starter"
                     rel="1">starter</a>

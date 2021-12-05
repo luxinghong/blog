@@ -11,13 +11,13 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="MySQL学习笔记(九)：如何收缩表空间? - 陆星宏的博客 | Coding Life">
+    <meta property="og:title" content="MySQL学习笔记(十一)：order by - 陆星宏的博客 | Coding Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="使用 delete 删除数据不会使表空间变小
+    <meta property="og:description" content="全字段排序
 ">
     
-    <meta property="article:published_time" content="2021-10-20T00:00:00Z">
+    <meta property="article:published_time" content="2021-10-25T00:00:00Z">
     
     
     <meta property="article:author" content="">
@@ -27,10 +27,10 @@
     
     
     <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
-    <meta property="og:url" content="http://localhost:4000/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/">
+    <meta property="og:url" content="http://localhost:4000/2021/10/25/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81%E4%B8%80)-order-by/">
     <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
     
-    <title>MySQL学习笔记(九)：如何收缩表空间? - 陆星宏的博客 | Coding Life</title>
+    <title>MySQL学习笔记(十一)：order by - 陆星宏的博客 | Coding Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -39,7 +39,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2021/10/20/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B9%9D)-%E5%A6%82%E4%BD%95%E6%94%B6%E7%BC%A9%E8%A1%A8%E7%A9%BA%E9%97%B4/">
+    <link rel="canonical" href="http://localhost:4000/blog/2021/10/25/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81%E4%B8%80)-order-by/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -245,10 +245,10 @@
                         <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
                         
                     </div>
-                    <h1>MySQL学习笔记(九)：如何收缩表空间?</h1>
+                    <h1>MySQL学习笔记(十一)：order by</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">October 20, 2021</span>
+                    <span class="meta">October 25, 2021</span>
                 </div>
             </div>
         </div>
@@ -275,152 +275,221 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h3 id="使用-delete-删除数据不会使表空间变小"><strong>使用 <code class="language-plaintext highlighter-rouge">delete</code> 删除数据不会使表空间变小</strong></h3>
+				<h1 id="全字段排序">全字段排序</h1>
 
-<p>前文有提过，<code class="language-plaintext highlighter-rouge">delete</code> 只是将记录标记为删除，并没有真正删除。只有当其对应的 <code class="language-plaintext highlighter-rouge">update undo logs</code> 被清除时才会由后台 <code class="language-plaintext highlighter-rouge">purge</code> 任务物理删除，<u>即没有事务再需要这些版本的记录时</u>会执行物理删除。</p>
+<p>从 <code class="language-plaintext highlighter-rouge">explain</code> 中可看到 <code class="language-plaintext highlighter-rouge">Extra</code> 内容为 <code class="language-plaintext highlighter-rouge">Using filesort</code>，表示需要排序(<strong>统一表示需要排序，不区分内部还是外部</strong>)，MySQL 会为每个线程分配一块内存用于排序，称为 <strong><code class="language-plaintext highlighter-rouge">sort_buffer</code></strong>。</p>
 
-<p><strong>即便是物理删除，也不会把磁盘空间返还给操作系统。</strong>究其原因，出于性能考虑，物理删除后的空间会被<strong>复用</strong>。删除记录后，当插入符合范围条件的数据时，原空间会被复用。删除一整个数据页上的所有记录后，当需要使用新页的时候，原数据页会被复用。</p>
+<p>为了演示效果，先将 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> 设为 32768(32k)，顾名思义即为 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 的大小。默认值为256k，最小值为32k。</p>
 
-<p>可通过 <code class="language-plaintext highlighter-rouge">show table status like 't'</code> 来查看表碎片大小，如果过大，可通过重建表来释放表空间。</p>
+<p>排序根据数据量和 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。</p>
 
-<blockquote>
-  <p>几个字段的含义，都是针对 Innodb，MyISAM略有不同：</p>
-
-  <ul>
-    <li><code class="language-plaintext highlighter-rouge">data_length</code>：聚簇索引大小近似值，单位是字节。</li>
-    <li><code class="language-plaintext highlighter-rouge">index_length</code>：非聚簇索引大小近似值，单位是字节。</li>
-    <li><code class="language-plaintext highlighter-rouge">data_free</code>：已分配但未使用的空间大小近似值，单位是字节。表碎片大小即是查看这个字段。</li>
-  </ul>
-
-  <p>这三个值之和近似接近 ibd 文件大小。</p>
-</blockquote>
-
-<h3 id="重建表">重建表</h3>
-
-<p>不光删除数据会造成<strong>空洞</strong>(可被复用但没被使用的空间)，插入和更新也会。</p>
-
-<p>因为插入数据往往都是随机的，即<strong>基本不可能按索引递增顺序插入</strong>，就很有可能造成数据页的分裂。比如当一个数据页满了，此时再插入一行数据到此节点就会造成数据页分裂，原数据页末尾就会产生空洞。</p>
-
-<p>更新可理解为先删除后插入，同理。</p>
-
-<p>重建表就是通过<strong>去掉这些空洞，来达到收缩表空间的目的</strong>。</p>
-
-<p>命令如下：</p>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span>
-</pre></td></tr></tbody></table></code></pre></div></div>
-
-<h4 id="56版本之前">5.6版本之前</h4>
-
-<p>内部流程如下：</p>
-
-<ol>
-  <li>新建一张与原表结构相同的临时表</li>
-  <li>按主键ID递增的顺序，将数据一行一行的从原表读出来再插入到临时表中。<strong>这一步就可以去掉原表主键索引上的空洞。</strong></li>
-  <li>用临时表替换掉原表</li>
-</ol>
-
-<p>这个流程有个问题，在第2步中，原表不能有更新操作。也就是说，这个ddl不是online的。</p>
-
-<h4 id="从56版本开始">从5.6版本开始</h4>
-
-<ol>
-  <li>建立一个临时文件，扫描原表的所有数据页</li>
-  <li>用数据页中原表的记录生成B+树，存储到临时文件中</li>
-  <li>在生成临时文件的过程中，将对原表的操作记录在一个日志文件(row log)中</li>
-  <li>临时文件生成后，将日志文件中的操作应用到临时文件</li>
-  <li>用临时文件替换掉原表的数据文件</li>
-</ol>
-
-<p>很明显，在该过程执行中是允许对原表做增删改操作的，<strong>这也是 Online DDL 名字的由来</strong>。</p>
-
-<p><strong><u>注意</u></strong>：对于大表来说，因为需要扫描原表数据和构建临时文件，这个步骤是很消耗IO和CPU资源的。尤其对于线上业务，要很小心的<strong>控制操作时间</strong>。如果想要安全操作的话，推荐使用 github 的 <a href="https://github.com/github/gh-ost">gh-ost</a>。</p>
-
-<h3 id="online-和-inplace">online 和 inplace</h3>
-
-<p>online ddl 构建的临时文件位于 Innodb 内部，整个过程也都是在 Innodb 内部完成。<strong>对于 Server 层来说</strong>，没有把数据挪动到临时表(5.6版本之前的操作流程)，相当于是一个 “原地” 操作，因此叫做 <strong>inplace</strong>。</p>
+<p>可通过查看 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 来确定是否使用了外部排序：</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
 3
 4
-5
-</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">;</span>
-
-<span class="err">其实隐含的意思是</span>
-
-<span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">,</span><span class="n">ALGORITHM</span><span class="o">=</span><span class="n">inplace</span><span class="p">;</span>
+</pre></td><td class="rouge-code"><pre><span class="o">#</span> <span class="err">只对当前</span><span class="k">session</span><span class="err">生效</span>
+<span class="mi">1</span><span class="p">.</span><span class="k">set</span> <span class="n">optimizer_trace</span> <span class="o">=</span> <span class="s1">'enabled=on'</span><span class="p">;</span>
+<span class="o">#</span> <span class="err">这两句必须一起执行才能看到</span> <span class="nv">`OPTIMIZER_TRACE`</span> <span class="err">输出，而且只能在命令行中使用，</span><span class="n">datagrip</span><span class="err">中看不到输出</span>
+<span class="mi">2</span><span class="p">.</span><span class="err">执行</span><span class="k">sql</span><span class="p">;</span><span class="k">SELECT</span> <span class="o">*</span> <span class="k">FROM</span> <span class="nv">`information_schema`</span><span class="p">.</span><span class="nv">`OPTIMIZER_TRACE`</span><span class="err">\</span><span class="k">G</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>相对的，就有</p>
+<p>截取 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 部分输出(在末尾部分)如下：</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class="rouge-code"><pre><span class="nl">"filesort_summary"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+              </span><span class="nl">"memory_available"</span><span class="p">:</span><span class="w"> </span><span class="mi">32768</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"key_size"</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"row_size"</span><span class="p">:</span><span class="w"> </span><span class="mi">39</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"max_rows_per_buffer"</span><span class="p">:</span><span class="w"> </span><span class="mi">840</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"num_rows_estimate"</span><span class="p">:</span><span class="w"> </span><span class="mi">18446744073709551615</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"num_rows_found"</span><span class="p">:</span><span class="w"> </span><span class="mi">20211</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"num_initial_chunks_spilled_to_disk"</span><span class="p">:</span><span class="w"> </span><span class="mi">21</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"peak_memory_used"</span><span class="p">:</span><span class="w"> </span><span class="mi">35384</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"sort_algorithm"</span><span class="p">:</span><span class="w"> </span><span class="s2">"std::sort"</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"sort_mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;fixed_sort_key, packed_additional_fields&gt;"</span><span class="w">
+            </span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">num_initial_chunks_spilled_to_disk</code> 即为排序过程中使用的临时文件数，可见此次排序使用了21个临时文件，一般使用<strong>归并算法</strong>。</p>
+
+<p><code class="language-plaintext highlighter-rouge">memory_available</code> 即为排序可使用的内存大小，和上面设置的 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>一致。</p>
+
+<p><code class="language-plaintext highlighter-rouge">peak_memory_used</code> 表示排序过程中的峰值内存使用大小，可见大于 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>，内存装不下了，只能使用外部排序。</p>
+
+<p><code class="language-plaintext highlighter-rouge">&lt;fixed_sort_key, packed_additional_fields&gt;</code> 表示 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中包含了排序的字段和查询引用到的字段，结果集会直接从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中返回。 <code class="language-plaintext highlighter-rouge">packed</code> 表示排序过程对字符串做了“紧凑”处理，在排序过程中是按照字段实际长度来分配空间的。</p>
+
+<p><code class="language-plaintext highlighter-rouge">num_rows_found</code> 表示有 20211 行数据参与了排序。</p>
+
+<p>将 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> 恢复为默认值：262144(256k)，再看看有什么变化：</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre><span class="nl">"filesort_summary"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+              </span><span class="nl">"memory_available"</span><span class="p">:</span><span class="w"> </span><span class="mi">262144</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"key_size"</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"row_size"</span><span class="p">:</span><span class="w"> </span><span class="mi">35</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"max_rows_per_buffer"</span><span class="p">:</span><span class="w"> </span><span class="mi">1001</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"num_rows_estimate"</span><span class="p">:</span><span class="w"> </span><span class="mi">18446744073709551615</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"num_rows_found"</span><span class="p">:</span><span class="w"> </span><span class="mi">20211</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"num_initial_chunks_spilled_to_disk"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"peak_memory_used"</span><span class="p">:</span><span class="w"> </span><span class="mi">43043</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"sort_algorithm"</span><span class="p">:</span><span class="w"> </span><span class="s2">"std::stable_sort"</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"unpacked_addon_fields"</span><span class="p">:</span><span class="w"> </span><span class="s2">"using_priority_queue"</span><span class="p">,</span><span class="w">
+              </span><span class="nl">"sort_mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;fixed_sort_key, additional_fields&gt;"</span><span class="w">
+            </span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>可看到 <code class="language-plaintext highlighter-rouge">peak_memory_used</code> &lt; <code class="language-plaintext highlighter-rouge">memory_available</code>，说明 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 完全够用了，直接在内存排序即可，<code class="language-plaintext highlighter-rouge">num_initial_chunks_spilled_to_disk</code> 为0，表示不需要借助磁盘临时文件来辅助排序。</p>
+
+<p>而且 <code class="language-plaintext highlighter-rouge">sort_mode</code> 中也没有了 <code class="language-plaintext highlighter-rouge">packed</code>，因为内存空间已经完全够用了，不再需要做“紧凑”处理了。</p>
+
+<p><code class="language-plaintext highlighter-rouge">using_priority_queue</code> 表示使用了优先级队列，即堆排序。</p>
+
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="rowid-排序"><code class="language-plaintext highlighter-rouge">rowid</code> 排序</h1>
+
+<p>再来看另一个参数：<strong><code class="language-plaintext highlighter-rouge">max_length_for_sort_data</code></strong>，默认值为4096，用于控制排序的行数据长度。如果单行数据长度超过这个值，MySQL就会使用 <code class="language-plaintext highlighter-rouge">rowid排序</code>。</p>
+
+<p>在 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 中的 <code class="language-plaintext highlighter-rouge">sort_mode</code> 表现为 <code class="language-plaintext highlighter-rouge">&lt;fixed_sort_key, rowid&gt;</code>，意思是排序时只使用排序字段和rowid，目的是为了装入更多数据，尽量使用内存排序。自然，为了获取其他字段内容，还需要根据rowid回表查询。</p>
+
+<p>并且，如果转成 <code class="language-plaintext highlighter-rouge">rowid</code> 排序内存还放不下的话，还是会转成外部排序。</p>
+
+<p>MySQL的一个设计思想是能用内存就用内存，对于Innodb表来说，会优先选择全字段排序，因为不需要回表(当数据页不在内存中时，回表还是需要读磁盘)，结果集直接就从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 返回了。外部排序是最后的选择。</p>
+
+<p><strong>注：从8.0.20开始，<code class="language-plaintext highlighter-rouge">max_length_for_sort_data</code> 已经不推荐使用了，调整这个参数将不会有任何作用。</strong></p>
+
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="如何优化">如何优化</h1>
+
+<p>从上面分析可以看出，尽量使用内存排序是最优解，对应可调整的参数是 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>。那还有没有更进一步的优化？</p>
+
+<p><strong>很明显，借助索引，可以完全避免排序</strong>。</p>
+
+<p>比如这样一句sql：</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">A</span> <span class="n">engine</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">,</span><span class="n">ALGORITHM</span><span class="o">=</span><span class="k">copy</span><span class="p">;</span>
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="s1">'xxx'</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">1000</span><span class="p">;</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>对应的就是5.6版本之前的操作流程。</p>
+<p>便可以建立一个 <code class="language-plaintext highlighter-rouge">(city,name)</code>  的联合索引，那么在 <code class="language-plaintext highlighter-rouge">(city,name)</code> 这棵索引树上便是先按 <code class="language-plaintext highlighter-rouge">city</code> 排序，再按<code class="language-plaintext highlighter-rouge">name</code> 排序(即 city 相同时 name 局部有序)。</p>
 
-<p>所以，如果现在有一个1TB的表，磁盘空间为1.2TB，能不能做一个inplace的ddl呢？</p>
+<p>这样的话只需先快速定位到 city，然后依次往后遍历取出 id，再回表取出整行数据，作为结果集的一部分直接就返回了，完全避免了排序。<u>而且，由于是有序的，对于 limit 来说更友好，不再需要遍历所有 city=xxx 的数据了，遍历到第1000条便可直接结束了</u>(<code class="language-plaintext highlighter-rouge">explain</code> 中的 <code class="language-plaintext highlighter-rouge">rows</code> 不准)。</p>
 
-<p>答案是不能，因为临时文件也是要占用空间的。</p>
+<p>更进一步，如果查询没必要获取全部字段，则可利用到<strong>覆盖索引</strong>，直接从索引树获取到全部字段，连回表查询都不用了。</p>
 
-<p>总结来说，online 是指在操作过程会不会阻塞对原表的增删改操作。inplace 指的是在 Serve 层建临时表还是直接在存储引擎内建临时文件。</p>
+<p>如上面的 sql 可改为：</p>
 
-<h3 id="两种重建表的方式及区别">两种重建表的方式及区别</h3>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">city</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">age</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="s1">'xxx'</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">1000</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
 
-<ul>
-  <li>
-    <p><code class="language-plaintext highlighter-rouge">alter table A engine=InnoDB</code></p>
+<p>此时建一个 <code class="language-plaintext highlighter-rouge">(city,name,age)</code> 的联合索引，即可满足排序需求，又不需要回表查询，此时是最优解。</p>
 
-    <p>如上文所述</p>
-  </li>
-  <li>
-    <p><code class="language-plaintext highlighter-rouge">optimize table A</code></p>
+<p>当然，还是那句老话，维护索引有代价，需综合考虑。</p>
 
-    <p>等同于 <code class="language-plaintext highlighter-rouge">alter table A engine=InnoDB</code> + <code class="language-plaintext highlighter-rouge">analyze table A</code> (<code class="language-plaintext highlighter-rouge">analyze</code>：重新统计索引信息)</p>
-  </li>
-</ul>
+<hr />
 
-<h3 id="什么情况下重建表空间反而变大了">什么情况下重建表空间反而变大了？</h3>
+<p><br /><br /><br /></p>
 
-<ol>
-  <li>
-    <p>表本身已经没有空洞了，比如刚刚重建过一次，这时候再重建，如果恰好在重建期间有外部的 DML 在执行，就有可能会引入新的空洞。</p>
-  </li>
-  <li>
-    <p>而且重建表的时候并不是把每个数据页都占满，而是会留下 $1/16$ 的<strong>预留空间</strong>给后续的更新用，也就是说重建后的表并不是百分百紧凑的。</p>
+<h1 id="示例">示例</h1>
 
-    <p>以下过程就可能会出现这种情况：</p>
+<p>假设维护一个人员信息表，现已有索引 <code class="language-plaintext highlighter-rouge">(city,name)</code> ，问以下查询是否需要排序？</p>
 
-    <ol>
-      <li>重建一次</li>
-      <li>插入一部分数据，但是这部分数据使用的是预留空间</li>
-      <li>再重建一次。</li>
-    </ol>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="k">in</span> <span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">)</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">100</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
 
-    <p>这时由于预留空间被使用了，再次重建时就需要再额外留出 $1/16$ 的预留空间，所以空间反而变大了。</p>
-  </li>
-</ol>
+<p>虽然已有 <code class="language-plaintext highlighter-rouge">(city,name)</code> 索引，但只能保证同一 city 内 name 有序，不同 city 之间 name 仍然是无序的。所以该查询在数据库内部仍然需要排序。</p>
+
+<p>如果出于种种原因想要避免在数据库内部排序，有什么办法？</p>
+
+<p>那就在应用端排序，把一条sql拆为两句：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="n">A</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">100</span><span class="p">;</span>
+<span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="n">B</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">100</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><strong>拆开的查询可以利用到索引，不需要排序</strong>。</p>
+
+<p>在应用端便可得到两个有序数组，使用归并排序合并为一个有序数组后，取前100即为结果集。</p>
+
+<p>如果是分页查询呢，比如：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="k">in</span> <span class="p">(</span><span class="n">A</span><span class="p">,</span><span class="n">B</span><span class="p">)</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">10000</span><span class="p">,</span><span class="mi">100</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>还是和上面的思路一样，拆分为2个查询：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="n">A</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">10100</span><span class="p">;</span>
+<span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="n">B</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">10100</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>同样使用归并算法得到一个有序数组，取第 10000 ~ 10100 的值即为结果集。</p>
+
+<p>这时的问题是数据量太大，如果应用端内存紧张的话，可考虑只查询 id 和 name：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">id</span><span class="p">,</span><span class="n">name</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="n">A</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">10100</span><span class="p">;</span>
+<span class="k">select</span> <span class="n">id</span><span class="p">,</span><span class="n">name</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">city</span> <span class="o">=</span> <span class="n">B</span> <span class="k">order</span> <span class="k">by</span> <span class="n">name</span> <span class="k">limit</span> <span class="mi">10100</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>该查询不需排序，且会用到覆盖索引，也不用回表。合并得到有序数组后，取出第 10000 ~ 10100 的 id，再拿这100个 id 去数据库查出所有记录即可。</p>
+
+<hr />
+
+<p><br /> <br /> <br /></p>
+
+<h1 id="官方优化指南">官方优化指南</h1>
+
+<p><a href="https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html">ORDER BY Optimization</a></p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(八)：MySQL锁">
-                        Previous<br>
-                        <span>MySQL学习笔记(八)：MySQL锁</span>
-                        </a>
-                    </li>
-                    
-                    
-                    <li class="next">
                         <a href="/blog/2021/10/22/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81)-count/" data-toggle="tooltip" data-placement="top" title="MySQL学习笔记(十)：count">
-                        Next<br>
+                        Previous<br>
                         <span>MySQL学习笔记(十)：count</span>
                         </a>
                     </li>
+                    
                     
                 </ul>
                 <hr style="visibility: hidden;">

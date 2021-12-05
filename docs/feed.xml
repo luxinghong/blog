@@ -5,9 +5,224 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sat, 04 Dec 2021 02:31:50 +0800</pubDate>
-    <lastBuildDate>Sat, 04 Dec 2021 02:31:50 +0800</lastBuildDate>
+    <pubDate>Sun, 05 Dec 2021 23:01:09 +0800</pubDate>
+    <lastBuildDate>Sun, 05 Dec 2021 23:01:09 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
+    
+      <item>
+        <title>MySQL学习笔记(十一)：order by</title>
+        <description>&lt;h1 id=&quot;全字段排序&quot;&gt;全字段排序&lt;/h1&gt;
+
+&lt;p&gt;从 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explain&lt;/code&gt; 中可看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Extra&lt;/code&gt; 内容为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Using filesort&lt;/code&gt;，表示需要排序(&lt;strong&gt;统一表示需要排序，不区分内部还是外部&lt;/strong&gt;)，MySQL 会为每个线程分配一块内存用于排序，称为 &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt;&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;为了演示效果，先将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer_size&lt;/code&gt; 设为 32768(32k)，顾名思义即为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt; 的大小。默认值为256k，最小值为32k。&lt;/p&gt;
+
+&lt;p&gt;排序根据数据量和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt; 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。&lt;/p&gt;
+
+&lt;p&gt;可通过查看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;optimizer_trace&lt;/code&gt; 来确定是否使用了外部排序：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;只对当前&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;session&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;生效&lt;/span&gt;
+&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;set&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;optimizer_trace&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;enabled=on&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;这两句必须一起执行才能看到&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`OPTIMIZER_TRACE`&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;输出，而且只能在命令行中使用，&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;datagrip&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;中看不到输出&lt;/span&gt;
+&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;执行&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;sql&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`information_schema`&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nv&quot;&gt;`OPTIMIZER_TRACE`&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;\&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;G&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;截取 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;optimizer_trace&lt;/code&gt; 部分输出(在末尾部分)如下：&lt;/p&gt;
+
+&lt;div class=&quot;language-json highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;nl&quot;&gt;&quot;filesort_summary&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;memory_available&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;32768&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;key_size&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;row_size&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;39&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;max_rows_per_buffer&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;840&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;num_rows_estimate&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;18446744073709551615&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;num_rows_found&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20211&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;num_initial_chunks_spilled_to_disk&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;21&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;peak_memory_used&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;35384&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;sort_algorithm&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;std::sort&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;sort_mode&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;fixed_sort_key, packed_additional_fields&amp;gt;&quot;&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+            &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;num_initial_chunks_spilled_to_disk&lt;/code&gt; 即为排序过程中使用的临时文件数，可见此次排序使用了21个临时文件，一般使用&lt;strong&gt;归并算法&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;memory_available&lt;/code&gt; 即为排序可使用的内存大小，和上面设置的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer_size&lt;/code&gt;一致。&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;peak_memory_used&lt;/code&gt; 表示排序过程中的峰值内存使用大小，可见大于 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer_size&lt;/code&gt;，内存装不下了，只能使用外部排序。&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;fixed_sort_key, packed_additional_fields&amp;gt;&lt;/code&gt; 表示 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt; 中包含了排序的字段和查询引用到的字段，结果集会直接从 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt; 中返回。 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;packed&lt;/code&gt; 表示排序过程对字符串做了“紧凑”处理，在排序过程中是按照字段实际长度来分配空间的。&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;num_rows_found&lt;/code&gt; 表示有 20211 行数据参与了排序。&lt;/p&gt;
+
+&lt;p&gt;将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer_size&lt;/code&gt; 恢复为默认值：262144(256k)，再看看有什么变化：&lt;/p&gt;
+
+&lt;div class=&quot;language-json highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;nl&quot;&gt;&quot;filesort_summary&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;memory_available&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;262144&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;key_size&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;row_size&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;35&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;max_rows_per_buffer&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1001&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;num_rows_estimate&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;18446744073709551615&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;num_rows_found&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;20211&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;num_initial_chunks_spilled_to_disk&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;peak_memory_used&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;43043&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;sort_algorithm&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;std::stable_sort&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;unpacked_addon_fields&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;using_priority_queue&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+              &lt;/span&gt;&lt;span class=&quot;nl&quot;&gt;&quot;sort_mode&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;&lt;span class=&quot;w&quot;&gt; &lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;fixed_sort_key, additional_fields&amp;gt;&quot;&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+            &lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;w&quot;&gt;
+&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;可看到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;peak_memory_used&lt;/code&gt; &amp;lt; &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;memory_available&lt;/code&gt;，说明 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt; 完全够用了，直接在内存排序即可，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;num_initial_chunks_spilled_to_disk&lt;/code&gt; 为0，表示不需要借助磁盘临时文件来辅助排序。&lt;/p&gt;
+
+&lt;p&gt;而且 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_mode&lt;/code&gt; 中也没有了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;packed&lt;/code&gt;，因为内存空间已经完全够用了，不再需要做“紧凑”处理了。&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;using_priority_queue&lt;/code&gt; 表示使用了优先级队列，即堆排序。&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;rowid-排序&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rowid&lt;/code&gt; 排序&lt;/h1&gt;
+
+&lt;p&gt;再来看另一个参数：&lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;max_length_for_sort_data&lt;/code&gt;&lt;/strong&gt;，默认值为4096，用于控制排序的行数据长度。如果单行数据长度超过这个值，MySQL就会使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rowid排序&lt;/code&gt;。&lt;/p&gt;
+
+&lt;p&gt;在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;optimizer_trace&lt;/code&gt; 中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_mode&lt;/code&gt; 表现为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;fixed_sort_key, rowid&amp;gt;&lt;/code&gt;，意思是排序时只使用排序字段和rowid，目的是为了装入更多数据，尽量使用内存排序。自然，为了获取其他字段内容，还需要根据rowid回表查询。&lt;/p&gt;
+
+&lt;p&gt;并且，如果转成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rowid&lt;/code&gt; 排序内存还放不下的话，还是会转成外部排序。&lt;/p&gt;
+
+&lt;p&gt;MySQL的一个设计思想是能用内存就用内存，对于Innodb表来说，会优先选择全字段排序，因为不需要回表(当数据页不在内存中时，回表还是需要读磁盘)，结果集直接就从 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer&lt;/code&gt; 返回了。外部排序是最后的选择。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;注：从8.0.20开始，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;max_length_for_sort_data&lt;/code&gt; 已经不推荐使用了，调整这个参数将不会有任何作用。&lt;/strong&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;如何优化&quot;&gt;如何优化&lt;/h1&gt;
+
+&lt;p&gt;从上面分析可以看出，尽量使用内存排序是最优解，对应可调整的参数是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sort_buffer_size&lt;/code&gt;。那还有没有更进一步的优化？&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;很明显，借助索引，可以完全避免排序&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;比如这样一句sql：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;xxx&apos;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;便可以建立一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(city,name)&lt;/code&gt;  的联合索引，那么在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(city,name)&lt;/code&gt; 这棵索引树上便是先按 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;city&lt;/code&gt; 排序，再按&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;name&lt;/code&gt; 排序(即 city 相同时 name 局部有序)。&lt;/p&gt;
+
+&lt;p&gt;这样的话只需先快速定位到 city，然后依次往后遍历取出 id，再回表取出整行数据，作为结果集的一部分直接就返回了，完全避免了排序。&lt;u&gt;而且，由于是有序的，对于 limit 来说更友好，不再需要遍历所有 city=xxx 的数据了，遍历到第1000条便可直接结束了&lt;/u&gt;(&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explain&lt;/code&gt; 中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rows&lt;/code&gt; 不准)。&lt;/p&gt;
+
+&lt;p&gt;更进一步，如果查询没必要获取全部字段，则可利用到&lt;strong&gt;覆盖索引&lt;/strong&gt;，直接从索引树获取到全部字段，连回表查询都不用了。&lt;/p&gt;
+
+&lt;p&gt;如上面的 sql 可改为：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;age&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;xxx&apos;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;此时建一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(city,name,age)&lt;/code&gt; 的联合索引，即可满足排序需求，又不需要回表查询，此时是最优解。&lt;/p&gt;
+
+&lt;p&gt;当然，还是那句老话，维护索引有代价，需综合考虑。&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;示例&quot;&gt;示例&lt;/h1&gt;
+
+&lt;p&gt;假设维护一个人员信息表，现已有索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(city,name)&lt;/code&gt; ，问以下查询是否需要排序？&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;B&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;虽然已有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(city,name)&lt;/code&gt; 索引，但只能保证同一 city 内 name 有序，不同 city 之间 name 仍然是无序的。所以该查询在数据库内部仍然需要排序。&lt;/p&gt;
+
+&lt;p&gt;如果出于种种原因想要避免在数据库内部排序，有什么办法？&lt;/p&gt;
+
+&lt;p&gt;那就在应用端排序，把一条sql拆为两句：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;B&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;拆开的查询可以利用到索引，不需要排序&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;在应用端便可得到两个有序数组，使用归并排序合并为一个有序数组后，取前100即为结果集。&lt;/p&gt;
+
+&lt;p&gt;如果是分页查询呢，比如：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;A&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;B&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;还是和上面的思路一样，拆分为2个查询：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;B&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;同样使用归并算法得到一个有序数组，取第 10000 ~ 10100 的值即为结果集。&lt;/p&gt;
+
+&lt;p&gt;这时的问题是数据量太大，如果应用端内存紧张的话，可考虑只查询 id 和 name：&lt;/p&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;A&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;id&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;city&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;B&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;order&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;limit&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;10100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;该查询不需排序，且会用到覆盖索引，也不用回表。合并得到有序数组后，取出第 10000 ~ 10100 的 id，再拿这100个 id 去数据库查出所有记录即可。&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt; &lt;br /&gt; &lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;官方优化指南&quot;&gt;官方优化指南&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/order-by-optimization.html&quot;&gt;ORDER BY Optimization&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 25 Oct 2021 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/blog/2021/10/25/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81%E4%B8%80)-order-by/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2021/10/25/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81%E4%B8%80)-order-by/</guid>
+        
+        <category>mysql</category>
+        
+        
+      </item>
     
       <item>
         <title>MySQL学习笔记(十)：count</title>
@@ -2662,76 +2877,6 @@
         <pubDate>Mon, 23 Aug 2021 00:00:00 +0800</pubDate>
         <link>http://localhost:4000/blog/2021/08/23/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%BA%8C)-MySQL%E6%9D%83%E9%99%90%E6%8E%A7%E5%88%B6/</link>
         <guid isPermaLink="true">http://localhost:4000/blog/2021/08/23/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%BA%8C)-MySQL%E6%9D%83%E9%99%90%E6%8E%A7%E5%88%B6/</guid>
-        
-        <category>mysql</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>MySQL学习笔记(一)：一条sql查询语句是如何执行的？</title>
-        <description>&lt;p&gt;先放一张MySQL架构图，有助理解，一条sql查询语句经历了从上到下的以下过程。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/home/head/图片/mysql.svg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;整体可分为两大块：Server层和存储引擎层。所有跨存储引擎层的功能都在Server层实现，如内置函数（日期、时间、数学、加密函数等）、存储过程、触发器、视图等。&lt;/p&gt;
-
-&lt;h3 id=&quot;连接器&quot;&gt;连接器&lt;/h3&gt;
-
-&lt;p&gt;作用：建立连接、检查权限、维持和管理连接&lt;/p&gt;
-
-&lt;p&gt;建立连接时会去查询是否有相应权限，之后的所有权限判断逻辑都依赖于此时读到的权限。这也就意味着如果在建立连接后再对用户的权限做更改，只会在重新连接后才生效。&lt;strong&gt;todo：怎么查询权限？&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;连接建立后如果没有后续动作，该连接就处于空闲状态，可以在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show processlist&lt;/code&gt; 中看到它。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Sleep&lt;/code&gt;表示当前系统中有一个空闲连接。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/home/head/.config/Typora/typora-user-images/image-20211026100717263.png&quot; alt=&quot;image-20211026100717263&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;如果长时间没有动作，连接就会断开。由参数&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;wait_timeout&lt;/code&gt;控制，默认是8小时。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/home/head/.config/Typora/typora-user-images/image-20211026100919509.png&quot; alt=&quot;image-20211026100919509&quot; /&gt;&lt;/p&gt;
-
-&lt;h4 id=&quot;长连接-vs-短连接&quot;&gt;长连接 vs 短连接&lt;/h4&gt;
-
-&lt;p&gt;长连接和短连接是一种行为，并不是由某个参数控制。如果一个连接建立后，一直有后续行为，它就会一直维持连接状态。如果建立连接做出某些动作以后就断开，它就是短连接。&lt;/p&gt;
-
-&lt;p&gt;长连接后续的所有操作使用的内存都是管理在该长连接的对象里，直到连接断开才会释放。所以有时候执行一些比较大的占用内存的操作后，长连接一直累积，可能会导致OOM，MySQL重启。&lt;/p&gt;
-
-&lt;h3 id=&quot;查询缓存&quot;&gt;查询缓存&lt;/h3&gt;
-
-&lt;p&gt;&lt;strong&gt;MySQL 8 以后将整个缓存模块删除了，不再提供查询缓存功能。&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;缓存顾名思义是用来提高查询速度的，但是由于缓存失效太频繁，只要对表有更新，会导致整个表的缓存失效，然后又要重新建立缓存，所以最后权衡下来把缓存模块拿掉了。&lt;/p&gt;
-
-&lt;p&gt;但是对于静态表，读远远多于写的表，比如配置表，可以使用缓存。对于还提供查询缓存的版本，可以将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;query_cache_type&lt;/code&gt; 设置为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DEMAND&lt;/code&gt;，即按需使用，在需要的时候加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;SQL_CAHCE&lt;/code&gt; 即可。&lt;/p&gt;
-
-&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;SQL_CACHE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;person&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;分析器&quot;&gt;分析器&lt;/h3&gt;
-
-&lt;p&gt;主要作用： 词法分析和语法分析。&lt;/p&gt;
-
-&lt;p&gt;词法分析：分析每个单词代表什么含义，比如 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 代表查询，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;t&lt;/code&gt; 表示表名，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id&lt;/code&gt; 表示列名。&lt;/p&gt;
-
-&lt;p&gt;语法分析：分析语句是否符合sql语法规范，经常看见的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;You have an error in your SQL syntax&lt;/code&gt; 就是在这个阶段。&lt;/p&gt;
-
-&lt;h3 id=&quot;优化器&quot;&gt;优化器&lt;/h3&gt;
-
-&lt;p&gt;主要作用：决定选择哪个索引或者join的连接顺序。&lt;/p&gt;
-
-&lt;p&gt;不同的索引、不同的表连接顺序会对执行效率有很大影响。&lt;/p&gt;
-
-&lt;h3 id=&quot;执行器&quot;&gt;执行器&lt;/h3&gt;
-
-&lt;p&gt;主要作用：调用存储引擎提供的接口完成操作，如 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;取 id=1 的数据&lt;/code&gt;。存储引擎是以插件的形式接入MySQL的，可以把存储引擎看作一个黑盒，它对外提供了很多接口，只需要调用即可。&lt;/p&gt;
-
-&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mysql.slow_log&lt;/code&gt; 中会看到两个值，一个是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;row_examined&lt;/code&gt;，表示调用存储引擎接口的次数，Server层面。另一个是引擎内部的扫描行数。这两个值并不相同。&lt;/p&gt;
-
-</description>
-        <pubDate>Wed, 18 Aug 2021 00:00:00 +0800</pubDate>
-        <link>http://localhost:4000/blog/2021/08/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%80)-%E4%B8%80%E6%9D%A1sql%E6%9F%A5%E8%AF%A2%E8%AF%AD%E5%8F%A5%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A7%E8%A1%8C%E7%9A%84/</link>
-        <guid isPermaLink="true">http://localhost:4000/blog/2021/08/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%80)-%E4%B8%80%E6%9D%A1sql%E6%9F%A5%E8%AF%A2%E8%AF%AD%E5%8F%A5%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A7%E8%A1%8C%E7%9A%84/</guid>
         
         <category>mysql</category>
         
