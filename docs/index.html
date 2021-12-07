@@ -256,13 +256,17 @@
         
         <div class="post-content-preview">
             
-                全字段排序
+                order by  的内部实现有两种： 全字段排序 和 rowid排序。
 
-从 explain 中可看到 Extra 内容为 Using filesort，表示需要排序(统一表示需要排序，不区分内部还是外部)，MySQL 会为每个线程分配一块内存用于排序，称为 sort_buffer。
+按是否需要 磁盘临时文件 辅助排序可分为：内存排序 和 外部排序。
 
-为了演示效果，先将 sort_buffer_size 设为 32768(32k)，顾名思义即为 sort_buffer 的大小。默认值为256k，最小值为32k。
+按是否需要 临时表 辅助排序可分为：内存临时表 和 磁盘临时表。
 
-...
+查看是否需要排序
+
+当 explain 中的 Extra 字段显示 Using filesort，表示该查询需要排序。
+
+MySQL 会为每个线程分配一块内存用于排序，称为 sor...
             
         </div>
     </a>

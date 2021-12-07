@@ -14,7 +14,7 @@
     <meta property="og:title" content="MySQL学习笔记(十一)：order by - 陆星宏的博客 | Coding Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="全字段排序
+    <meta property="og:description" content="order by  的内部实现有两种： 全字段排序 和 rowid排序。
 ">
     
     <meta property="article:published_time" content="2021-10-25T00:00:00Z">
@@ -275,15 +275,27 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="全字段排序">全字段排序</h1>
+				<p><code class="language-plaintext highlighter-rouge">order by</code>  的内部实现有两种： <strong>全字段排序</strong> 和 <strong>rowid排序</strong>。</p>
 
-<p>从 <code class="language-plaintext highlighter-rouge">explain</code> 中可看到 <code class="language-plaintext highlighter-rouge">Extra</code> 内容为 <code class="language-plaintext highlighter-rouge">Using filesort</code>，表示需要排序(<strong>统一表示需要排序，不区分内部还是外部</strong>)，MySQL 会为每个线程分配一块内存用于排序，称为 <strong><code class="language-plaintext highlighter-rouge">sort_buffer</code></strong>。</p>
+<p>按是否需要 <u>磁盘临时文件</u> 辅助排序可分为：<strong>内存排序</strong> 和 <strong>外部排序</strong>。</p>
 
-<p>为了演示效果，先将 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> 设为 32768(32k)，顾名思义即为 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 的大小。默认值为256k，最小值为32k。</p>
+<p>按是否需要 <u>临时表</u> 辅助排序可分为：<strong>内存临时表</strong> 和 <strong>磁盘临时表</strong>。</p>
 
-<p>排序根据数据量和 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。</p>
+<h1 id="查看是否需要排序">查看是否需要排序</h1>
 
-<p>可通过查看 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 来确定是否使用了外部排序：</p>
+<p>当 <code class="language-plaintext highlighter-rouge">explain</code> 中的 <code class="language-plaintext highlighter-rouge">Extra</code> 字段显示 <code class="language-plaintext highlighter-rouge">Using filesort</code>，表示该查询需要排序。</p>
+
+<p>MySQL 会为每个线程分配一块内存用于排序，称为 <strong><code class="language-plaintext highlighter-rouge">sort_buffer</code></strong>。对应的参数为 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> ，顾名思义为 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 的大小。默认值为256k，最小可设为32k。</p>
+
+<p><strong>注：只是表示需要排序，这里不区分是在内存还是磁盘，别被 <code class="language-plaintext highlighter-rouge">filesort</code> 误导</strong>。根据数据量和 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。</p>
+
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="排序实现">排序实现</h1>
+
+<p>可通过 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 中的 <code class="language-plaintext highlighter-rouge">filesort_summary</code> 中的 <code class="language-plaintext highlighter-rouge">sort_mode</code> 来确定排序采用了哪种实现逻辑。</p>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
@@ -296,6 +308,10 @@
 </pre></td></tr></tbody></table></code></pre></div></div>
 
 <p>截取 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 部分输出(在末尾部分)如下：</p>
+
+<blockquote>
+  <p>为了演示外部排序，将 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> 设为了最小值 32768(32k)，</p>
+</blockquote>
 
 <div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
@@ -323,19 +339,52 @@
             </span><span class="p">}</span><span class="w">
 </span></pre></td></tr></tbody></table></code></pre></div></div>
 
-<p><code class="language-plaintext highlighter-rouge">num_initial_chunks_spilled_to_disk</code> 即为排序过程中使用的临时文件数，可见此次排序使用了21个临时文件，一般使用<strong>归并算法</strong>。</p>
-
 <p><code class="language-plaintext highlighter-rouge">memory_available</code> 即为排序可使用的内存大小，和上面设置的 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>一致。</p>
 
-<p><code class="language-plaintext highlighter-rouge">peak_memory_used</code> 表示排序过程中的峰值内存使用大小，可见大于 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>，内存装不下了，只能使用外部排序。</p>
+<p><code class="language-plaintext highlighter-rouge">peak_memory_used</code> 表示排序过程中的峰值内存使用大小，可见大于 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>，内存装不下了，只能使用外部排序，借助磁盘临时文件来辅助排序。</p>
 
-<p><code class="language-plaintext highlighter-rouge">&lt;fixed_sort_key, packed_additional_fields&gt;</code> 表示 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中包含了排序的字段和查询引用到的字段，结果集会直接从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中返回。 <code class="language-plaintext highlighter-rouge">packed</code> 表示排序过程对字符串做了“紧凑”处理，在排序过程中是按照字段实际长度来分配空间的。</p>
+<p><code class="language-plaintext highlighter-rouge">num_initial_chunks_spilled_to_disk</code> 即为排序过程中使用的临时文件数，可见此次排序使用了21个临时文件，使用<strong>归并排序算法</strong>。</p>
 
 <p><code class="language-plaintext highlighter-rouge">num_rows_found</code> 表示有 20211 行数据参与了排序。</p>
 
-<p>将 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> 恢复为默认值：262144(256k)，再看看有什么变化：</p>
+<p><strong><code class="language-plaintext highlighter-rouge">sort_mode</code></strong> 总共有3种情况，说明了在 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中包含了哪些内容：</p>
 
-<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+<ul>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">&lt;sort_key, rowid&gt;</code>: This indicates that sort buffer tuples are pairs that contain the sort key value and row ID of the original table row. Tuples are sorted by sort key value and the row ID is used to read the row from the table.</p>
+
+    <blockquote>
+      <p>即 <strong>rowid排序</strong>，意思是排序时只使用了排序字段和rowid，目的是为了装入更多数据，尽量使用内存排序。自然，为了获取其他字段内容，还需要根据rowid回表查询。</p>
+
+      <p>对于有主键的Innodb表，<code class="language-plaintext highlighter-rouge">rowid</code> 就是主键；对于没有主键的Innodb表，系统会生成一个6字节的 <code class="language-plaintext highlighter-rouge">rowid</code> 作为主键。</p>
+
+      <p>在 8.0.20 之前，还有一个参数：<strong><code class="language-plaintext highlighter-rouge">max_length_for_sort_data</code></strong>，默认值为4096，用于控制排序的行数据长度。如果单行数据长度超过这个值，MySQL就会由 <code class="language-plaintext highlighter-rouge">全字段排序</code> 转为使用 <code class="language-plaintext highlighter-rouge">rowid排序</code>。</p>
+
+      <p>从 8.0.20 开始，<code class="language-plaintext highlighter-rouge">max_length_for_sort_data</code> 由于优化器的调整已经过时了，设置这个参数将不会有任何作用。</p>
+
+      <p>MySQL的一个设计思想是能用内存就用内存，对于Innodb表来说，会优先选择全字段排序，因为不需要回表(当数据页不在内存中时，回表还是需要读磁盘)，结果集直接就从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 返回了。<code class="language-plaintext highlighter-rouge">rowid排序</code>是第二选择。如果转成 <code class="language-plaintext highlighter-rouge">rowid</code> 排序内存还放不下的话，最后会转成外部排序。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">&lt;sort_key, packed_additional_fields&gt;</code>: Like the previous variant, but the additional columns are packed tightly together instead of using a fixed-length encoding.</p>
+
+    <blockquote>
+      <p>即<strong>全字段排序</strong>，<code class="language-plaintext highlighter-rouge">sort_buffer</code> 中包含了排序的字段和查询引用到的全部字段(因此叫做全字段排序)，结果集会直接从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中返回。</p>
+
+      <p><code class="language-plaintext highlighter-rouge">packed</code> 表示排序过程由于 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 紧张(见上图)，对字符串做了“紧凑”处理，在排序过程中是按照字段实际长度来分配空间的。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">&lt;sort_key, additional_fields&gt;</code>: This indicates that sort buffer tuples contain the sort key value and columns referenced by the query. Tuples are sorted by sort key value and column values are read directly from the tuple.</p>
+
+    <blockquote>
+      <p>同上，只是没有了 <code class="language-plaintext highlighter-rouge">packed</code>。</p>
+
+      <p>示例：</p>
+
+      <p>将 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> 恢复为默认值：262144(256k)，再看看有什么变化：</p>
+
+      <div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
 3
 4
@@ -361,37 +410,24 @@
               </span><span class="nl">"unpacked_addon_fields"</span><span class="p">:</span><span class="w"> </span><span class="s2">"using_priority_queue"</span><span class="p">,</span><span class="w">
               </span><span class="nl">"sort_mode"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;fixed_sort_key, additional_fields&gt;"</span><span class="w">
             </span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table></code></pre></div></div>
+</span></pre></td></tr></tbody></table></code></pre></div>      </div>
 
-<p>可看到 <code class="language-plaintext highlighter-rouge">peak_memory_used</code> &lt; <code class="language-plaintext highlighter-rouge">memory_available</code>，说明 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 完全够用了，直接在内存排序即可，<code class="language-plaintext highlighter-rouge">num_initial_chunks_spilled_to_disk</code> 为0，表示不需要借助磁盘临时文件来辅助排序。</p>
+      <p>可看到 <code class="language-plaintext highlighter-rouge">peak_memory_used</code> &lt; <code class="language-plaintext highlighter-rouge">memory_available</code>，说明 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 完全够用了，直接在内存排序即可，<code class="language-plaintext highlighter-rouge">num_initial_chunks_spilled_to_disk</code> 为0，表示不需要借助磁盘临时文件来辅助排序。</p>
 
-<p>而且 <code class="language-plaintext highlighter-rouge">sort_mode</code> 中也没有了 <code class="language-plaintext highlighter-rouge">packed</code>，因为内存空间已经完全够用了，不再需要做“紧凑”处理了。</p>
-
-<p><code class="language-plaintext highlighter-rouge">using_priority_queue</code> 表示使用了优先级队列，即堆排序。</p>
-
-<hr />
-
-<p><br /><br /><br /></p>
-
-<h1 id="rowid-排序"><code class="language-plaintext highlighter-rouge">rowid</code> 排序</h1>
-
-<p>再来看另一个参数：<strong><code class="language-plaintext highlighter-rouge">max_length_for_sort_data</code></strong>，默认值为4096，用于控制排序的行数据长度。如果单行数据长度超过这个值，MySQL就会使用 <code class="language-plaintext highlighter-rouge">rowid排序</code>。</p>
-
-<p>在 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 中的 <code class="language-plaintext highlighter-rouge">sort_mode</code> 表现为 <code class="language-plaintext highlighter-rouge">&lt;fixed_sort_key, rowid&gt;</code>，意思是排序时只使用排序字段和rowid，目的是为了装入更多数据，尽量使用内存排序。自然，为了获取其他字段内容，还需要根据rowid回表查询。</p>
-
-<p>并且，如果转成 <code class="language-plaintext highlighter-rouge">rowid</code> 排序内存还放不下的话，还是会转成外部排序。</p>
-
-<p>MySQL的一个设计思想是能用内存就用内存，对于Innodb表来说，会优先选择全字段排序，因为不需要回表(当数据页不在内存中时，回表还是需要读磁盘)，结果集直接就从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 返回了。外部排序是最后的选择。</p>
-
-<p><strong>注：从8.0.20开始，<code class="language-plaintext highlighter-rouge">max_length_for_sort_data</code> 已经不推荐使用了，调整这个参数将不会有任何作用。</strong></p>
+      <p>而且 <code class="language-plaintext highlighter-rouge">sort_mode</code> 中也没有了 <code class="language-plaintext highlighter-rouge">packed</code>，因为内存空间已经完全够用了，不再需要做“紧凑”处理了。</p>
+    </blockquote>
+  </li>
+</ul>
 
 <hr />
 
 <p><br /><br /><br /></p>
 
-<h1 id="如何优化">如何优化</h1>
+<h1 id="排序提速">排序提速</h1>
 
-<p>从上面分析可以看出，尽量使用内存排序是最优解，对应可调整的参数是 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>。那还有没有更进一步的优化？</p>
+<p>从上面分析可以看出，排序是个代价比较高的操作，尤其是当转成外部排序时，会涉及到多次磁盘IO。</p>
+
+<p>所以尽量使用内存排序是最优解，对应可调整的参数是 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code>。那还有没有更进一步的优化？</p>
 
 <p><strong>很明显，借助索引，可以完全避免排序</strong>。</p>
 
@@ -421,7 +457,7 @@
 
 <p><br /><br /><br /></p>
 
-<h1 id="示例">示例</h1>
+<h1 id="实例">实例</h1>
 
 <p>假设维护一个人员信息表，现已有索引 <code class="language-plaintext highlighter-rouge">(city,name)</code> ，问以下查询是否需要排序？</p>
 
@@ -474,6 +510,188 @@
 <hr />
 
 <p><br /> <br /> <br /></p>
+
+<h1 id="随机排序">随机排序</h1>
+
+<p>随机排序在现实中的应用场景还是比较多的，可能会首先想到使用<code class="language-plaintext highlighter-rouge">order by rand()</code> 。</p>
+
+<p>比如：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">words</span> <span class="k">order</span> <span class="k">by</span> <span class="n">rand</span><span class="p">()</span> <span class="k">limit</span> <span class="mi">3</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>表示从单词表中随机抽取3个单词。</p>
+
+<p>虽然用法简单明了，但它的执行效率怎样(对于数据量不是特别大的表，其实也完全够用了)，做个实验。</p>
+
+<p>先构造一张 <code class="language-plaintext highlighter-rouge">words</code> 表和实验数据：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td><td class="rouge-code"><pre><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`words`</span> <span class="p">(</span>
+  <span class="nv">`id`</span> <span class="nb">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span> <span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+  <span class="nv">`word`</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span><span class="p">;</span>
+
+<span class="k">delimiter</span> <span class="p">;;</span>
+<span class="k">create</span> <span class="k">procedure</span> <span class="n">idata</span><span class="p">()</span>
+<span class="k">begin</span>
+  <span class="k">declare</span> <span class="n">i</span> <span class="nb">int</span><span class="p">;</span>
+  <span class="k">set</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+  <span class="n">while</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">10000</span> <span class="k">do</span>
+    <span class="k">insert</span> <span class="k">into</span> <span class="n">words</span><span class="p">(</span><span class="n">word</span><span class="p">)</span> <span class="k">values</span><span class="p">(</span><span class="n">concat</span><span class="p">(</span><span class="nb">char</span><span class="p">(</span><span class="mi">97</span><span class="o">+</span><span class="p">(</span><span class="n">i</span> <span class="n">div</span> <span class="mi">1000</span><span class="p">)),</span> <span class="nb">char</span><span class="p">(</span><span class="mi">97</span><span class="o">+</span><span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">1000</span> <span class="n">div</span> <span class="mi">100</span><span class="p">)),</span> <span class="nb">char</span><span class="p">(</span><span class="mi">97</span><span class="o">+</span><span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">100</span> <span class="n">div</span> <span class="mi">10</span><span class="p">)),</span> <span class="nb">char</span><span class="p">(</span><span class="mi">97</span><span class="o">+</span><span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">10</span><span class="p">))));</span>
+    <span class="k">set</span> <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">;</span>
+  <span class="k">end</span> <span class="n">while</span><span class="p">;</span>
+<span class="k">end</span><span class="p">;;</span>
+<span class="k">delimiter</span> <span class="p">;</span>
+
+<span class="k">call</span> <span class="n">idata</span><span class="p">();</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">explain</code> 下看看：</p>
+
+<p><img src="/home/head/.config/Typora/typora-user-images/image-20211206121345480.png" alt="image-20211206121345480" /></p>
+
+<p><code class="language-plaintext highlighter-rouge">Extra</code> 显示 <code class="language-plaintext highlighter-rouge">Using temporary; Using filesort</code> ，表示需要临时表，需要排序。</p>
+
+<blockquote>
+  <p>注：需要和上面讲到的临时文件区分开来，临时表和临时文件是两个东西。</p>
+</blockquote>
+
+<p>为什么需要临时表?</p>
+
+<p><code class="language-plaintext highlighter-rouge">order by rand()</code> 的实现逻辑是为每一行数据生成一个随机数，然后按这个随机数来排序，以达到随机排序的目的。所以需要一张临时表来存放这个新生成的随机数字段。</p>
+
+<p>再次强调，<code class="language-plaintext highlighter-rouge">Using filesort</code> 只是表示需要排序，有可能是内存排序，也有可能是外部排序。不要看它的名字是 <code class="language-plaintext highlighter-rouge">filesort</code>，就认为一定是外部排序。</p>
+
+<p>它的整个流程是这样的：</p>
+
+<ol>
+  <li>生成一张内存临时表。扫描 <code class="language-plaintext highlighter-rouge">words</code> 表，将 <code class="language-plaintext highlighter-rouge">word</code> 字段和生成的随机数存入临时表；</li>
+  <li>将 <code class="language-plaintext highlighter-rouge">word</code> 字段和随机数放入 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 排序；</li>
+  <li>从 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 中取出前3个 <code class="language-plaintext highlighter-rouge">word</code>，作为结果集返回。</li>
+</ol>
+
+<p>可通过 <code class="language-plaintext highlighter-rouge">optimizer_trace</code> 验证一下：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">set</span> <span class="n">optimizer_trace</span><span class="o">=</span><span class="s1">'enabled=on'</span><span class="p">;</span>
+<span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">words</span> <span class="k">order</span> <span class="k">by</span> <span class="n">rand</span><span class="p">()</span> <span class="k">limit</span> <span class="mi">3</span><span class="p">;</span><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">OPTIMIZER_TRACE</span><span class="err">\</span><span class="k">G</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><img src="/home/head/.config/Typora/typora-user-images/image-20211206130948945.png" alt="image-20211206130948945" /></p>
+
+<p>可看到该排序使用了全字段排序，且没有使用到磁盘临时文件。<code class="language-plaintext highlighter-rouge">sort_buffer</code> 中同时最多有4行数据存在，每一行长度为 $8+279=287$。为什么只有4行？难道不应该是对10000行数据排序吗？</p>
+
+<p>答案是<code class="language-plaintext highlighter-rouge">filesort_priority_queue_optimization</code>中 <code class="language-plaintext highlighter-rouge">chosen</code> 为 <code class="language-plaintext highlighter-rouge">true</code>，表示使用了优先级队列排序(即堆排序)。因为只需要 <code class="language-plaintext highlighter-rouge">limit 3</code>，相当于求 <code class="language-plaintext highlighter-rouge">top3</code>，剩下9997条数据并不需要排序，堆排序完美适合解决这个问题。</p>
+
+<blockquote>
+  <p><strong>大顶堆求 top k 小，小顶堆求 top k 大</strong>。而且最后堆顶元素就是第k大(小)元素。</p>
+
+  <p>比如数据集为[0.9,0.4,0.5,0.7,0.3,0.8]，利用大顶堆求top3小：</p>
+
+  <ol>
+    <li>建立初始堆：[0.9,0.4,0.5]，0.9为堆顶元素；</li>
+    <li>插入0.7，比0.9小，交换，0.7为最大元素，堆无需调整，此时堆为 [0.7,0.4,0.5]；</li>
+    <li>插入0.3，比0.7小，交换，0.3下沉堆化，此时堆为 [0.5,0.4,0.3]；</li>
+    <li>插入0.8，比0.5大，无需交换，堆不变，此时堆为 [0.5,0.4,0.3]；</li>
+    <li>遍历结束，top3小即为 [0.5,0.4,0.3]，且0.5为第3小的元素。</li>
+  </ol>
+</blockquote>
+
+<h3 id="随机排序方法">随机排序方法</h3>
+
+<h4 id="方法一">方法一</h4>
+
+<p>随机取一行的算法如下：</p>
+
+<ol>
+  <li>取得主键 id 的最大值M和最小值N</li>
+  <li>用随机函数生成一个介于M和N之间的数 $X=(M-N)*rand()+N$</li>
+  <li>取 $≥X$ 的第一个 id 的行</li>
+</ol>
+
+<p>用sql表示如下：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="k">max</span><span class="p">(</span><span class="n">id</span><span class="p">),</span><span class="k">min</span><span class="p">(</span><span class="n">id</span><span class="p">)</span> <span class="k">into</span> <span class="o">@</span><span class="n">M</span><span class="p">,</span><span class="o">@</span><span class="n">N</span> <span class="k">from</span> <span class="n">t</span><span class="p">;</span>
+<span class="k">set</span> <span class="o">@</span><span class="n">X</span> <span class="o">=</span> <span class="n">floor</span><span class="p">(</span><span class="o">@</span><span class="n">M</span><span class="o">-@</span><span class="n">N</span><span class="p">)</span><span class="o">*</span><span class="n">rand</span><span class="p">()</span><span class="o">+@</span><span class="n">N</span><span class="p">;</span>
+<span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">where</span> <span class="n">id</span> <span class="o">&gt;=</span> <span class="o">@</span><span class="n">x</span> <span class="k">limit</span> <span class="mi">1</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">max(id)</code> 和 <code class="language-plaintext highlighter-rouge">min(id)</code> 都不需要扫描索引，第三步的 <code class="language-plaintext highlighter-rouge">select</code> 也可以用索引快速定位，速度很快。</p>
+
+<p>但是有个致命缺陷，它<strong>不是真正的随机。如果 id 是连续的没问题，但如果 id 之间有空洞，则选择不同行的概率不一样</strong>。</p>
+
+<p>如 [1,2,4,5]，按这个算法，4 被选中的概率是其他的两倍。<strong>但是它速度最快</strong>。</p>
+
+<h4 id="方法二">方法二</h4>
+
+<ol>
+  <li>取得整个表的行数，记做 C</li>
+  <li>$Y = floor(C*rand())$</li>
+  <li>limit Y,1</li>
+</ol>
+
+<p><code class="language-plaintext highlighter-rouge">limit Y,1</code> 的处理逻辑是按顺序一行行读出来，丢掉前Y个，取下一个作为结果返回(可通过慢查询日志的 <code class="language-plaintext highlighter-rouge">Rows_examined</code> 验证)。</p>
+
+<blockquote>
+  <p>这里可能会有点疑问，为什么不走主键索引树，直接快速定位到 Y不就行了。</p>
+
+  <p>这是想当然了，因为并不知道第 Y 行的主键id是多少呀，除非只有当主键id从1开始连续递增才行(第Y行的主键id就是Y)。</p>
+</blockquote>
+
+<p>所以该算法总共扫描的行数为：$C+Y+1$ ，执行代价比方法一要高一些，但跟 <code class="language-plaintext highlighter-rouge">order by rand()</code> 比起来还是快得多，而且严格随机。</p>
+
+<p>那么用该算法解决随机获取3个单词的步骤如下：</p>
+
+<ol>
+  <li>取得整个表的行数，记做 C</li>
+  <li>$Y1 = floor(C<em>rand()), Y2 = floor(C</em>rand()), Y3 = floor(C*rand())$</li>
+  <li>limit Y1,1；limit Y2,1；limit Y3,1</li>
+</ol>
+
+<p>总共需扫描  $【C+(Y1+Y2+Y3)+3】$ 行 。</p>
+
+<p>其实还有进一步优化的空间，因为Y1、Y2、Y3 重复扫描了：</p>
+
+<p>取得 Y1、Y2、Y3后，设最大值为M，最小值为N，执行</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t</span> <span class="k">limit</span> <span class="n">N</span><span class="p">,</span><span class="n">M</span><span class="o">-</span><span class="n">N</span><span class="o">+</span><span class="mi">1</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>从结果集中取第一条、最后一条、(Y2-Y1)条即可。</p>
+
+<p>改进后扫描行数为 $C+M+1$，大大减少了扫描行数。</p>
+
+<p><strong>不可一味盲目追求极致解，够用就好！！！</strong></p>
+
+<hr />
+
+<p><br /><br /><br /></p>
 
 <h1 id="官方优化指南">官方优化指南</h1>
 
