@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 08 Dec 2021 23:28:47 +0800</pubDate>
-    <lastBuildDate>Wed, 08 Dec 2021 23:28:47 +0800</lastBuildDate>
+    <pubDate>Wed, 08 Dec 2021 23:34:12 +0800</pubDate>
+    <lastBuildDate>Wed, 08 Dec 2021 23:34:12 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -1636,7 +1636,7 @@
 
 &lt;ol&gt;
   &lt;li&gt;
-    &lt;p&gt;&lt;strong&gt;索引字段上有函数&lt;/strong&gt;&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;索引字段上用了函数&lt;/strong&gt;&lt;/p&gt;
 
     &lt;p&gt;会破坏索引的有序性，因此优化器会决定放弃&lt;strong&gt;走树搜索功能&lt;/strong&gt;&lt;/p&gt;
 
@@ -1675,12 +1675,9 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
 
     &lt;p&gt;虽然 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id+1&lt;/code&gt; 并不会改变索引的有序性，但优化器并不会重写这类语句，一视同仁，必须得改成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;where id = 10000-1&lt;/code&gt; 才行。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
-
-&lt;ol&gt;
   &lt;li&gt;
     &lt;p&gt;&lt;strong&gt;隐式类型转换&lt;/strong&gt;&lt;/p&gt;
 
@@ -1702,7 +1699,7 @@
 
     &lt;p&gt;那原因就很明显了，同样是因为索引列上用到了函数，导致不能快速定位。&lt;/p&gt;
 
-    &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+    &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;&lt;strong&gt;隐式字符编码转换&lt;/strong&gt;&lt;/p&gt;

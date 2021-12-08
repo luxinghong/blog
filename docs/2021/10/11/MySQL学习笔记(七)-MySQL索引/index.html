@@ -746,7 +746,7 @@
 
 <ol>
   <li>
-    <p><strong>索引字段上有函数</strong></p>
+    <p><strong>索引字段上用了函数</strong></p>
 
     <p>会破坏索引的有序性，因此优化器会决定放弃<strong>走树搜索功能</strong></p>
 
@@ -785,12 +785,9 @@
 </pre></td></tr></tbody></table></code></pre></div>    </div>
 
     <p>虽然 <code class="language-plaintext highlighter-rouge">id+1</code> 并不会改变索引的有序性，但优化器并不会重写这类语句，一视同仁，必须得改成 <code class="language-plaintext highlighter-rouge">where id = 10000-1</code> 才行。</p>
+
+    <p><br /><br /></p>
   </li>
-</ol>
-
-<p><br /><br /><br /></p>
-
-<ol>
   <li>
     <p><strong>隐式类型转换</strong></p>
 
@@ -812,7 +809,7 @@
 
     <p>那原因就很明显了，同样是因为索引列上用到了函数，导致不能快速定位。</p>
 
-    <p><br /><br /><br /></p>
+    <p><br /><br /></p>
   </li>
   <li>
     <p><strong>隐式字符编码转换</strong></p>

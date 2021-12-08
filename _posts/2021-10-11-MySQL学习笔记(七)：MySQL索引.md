@@ -424,7 +424,7 @@ insert into trade_detail values(11, 'aaaaaaac', 4, 'commit');
 
 
 
-1. **索引字段上有函数**
+1. **索引字段上用了函数**
 
    会破坏索引的有序性，因此优化器会决定放弃**走树搜索功能**
 
@@ -460,9 +460,9 @@ insert into trade_detail values(11, 'aaaaaaac', 4, 'commit');
    ```
 
    虽然 `id+1` 并不会改变索引的有序性，但优化器并不会重写这类语句，一视同仁，必须得改成 `where id = 10000-1` 才行。
-
-<br/><br/><br/>
-
+   
+   <br/><br/>
+   
    
 
 2. **隐式类型转换**
@@ -485,7 +485,7 @@ insert into trade_detail values(11, 'aaaaaaac', 4, 'commit');
 
    那原因就很明显了，同样是因为索引列上用到了函数，导致不能快速定位。
 
-   <br/><br/><br/>
+   <br/><br/>
 
    
 
