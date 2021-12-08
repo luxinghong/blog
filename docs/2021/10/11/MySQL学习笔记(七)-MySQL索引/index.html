@@ -279,7 +279,7 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h3 id="索引的常见实现方式有哪些">索引的常见实现方式有哪些？</h3>
+				<h1 id="索引的常见实现方式有哪些">索引的常见实现方式有哪些？</h1>
 
 <ul>
   <li>哈希表：O(1) 的时间复杂度，速度最快，但缺点是只适用于等值查询。因为key是无序的，所以区间查询时只能全部遍历一遍。</li>
@@ -287,7 +287,11 @@
   <li>搜索树：常用实现是B+树。</li>
 </ul>
 
-<h3 id="为什么采用b树而不是常见的二叉树">为什么采用B+树而不是常见的二叉树?</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="为什么采用b树而不是常见的二叉树">为什么采用B+树而不是常见的二叉树?</h1>
 
 <p>二叉树即每个节点只有左右2个子节点，所以显而易见的问题就是当节点变多时树的高度会很高。比如需要存储100万条数据，就需要20层（n层二叉树的节点数为 $2^n-1$，20层二叉树的节点总数为1048576）。因为一个节点就是一页，那么一次查询很可能就需要进行20次随机IO（大概率会触发随机IO），在传统机械硬盘时代，一次随机IO大约10ms，那么单一次查询可能就需要200ms，这个查询是很慢的。</p>
 
@@ -319,15 +323,15 @@
 
 <p>每个space会被划分为多个page，一个page默认16k。page也有一个32位的page number（页号），表示在space内的偏移量（offset），比如page 0 对应 offset 为0，page 1 对应 offset 为16384。注意一个space可能包含多个文件，所以这个offset不一定是文件内的，而是整个space中的。Innodb单表空间最大为64TB，是因为 $2^{32} * 16k$。</p>
 
-<h5 id="页的基本结构">页的基本结构</h5>
+<h4 id="页的基本结构">页的基本结构</h4>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112105252435.png" alt="image-20211112105252435" /></p>
+<p><img src="/blog/img/image-20211112105252435.png" alt="image-20211112105252435" /></p>
 
 <p>页包含一个38字节的头部（FIL为File的缩写）和一个8字节的尾部，中间的内容取决于不同的page type，可用大小为 16k-38-8=16338。</p>
 
 <p>FIL Header 和 Trailer 结构如下：</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112105757234.png" alt="image-20211112105757234" /></p>
+<p><img src="/blog/img/image-20211112105757234.png" alt="image-20211112105757234" /></p>
 
 <p>可以看到，头部包含了</p>
 
@@ -340,29 +344,29 @@
   <li>当前系统中（所有space）最大的LSN</li>
 </ul>
 
-<h5 id="表空间space-file文件结构">表空间(space file)文件结构</h5>
+<h4 id="表空间space-file文件结构">表空间(space file)文件结构</h4>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112125701387.png" alt="image-20211112125701387" /></p>
+<p><img src="/blog/img/image-20211112125701387.png" alt="image-20211112125701387" /></p>
 
-<h5 id="系统表空间system-space文件结构">系统表空间(system space)文件结构</h5>
+<h4 id="系统表空间system-space文件结构">系统表空间(system space)文件结构</h4>
 
 <p>系统表空间(system space)的 space ID 为 0 。它采用了一些固定页号的页来存储一些关键信息。结构如下：</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112130023998.png" alt="image-20211112130023998" /></p>
+<p><img src="/blog/img/image-20211112130023998.png" alt="image-20211112130023998" /></p>
 
-<h5 id="单表空间per-table-space-file文件结构">单表空间(per-table space file)文件结构</h5>
+<h4 id="单表空间per-table-space-file文件结构">单表空间(per-table space file)文件结构</h4>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112130153515.png" alt="image-20211112130153515" /></p>
+<p><img src="/blog/img/image-20211112130153515.png" alt="image-20211112130153515" /></p>
 
 <p>Page3为聚簇索引(主键索引)的root，Page4为第一个二级索引的root，如果有多级索引的话以此类推。</p>
 
-<h4 id="innodb索引">Innodb索引</h4>
+<h3 id="innodb索引">Innodb索引</h3>
 
 <blockquote>
   <p>详见 <a href="https://blog.jcole.us/2013/01/07/the-physical-structure-of-innodb-index-pages/">The physical structure of InnoDB index pages</a></p>
 </blockquote>
 
-<h5 id="一切皆索引">一切皆索引</h5>
+<h4 id="一切皆索引">一切皆索引</h4>
 
 <p>在Innodb中一切皆索引，意思是：</p>
 
@@ -374,11 +378,11 @@
   <li>B+树中一个节点为一页。</li>
 </ul>
 
-<h5 id="索引结构">索引结构</h5>
+<h4 id="索引结构">索引结构</h4>
 
 <p>因为一个索引就是一棵B+树，B+树中一个节点对应一页，所有索引页具有和上面讲到的页的相同基本结构，都包含一个FIL Header和FIL Trailer，主体部分会有所不同，如下图所示：</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112140640173.png" alt="image-20211112140640173" /></p>
+<p><img src="/blog/img/image-20211112140640173.png" alt="image-20211112140640173" /></p>
 
 <p>重点关注其中的 <code class="language-plaintext highlighter-rouge">User Records</code> 和 <code class="language-plaintext highlighter-rouge">Page Directory</code>。</p>
 
@@ -393,11 +397,11 @@
 
 <p>Index Header 结构如下：</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211112142023840.png" alt="image-20211112142023840" /></p>
+<p><img src="/blog/img/image-20211112142023840.png" alt="image-20211112142023840" /></p>
 
 <p>可以看到有 <code class="language-plaintext highlighter-rouge">Number of Records</code> 、 <code class="language-plaintext highlighter-rouge">Page Level(叶子节点所在层为第0层，从下往上递增，root节点所在层为最大层)</code> 等等。</p>
 
-<h5 id="二级索引叶子节点value的排序问题">二级索引叶子节点value的排序问题</h5>
+<h4 id="二级索引叶子节点value的排序问题">二级索引叶子节点value的排序问题</h4>
 
 <p>假设存在以下表记录</p>
 
@@ -502,7 +506,7 @@
 
 <p>索引 <code class="language-plaintext highlighter-rouge">cb</code> 先对 c 排序，再对 b 排序，再对 a 排序，可用于基于c、b 的查询，需要保留。</p>
 
-<h5 id="实践一下">实践一下</h5>
+<h4 id="实践一下">实践一下</h4>
 
 <p>可以通过 <code class="language-plaintext highlighter-rouge">innodb_space</code> 命令直接分析文件，获取文件中存储的page、records等信息。(目前还不支持MySQL8.0)</p>
 
@@ -514,13 +518,21 @@
   <p><a href="https://blog.jcole.us/2013/01/10/btree-index-structures-in-innodb/">B+Tree index structures in InnoDB</a></p>
 </blockquote>
 
-<h3 id="基于主键索引和普通索引的查询有什么区别">基于主键索引和普通索引的查询有什么区别</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="基于主键索引和普通索引的查询有什么区别">基于主键索引和普通索引的查询有什么区别</h1>
 
 <p>主键索引树叶子节点直接存储行数据，所以主键索引查询只需要扫描主键索引树即可。</p>
 
 <p>而普通索引树叶子节点存储的是主键值，所以需要先扫描普通索引树拿到主键值，再回到主键索引树获取行数据，相较于主键索引查询多扫描了一棵索引树，这个过程称为 <code class="language-plaintext highlighter-rouge">回表</code>。</p>
 
-<h3 id="选择自增主键还是业务主键">选择自增主键还是业务主键</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="选择自增主键还是业务主键">选择自增主键还是业务主键</h1>
 
 <p>可从存储空间大小和性能两个方面来考虑：</p>
 
@@ -656,7 +668,242 @@
 
 <p>当 <code class="language-plaintext highlighter-rouge">explain 的 extra</code> 字段中显示 <code class="language-plaintext highlighter-rouge">Using index condition</code> 时则表示本次查询使用到了索引下推。</p>
 
-<h3 id="选择唯一索引还是普通索引">选择唯一索引还是普通索引？</h3>
+<h4 id="不能走索引的反面示例">不能走索引的反面示例</h4>
+
+<p>以下示例用到的表结构如下：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+</pre></td><td class="rouge-code"><pre><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`tradelog`</span> <span class="p">(</span>
+  <span class="nv">`id`</span> <span class="nb">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`tradeid`</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`operator`</span> <span class="nb">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`t_modified`</span> <span class="nb">datetime</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`tradeid`</span> <span class="p">(</span><span class="nv">`tradeid`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`t_modified`</span> <span class="p">(</span><span class="nv">`t_modified`</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">utf8mb4</span><span class="p">;</span>
+
+	
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="nv">`trade_detail`</span> <span class="p">(</span>
+  <span class="nv">`id`</span> <span class="nb">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`tradeid`</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span>
+  <span class="nv">`trade_step`</span> <span class="nb">int</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span> <span class="cm">/*操作步骤*/</span>
+  <span class="nv">`step_info`</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="k">DEFAULT</span> <span class="k">NULL</span><span class="p">,</span> <span class="cm">/*步骤信息*/</span>
+  <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="p">(</span><span class="nv">`id`</span><span class="p">),</span>
+  <span class="k">KEY</span> <span class="nv">`tradeid`</span> <span class="p">(</span><span class="nv">`tradeid`</span><span class="p">)</span>
+<span class="p">)</span> <span class="n">ENGINE</span><span class="o">=</span><span class="n">InnoDB</span> <span class="k">DEFAULT</span> <span class="n">CHARSET</span><span class="o">=</span><span class="n">utf8</span><span class="p">;</span>
+
+<span class="k">insert</span> <span class="k">into</span> <span class="n">tradelog</span> <span class="k">values</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">'aaaaaaaa'</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">now</span><span class="p">());</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">tradelog</span> <span class="k">values</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">'aaaaaaab'</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">now</span><span class="p">());</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">tradelog</span> <span class="k">values</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">'aaaaaaac'</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">now</span><span class="p">());</span>
+
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">'aaaaaaaa'</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'add'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">'aaaaaaaa'</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'update'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s1">'aaaaaaaa'</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'commit'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="s1">'aaaaaaab'</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'add'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">'aaaaaaab'</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'update'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s1">'aaaaaaab'</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'update again'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s1">'aaaaaaab'</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'commit'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s1">'aaaaaaac'</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">'add'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s1">'aaaaaaac'</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">'update'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">'aaaaaaac'</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">'update again'</span><span class="p">);</span>
+<span class="k">insert</span> <span class="k">into</span> <span class="n">trade_detail</span> <span class="k">values</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="s1">'aaaaaaac'</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">'commit'</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<ol>
+  <li>
+    <p><strong>索引字段上有函数</strong></p>
+
+    <p>会破坏索引的有序性，因此优化器会决定放弃<strong>走树搜索功能</strong></p>
+
+    <p>如：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="k">where</span> <span class="k">month</span><span class="p">(</span><span class="n">t_modified</span><span class="p">)</span><span class="o">=</span><span class="mi">7</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p><code class="language-plaintext highlighter-rouge">t_modified</code> 上虽然有索引，但由于用了 <code class="language-plaintext highlighter-rouge">month函数</code>，破坏了索引的有序性，导致没办法快速定位。</p>
+
+    <p>注意，<strong>只是不使用树搜索功能，并不是放弃使用这个索引。</strong>比如这个例子，虽然放弃了树搜索快速定位，但是对比主键索引树和 <code class="language-plaintext highlighter-rouge">t_modified索引树</code>后，发现后者更小，优化器最终还是会选择遍历 <code class="language-plaintext highlighter-rouge">t_modified索引树</code>，也即是全索引扫描。</p>
+
+    <p><code class="language-plaintext highlighter-rouge">explain</code>如下：</p>
+
+    <p><img src="/blog/img/image-20211208221822466.png" alt="image-20211208221822466" /></p>
+
+    <p><code class="language-plaintext highlighter-rouge">key</code> 为 <code class="language-plaintext highlighter-rouge">t_modified</code>，说明用到了 <code class="language-plaintext highlighter-rouge">t_modified</code> 索引。<code class="language-plaintext highlighter-rouge">rows</code> 为 100335(测试数据有十万条)，说明是全索引扫描。</p>
+
+    <p>这个例子要使用快速定位的话，就得把索引上的函数去了:</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="k">where</span>
+    <span class="o">-&gt;</span> <span class="p">(</span><span class="n">t_modified</span> <span class="o">&gt;=</span> <span class="s1">'2016-7-1'</span> <span class="k">and</span> <span class="n">t_modified</span><span class="o">&lt;</span><span class="s1">'2016-8-1'</span><span class="p">)</span> <span class="k">or</span>
+    <span class="o">-&gt;</span> <span class="p">(</span><span class="n">t_modified</span> <span class="o">&gt;=</span> <span class="s1">'2017-7-1'</span> <span class="k">and</span> <span class="n">t_modified</span><span class="o">&lt;</span><span class="s1">'2017-8-1'</span><span class="p">)</span> <span class="k">or</span> 
+    <span class="o">-&gt;</span> <span class="p">(</span><span class="n">t_modified</span> <span class="o">&gt;=</span> <span class="s1">'2018-7-1'</span> <span class="k">and</span> <span class="n">t_modified</span><span class="o">&lt;</span><span class="s1">'2018-8-1'</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>还有一些例子，我们可能会理所应当的以为优化器会优化，但是并没有，它还是一视同仁：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="k">where</span> <span class="n">id</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>虽然 <code class="language-plaintext highlighter-rouge">id+1</code> 并不会改变索引的有序性，但优化器并不会重写这类语句，一视同仁，必须得改成 <code class="language-plaintext highlighter-rouge">where id = 10000-1</code> 才行。</p>
+  </li>
+</ol>
+
+<p><br /><br /><br /></p>
+
+<ol>
+  <li>
+    <p><strong>隐式类型转换</strong></p>
+
+    <p>比如这条sql：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="k">where</span> <span class="n">tradeid</span><span class="o">=</span><span class="mi">110717</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p><code class="language-plaintext highlighter-rouge">explain</code> 显示走的是全表扫描。原因是因为<code class="language-plaintext highlighter-rouge">tradeid</code> 是 varchar 类型，参数是 int 类型，明显会需要一个类型转换。</p>
+
+    <p>在MySQL中，<strong>当字符串和数字做比较的时候，是由字符串转为数字</strong>。如果记不住这个规则，可用 <code class="language-plaintext highlighter-rouge">select '10' &gt; 9</code> 验证一下：结果为1，表示字符串转为了数字。</p>
+
+    <p>所以，上面的sql其实相当于：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="k">where</span>  <span class="k">CAST</span><span class="p">(</span><span class="n">tradid</span> <span class="k">AS</span> <span class="nb">signed</span> <span class="nb">int</span><span class="p">)</span> <span class="o">=</span> <span class="mi">110717</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>那原因就很明显了，同样是因为索引列上用到了函数，导致不能快速定位。</p>
+
+    <p><br /><br /><br /></p>
+  </li>
+  <li>
+    <p><strong>隐式字符编码转换</strong></p>
+
+    <p>比如这句sql：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">d</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="n">l</span><span class="p">,</span> <span class="n">trade_detail</span> <span class="n">d</span> <span class="k">where</span> <span class="n">d</span><span class="p">.</span><span class="n">tradeid</span><span class="o">=</span><span class="n">l</span><span class="p">.</span><span class="n">tradeid</span> <span class="k">and</span> <span class="n">l</span><span class="p">.</span><span class="n">id</span><span class="o">=</span><span class="mi">2</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p><img src="/blog/img/image-20211208224214325.png" alt="image-20211208224214325" /></p>
+
+    <p>表 <code class="language-plaintext highlighter-rouge">l</code> 只扫描了一行，表示用了主键索引快速定位，快速定位到了 <code class="language-plaintext highlighter-rouge">id=2</code> 这一行。</p>
+
+    <p>表 <code class="language-plaintext highlighter-rouge">d</code> 走了全表扫描，且没用上 <code class="language-plaintext highlighter-rouge">tradeid</code> 索引。<code class="language-plaintext highlighter-rouge">key=NUll</code> 是表示走的主键索引遍历。</p>
+
+    <p>简单拆解一下这句sql的执行步骤：</p>
+
+    <ol>
+      <li>从表 <code class="language-plaintext highlighter-rouge">l</code> 中找到 <code class="language-plaintext highlighter-rouge">id=2</code> 这一行数据，从中取出 <code class="language-plaintext highlighter-rouge">tradeid</code>；</li>
+      <li>从表 <code class="language-plaintext highlighter-rouge">d</code> 中找到 <code class="language-plaintext highlighter-rouge">tradeid=上一步查询到的值</code>的数据。</li>
+    </ol>
+
+    <p>所以第2步就是：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">trade_detail</span> <span class="k">where</span> <span class="n">tradeid</span> <span class="o">=</span> <span class="err">上一步查询到的</span><span class="n">tradeid</span><span class="p">;</span> 
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>那为什么用不上 <code class="language-plaintext highlighter-rouge">tradeid</code> 索引呢？</p>
+
+    <p>细心点可发现两个表的字符编码不同，表<code class="language-plaintext highlighter-rouge">l</code> 是 <code class="language-plaintext highlighter-rouge">utf8mb4</code>，表<code class="language-plaintext highlighter-rouge">d</code> 是 <code class="language-plaintext highlighter-rouge">utf8</code>。<code class="language-plaintext highlighter-rouge">utf8mb4</code>是<code class="language-plaintext highlighter-rouge">utf8</code> 的超集，类型转换的时候都是子集转超集，所以上面的sql相当于：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">trade_detail</span>  <span class="k">where</span> <span class="k">CONVERT</span><span class="p">(</span><span class="n">traideid</span> <span class="k">USING</span> <span class="n">utf8mb4</span><span class="p">)</span> <span class="o">=</span> <span class="err">上一步查询到的</span><span class="n">tradeid</span><span class="p">;</span> 
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>所以，原因还是一样，索引字段上加了函数操作导致不能快速定位。</p>
+
+    <p>作为对比验证，下面这句sql就能都用到索引快速定位：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">l</span><span class="p">.</span><span class="k">operator</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="n">l</span> <span class="p">,</span> <span class="n">trade_detail</span> <span class="n">d</span> <span class="k">where</span> <span class="n">d</span><span class="p">.</span><span class="n">tradeid</span><span class="o">=</span><span class="n">l</span><span class="p">.</span><span class="n">tradeid</span> <span class="k">and</span> <span class="n">d</span><span class="p">.</span><span class="n">id</span><span class="o">=</span><span class="mi">4</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>还是和上面一样的分析步骤，只不过这次的连接顺序倒了过来。先找到表 <code class="language-plaintext highlighter-rouge">d</code> 中 <code class="language-plaintext highlighter-rouge">id=4</code> 这一行，从中取出 <code class="language-plaintext highlighter-rouge">tradeid</code>，再到表 <code class="language-plaintext highlighter-rouge">l</code> 中去匹配，第2步的sql就相当于：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="k">operator</span> <span class="k">from</span> <span class="n">tradelog</span>  <span class="k">where</span> <span class="n">traideid</span> <span class="o">=</span> <span class="err">上一步查询到的</span><span class="n">tradeid</span><span class="p">;</span> 
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>由于需要做字符编码转换，记住转换是子集转超集，所以又相当于：</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="k">operator</span> <span class="k">from</span> <span class="n">tradelog</span>  <span class="k">where</span> <span class="n">traideid</span> <span class="o">=</span><span class="k">CONVERT</span><span class="p">(</span><span class="err">上一步查询到的</span><span class="n">tradeid</span><span class="p">);</span> 
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p>区别就在于函数操作是加在值上面，所以可以先计算出来，然后索引就能快速定位到。</p>
+
+    <p>这类问题解决办法有两个：</p>
+
+    <ol>
+      <li>
+        <p>最简单直接的就是把对应 <code class="language-plaintext highlighter-rouge">utf8</code> 编码的字段改为 <code class="language-plaintext highlighter-rouge">utf8mb4</code>，这样从根上避免了字符编码转换：</p>
+
+        <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">alter</span> <span class="k">table</span> <span class="n">trade_detail</span> <span class="k">modify</span> <span class="n">tradeid</span> <span class="nb">varchar</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span> <span class="nb">CHARACTER</span> <span class="k">SET</span> <span class="n">utf8mb4</span> <span class="k">default</span> <span class="k">null</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+      </li>
+      <li>
+        <p>如果不能更改字符编码，那只能手动改下sql，手动来做这个编码转换，如上面的sql可改为：</p>
+
+        <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">d</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span> <span class="n">tradelog</span> <span class="n">l</span> <span class="p">,</span> <span class="n">trade_detail</span> <span class="n">d</span> <span class="k">where</span> <span class="n">d</span><span class="p">.</span><span class="n">tradeid</span><span class="o">=</span><span class="k">CONVERT</span><span class="p">(</span><span class="n">l</span><span class="p">.</span><span class="n">tradeid</span> <span class="k">USING</span> <span class="n">utf8</span><span class="p">)</span> <span class="k">and</span> <span class="n">l</span><span class="p">.</span><span class="n">id</span><span class="o">=</span><span class="mi">2</span><span class="p">;</span> 
+</pre></td></tr></tbody></table></code></pre></div>        </div>
+
+        <p>这里手动把 <code class="language-plaintext highlighter-rouge">l.tradeid</code> 转为了 <code class="language-plaintext highlighter-rouge">utf8</code>，保证了编码一致，避免了编码转换。</p>
+
+        <p><strong>注意</strong>：手动转换要确保不会丢失精度才行。</p>
+      </li>
+    </ol>
+  </li>
+</ol>
+
+<p><br /><br /><br /></p>
+
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="选择唯一索引还是普通索引">选择唯一索引还是普通索引？</h1>
 
 <p>从读和写两方面来分析。</p>
 
@@ -680,7 +927,7 @@
 
 <p>综上所述，如果业务可以接受的话，从性能角度出发，应该选择普通索引。</p>
 
-<h4 id="change-buffer">change buffer</h4>
+<h3 id="change-buffer">change buffer</h3>
 
 <p><code class="language-plaintext highlighter-rouge">change buffer</code> 是 <code class="language-plaintext highlighter-rouge">buffer pool</code> 的一部分，默认占比为 25(%)，最大占比可设为 50(%)。</p>
 
@@ -690,7 +937,7 @@
 
 <p>在MySQL5.5之前的版本，只支持缓存<code class="language-plaintext highlighter-rouge">insert</code>操作，所以最初叫 <code class="language-plaintext highlighter-rouge">insert buffer</code>(很多地方见到的 <code class="language-plaintext highlighter-rouge">ibuf</code> 指的就是它，后来也一直延用了下来)。后来也加入了对 <code class="language-plaintext highlighter-rouge">update</code>、<code class="language-plaintext highlighter-rouge">delete</code> 的支持，便改名为了 <code class="language-plaintext highlighter-rouge">change buffer</code>。</p>
 
-<h5 id="作用">作用</h5>
+<h4 id="作用">作用</h4>
 
 <p><strong>当目标数据页不在内存中时，普通索引更新类操作的提速器。注意：只能作用于普通索引，不能作用于唯一索引</strong>。</p>
 
@@ -702,7 +949,7 @@
 
 <p>如果 <code class="language-plaintext highlighter-rouge">where</code> 条件走主键索引或其他普通字段(其实最终也是走主键索引树)，并且需要更新普通索引字段的话，通过主键索引树获取受影响行数，对普通索引的更新就直接写到 change buffer 中了，这种情况是能用 change buffer 来提速的。</p>
 
-<h5 id="怎么保证数据被正确更新">怎么保证数据被正确更新？</h5>
+<h4 id="怎么保证数据被正确更新">怎么保证数据被正确更新？</h4>
 
 <p>上面说到，普通索引的更新写到 <code class="language-plaintext highlighter-rouge">change buffer</code> 中就结束了，那后续的查询是怎样的？</p>
 
@@ -729,13 +976,13 @@
   </li>
 </ul>
 
-<h5 id="怎么保证更新不丢失">怎么保证更新不丢失？</h5>
+<h4 id="怎么保证更新不丢失">怎么保证更新不丢失？</h4>
 
 <p>如果写完 <code class="language-plaintext highlighter-rouge">change buffer</code> 后断电了或意外宕机了，重启后 <code class="language-plaintext highlighter-rouge">change buffer</code> 和数据会丢失吗？</p>
 
 <p>不会。<code class="language-plaintext highlighter-rouge">change buffer</code> 也会被记到 <code class="language-plaintext highlighter-rouge">redo log</code> 中(<strong>redo log 中包含了数据页的变更和change buffer的变更</strong>)，回想之前讲过的两阶段提交协议，<code class="language-plaintext highlighter-rouge">redo log</code> 和 <code class="language-plaintext highlighter-rouge">binglog</code>  落盘才代表事务成功提交。所以，如果一个事务已提交，则代表 <code class="language-plaintext highlighter-rouge">change buffer</code> 已经写到 <code class="language-plaintext highlighter-rouge">redo log</code> 中，且 <code class="language-plaintext highlighter-rouge">redo log</code> 已落盘，崩溃恢复时会根据 <code class="language-plaintext highlighter-rouge">redo log</code> 来恢复 <code class="language-plaintext highlighter-rouge">change buffer</code>。</p>
 
-<h5 id="适用场景">适用场景</h5>
+<h4 id="适用场景">适用场景</h4>
 
 <p><code class="language-plaintext highlighter-rouge">change buffer</code> 简单来说就是把对普通索引的更新缓存了下来，然后在适当的时候进行 <code class="language-plaintext highlighter-rouge">merge</code>。所以在 <code class="language-plaintext highlighter-rouge">merge</code> 之前， <code class="language-plaintext highlighter-rouge">change buffer</code> 中记录的变更越多，收益就越大。</p>
 
@@ -749,11 +996,15 @@
 
 <p>默认值为 <code class="language-plaintext highlighter-rouge">all</code> ，设为 <code class="language-plaintext highlighter-rouge">none</code> 即可关闭 <code class="language-plaintext highlighter-rouge">change buffer</code>。</p>
 
-<h5 id="官方文档">官方文档</h5>
+<h4 id="官方文档">官方文档</h4>
 
 <p><a href="https://dev.mysql.com/doc/refman/8.0/en/faqs-innodb-change-buffer.html#faq-innodb-change-buffer-merging">InnoDB Change Buffer</a></p>
 
-<h3 id="给字符串字段创建索引的几种方法">给字符串字段创建索引的几种方法</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="给字符串字段创建索引的几种方法">给字符串字段创建索引的几种方法</h1>
 
 <ol>
   <li>

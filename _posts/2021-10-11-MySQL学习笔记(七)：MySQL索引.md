@@ -11,17 +11,19 @@ tags:
 
 
 
-### 索引的常见实现方式有哪些？
+# 索引的常见实现方式有哪些？
 
 - 哈希表：O(1) 的时间复杂度，速度最快，但缺点是只适用于等值查询。因为key是无序的，所以区间查询时只能全部遍历一遍。
 - 有序数组：O(logn)的时间复杂度，利用二分法。可用于等值查询和区间查询，但插入删除时间复杂度较高，因为需要移动插入点后面的所有元素。所以有序数组比较适合静态存储引擎，即基本不会变的数据。
 - 搜索树：常用实现是B+树。
 
+------
+
+<br/><br/><br/>
 
 
 
-
-### 为什么采用B+树而不是常见的二叉树?
+# 为什么采用B+树而不是常见的二叉树?
 
 二叉树即每个节点只有左右2个子节点，所以显而易见的问题就是当节点变多时树的高度会很高。比如需要存储100万条数据，就需要20层（n层二叉树的节点数为 $2^n-1$，20层二叉树的节点总数为1048576）。因为一个节点就是一页，那么一次查询很可能就需要进行20次随机IO（大概率会触发随机IO），在传统机械硬盘时代，一次随机IO大约10ms，那么单一次查询可能就需要200ms，这个查询是很慢的。
 
@@ -55,9 +57,9 @@ Innodb的数据存储模型被称为 `space`，即“表空间”。表空间是
 
 每个space会被划分为多个page，一个page默认16k。page也有一个32位的page number（页号），表示在space内的偏移量（offset），比如page 0 对应 offset 为0，page 1 对应 offset 为16384。注意一个space可能包含多个文件，所以这个offset不一定是文件内的，而是整个space中的。Innodb单表空间最大为64TB，是因为 $2^{32} * 16k$。
 
-##### 页的基本结构
+#### 页的基本结构
 
-![image-20211112105252435](/home/head/.config/Typora/typora-user-images/image-20211112105252435.png)
+![image-20211112105252435](/blog/img/image-20211112105252435.png)
 
 页包含一个38字节的头部（FIL为File的缩写）和一个8字节的尾部，中间的内容取决于不同的page type，可用大小为 16k-38-8=16338。
 
@@ -65,7 +67,7 @@ Innodb的数据存储模型被称为 `space`，即“表空间”。表空间是
 
 FIL Header 和 Trailer 结构如下：
 
-![image-20211112105757234](/home/head/.config/Typora/typora-user-images/image-20211112105757234.png)
+![image-20211112105757234](/blog/img/image-20211112105757234.png)
 
 可以看到，头部包含了
 
@@ -78,23 +80,23 @@ FIL Header 和 Trailer 结构如下：
 
 
 
-##### 表空间(space file)文件结构
+#### 表空间(space file)文件结构
 
-![image-20211112125701387](/home/head/.config/Typora/typora-user-images/image-20211112125701387.png)
+![image-20211112125701387](/blog/img/image-20211112125701387.png)
 
 
 
-##### 系统表空间(system space)文件结构
+#### 系统表空间(system space)文件结构
 
 系统表空间(system space)的 space ID 为 0 。它采用了一些固定页号的页来存储一些关键信息。结构如下：
 
-![image-20211112130023998](/home/head/.config/Typora/typora-user-images/image-20211112130023998.png)
+![image-20211112130023998](/blog/img/image-20211112130023998.png)
 
 
 
-##### 单表空间(per-table space file)文件结构
+#### 单表空间(per-table space file)文件结构
 
-![image-20211112130153515](/home/head/.config/Typora/typora-user-images/image-20211112130153515.png)
+![image-20211112130153515](/blog/img/image-20211112130153515.png)
 
 Page3为聚簇索引(主键索引)的root，Page4为第一个二级索引的root，如果有多级索引的话以此类推。
 
@@ -102,11 +104,11 @@ Page3为聚簇索引(主键索引)的root，Page4为第一个二级索引的root
 
 
 
-#### Innodb索引
+### Innodb索引
 
 > 详见 [The physical structure of InnoDB index pages](https://blog.jcole.us/2013/01/07/the-physical-structure-of-innodb-index-pages/)
 
-##### 一切皆索引
+#### 一切皆索引	
 
 在Innodb中一切皆索引，意思是：
 
@@ -118,11 +120,11 @@ Page3为聚簇索引(主键索引)的root，Page4为第一个二级索引的root
 
 
 
-##### 索引结构
+#### 索引结构
 
 因为一个索引就是一棵B+树，B+树中一个节点对应一页，所有索引页具有和上面讲到的页的相同基本结构，都包含一个FIL Header和FIL Trailer，主体部分会有所不同，如下图所示：
 
-![image-20211112140640173](/home/head/.config/Typora/typora-user-images/image-20211112140640173.png)
+![image-20211112140640173](/blog/img/image-20211112140640173.png)
 
 重点关注其中的 `User Records` 和 `Page Directory`。
 
@@ -137,7 +139,7 @@ User Records 是实际存储数据的地方：
 
 Index Header 结构如下：
 
-![image-20211112142023840](/home/head/.config/Typora/typora-user-images/image-20211112142023840.png)
+![image-20211112142023840](/blog/img/image-20211112142023840.png)
 
 可以看到有 `Number of Records` 、 `Page Level(叶子节点所在层为第0层，从下往上递增，root节点所在层为最大层)` 等等。
 
@@ -145,7 +147,7 @@ Index Header 结构如下：
 
 
 
-##### 二级索引叶子节点value的排序问题
+#### 二级索引叶子节点value的排序问题
 
 假设存在以下表记录
 
@@ -189,7 +191,7 @@ Index Header 结构如下：
 
 
 
-##### 实践一下
+#### 实践一下
 
 可以通过 `innodb_space` 命令直接分析文件，获取文件中存储的page、records等信息。(目前还不支持MySQL8.0)
 
@@ -199,23 +201,29 @@ Index Header 结构如下：
 >
 > [B+Tree index structures in InnoDB](https://blog.jcole.us/2013/01/10/btree-index-structures-in-innodb/)
 
+------
+
+<br/><br/><br/>
 
 
 
 
 
-
-### 基于主键索引和普通索引的查询有什么区别
+# 基于主键索引和普通索引的查询有什么区别
 
 主键索引树叶子节点直接存储行数据，所以主键索引查询只需要扫描主键索引树即可。
 
 而普通索引树叶子节点存储的是主键值，所以需要先扫描普通索引树拿到主键值，再回到主键索引树获取行数据，相较于主键索引查询多扫描了一棵索引树，这个过程称为 `回表`。
 
+------
+
+<br/><br/><br/>
 
 
 
 
-### 选择自增主键还是业务主键
+
+# 选择自增主键还是业务主键
 
 可从存储空间大小和性能两个方面来考虑：
 
@@ -233,6 +241,10 @@ Index Header 结构如下：
 ### 一些索引设计原则
 
 假设存在表 `u(id,id_card,name,age,gender)`，`id` 是主键，另有一个 `id_card` 索引
+
+
+
+
 
 #### 覆盖索引
 
@@ -368,11 +380,203 @@ select * from tuser where name like '张%' and age=10 and is_male=1;
 
 
 
+#### 不能走索引的反面示例
+
+以下示例用到的表结构如下：
+
+```sql
+CREATE TABLE `tradelog` (
+  `id` int(11) NOT NULL,
+  `tradeid` varchar(32) DEFAULT NULL,
+  `operator` int(11) DEFAULT NULL,
+  `t_modified` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `tradeid` (`tradeid`),
+  KEY `t_modified` (`t_modified`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+	
+CREATE TABLE `trade_detail` (
+  `id` int(11) NOT NULL,
+  `tradeid` varchar(32) DEFAULT NULL,
+  `trade_step` int(11) DEFAULT NULL, /*操作步骤*/
+  `step_info` varchar(32) DEFAULT NULL, /*步骤信息*/
+  PRIMARY KEY (`id`),
+  KEY `tradeid` (`tradeid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+insert into tradelog values(1, 'aaaaaaaa', 1000, now());
+insert into tradelog values(2, 'aaaaaaab', 1000, now());
+insert into tradelog values(3, 'aaaaaaac', 1000, now());
+
+insert into trade_detail values(1, 'aaaaaaaa', 1, 'add');
+insert into trade_detail values(2, 'aaaaaaaa', 2, 'update');
+insert into trade_detail values(3, 'aaaaaaaa', 3, 'commit');
+insert into trade_detail values(4, 'aaaaaaab', 1, 'add');
+insert into trade_detail values(5, 'aaaaaaab', 2, 'update');
+insert into trade_detail values(6, 'aaaaaaab', 3, 'update again');
+insert into trade_detail values(7, 'aaaaaaab', 4, 'commit');
+insert into trade_detail values(8, 'aaaaaaac', 1, 'add');
+insert into trade_detail values(9, 'aaaaaaac', 2, 'update');
+insert into trade_detail values(10, 'aaaaaaac', 3, 'update again');
+insert into trade_detail values(11, 'aaaaaaac', 4, 'commit');
+```
+
+
+
+1. **索引字段上有函数**
+
+   会破坏索引的有序性，因此优化器会决定放弃**走树搜索功能**
+
+   如：
+
+   ```sql
+   select count(*) from tradelog where month(t_modified)=7;
+   ```
+
+   `t_modified` 上虽然有索引，但由于用了 `month函数`，破坏了索引的有序性，导致没办法快速定位。
+
+   注意，**只是不使用树搜索功能，并不是放弃使用这个索引。**比如这个例子，虽然放弃了树搜索快速定位，但是对比主键索引树和 `t_modified索引树`后，发现后者更小，优化器最终还是会选择遍历 `t_modified索引树`，也即是全索引扫描。
+
+   `explain`如下：
+
+   ![image-20211208221822466](/blog/img/image-20211208221822466.png)
+
+   `key` 为 `t_modified`，说明用到了 `t_modified` 索引。`rows` 为 100335(测试数据有十万条)，说明是全索引扫描。
+
+   这个例子要使用快速定位的话，就得把索引上的函数去了:
+
+   ```sql
+   select count(*) from tradelog where
+       -> (t_modified >= '2016-7-1' and t_modified<'2016-8-1') or
+       -> (t_modified >= '2017-7-1' and t_modified<'2017-8-1') or 
+       -> (t_modified >= '2018-7-1' and t_modified<'2018-8-1');
+   ```
+
+   还有一些例子，我们可能会理所应当的以为优化器会优化，但是并没有，它还是一视同仁：
+
+   ```sql
+   select * from tradelog where id + 1 = 10000;
+   ```
+
+   虽然 `id+1` 并不会改变索引的有序性，但优化器并不会重写这类语句，一视同仁，必须得改成 `where id = 10000-1` 才行。
+
+<br/><br/><br/>
+
+   
+
+2. **隐式类型转换**
+
+   比如这条sql：
+
+   ```sql
+   select * from tradelog where tradeid=110717;
+   ```
+
+   `explain` 显示走的是全表扫描。原因是因为`tradeid` 是 varchar 类型，参数是 int 类型，明显会需要一个类型转换。
+
+   在MySQL中，**当字符串和数字做比较的时候，是由字符串转为数字**。如果记不住这个规则，可用 `select '10' > 9` 验证一下：结果为1，表示字符串转为了数字。
+
+   所以，上面的sql其实相当于：
+
+   ```sql
+   select * from tradelog where  CAST(tradid AS signed int) = 110717;
+   ```
+
+   那原因就很明显了，同样是因为索引列上用到了函数，导致不能快速定位。
+
+   <br/><br/><br/>
+
+   
+
+3. **隐式字符编码转换**
+
+   比如这句sql：
+
+   ```sql
+   select d.* from tradelog l, trade_detail d where d.tradeid=l.tradeid and l.id=2;
+   ```
+
+   ![image-20211208224214325](/blog/img/image-20211208224214325.png)
+
+   表 `l` 只扫描了一行，表示用了主键索引快速定位，快速定位到了 `id=2` 这一行。
+
+   表 `d` 走了全表扫描，且没用上 `tradeid` 索引。`key=NUll` 是表示走的主键索引遍历。
+
+   简单拆解一下这句sql的执行步骤：
+
+   1. 从表 `l` 中找到 `id=2` 这一行数据，从中取出 `tradeid`；
+   2. 从表 `d` 中找到 `tradeid=上一步查询到的值`的数据。
+
+   所以第2步就是：
+
+   ```sql
+   select * from trade_detail where tradeid = 上一步查询到的tradeid; 
+   ```
+
+   那为什么用不上 `tradeid` 索引呢？
+
+   细心点可发现两个表的字符编码不同，表`l` 是 `utf8mb4`，表`d` 是 `utf8`。`utf8mb4`是`utf8` 的超集，类型转换的时候都是子集转超集，所以上面的sql相当于：
+
+   ```sql
+   select * from trade_detail  where CONVERT(traideid USING utf8mb4) = 上一步查询到的tradeid; 
+   ```
+
+   所以，原因还是一样，索引字段上加了函数操作导致不能快速定位。
+
+   
+
+   作为对比验证，下面这句sql就能都用到索引快速定位：
+
+   ```sql
+   select l.operator from tradelog l , trade_detail d where d.tradeid=l.tradeid and d.id=4;
+   ```
+
+   还是和上面一样的分析步骤，只不过这次的连接顺序倒了过来。先找到表 `d` 中 `id=4` 这一行，从中取出 `tradeid`，再到表 `l` 中去匹配，第2步的sql就相当于：
+
+   ```sql
+   select operator from tradelog  where traideid = 上一步查询到的tradeid; 
+   ```
+
+   由于需要做字符编码转换，记住转换是子集转超集，所以又相当于：
+
+   ```sql
+   select operator from tradelog  where traideid =CONVERT(上一步查询到的tradeid); 
+   ```
+
+   区别就在于函数操作是加在值上面，所以可以先计算出来，然后索引就能快速定位到。
+
+   
+
+   这类问题解决办法有两个：
+
+   1. 最简单直接的就是把对应 `utf8` 编码的字段改为 `utf8mb4`，这样从根上避免了字符编码转换：
+
+      ```sql
+      alter table trade_detail modify tradeid varchar(32) CHARACTER SET utf8mb4 default null;
+      ```
+
+   2. 如果不能更改字符编码，那只能手动改下sql，手动来做这个编码转换，如上面的sql可改为：
+
+      ```sql
+      select d.* from tradelog l , trade_detail d where d.tradeid=CONVERT(l.tradeid USING utf8) and l.id=2; 
+      ```
+
+      这里手动把 `l.tradeid` 转为了 `utf8`，保证了编码一致，避免了编码转换。
+
+      **注意**：手动转换要确保不会丢失精度才行。
+
+<br/><br/><br/>
+
+------
+
+<br/><br/><br/>
 
 
 
 
-### 选择唯一索引还是普通索引？
+
+# 选择唯一索引还是普通索引？
 
 从读和写两方面来分析。
 
@@ -388,7 +592,7 @@ select * from tuser where name like '张%' and age=10 and is_male=1;
 
 
 
-#### change buffer
+### change buffer
 
 `change buffer` 是 `buffer pool` 的一部分，默认占比为 25(%)，最大占比可设为 50(%)。
 
@@ -400,7 +604,7 @@ show global variables like 'innodb_change_buffer_max_size';
 
 
 
-##### 作用
+#### 作用
 
 **当目标数据页不在内存中时，普通索引更新类操作的提速器。注意：只能作用于普通索引，不能作用于唯一索引**。
 
@@ -414,7 +618,7 @@ show global variables like 'innodb_change_buffer_max_size';
 
 
 
-##### 怎么保证数据被正确更新？
+#### 怎么保证数据被正确更新？
 
 上面说到，普通索引的更新写到 `change buffer` 中就结束了，那后续的查询是怎样的？
 
@@ -436,7 +640,7 @@ show global variables like 'innodb_change_buffer_max_size';
 
 
 
-##### 怎么保证更新不丢失？
+#### 怎么保证更新不丢失？
 
 如果写完 `change buffer` 后断电了或意外宕机了，重启后 `change buffer` 和数据会丢失吗？
 
@@ -444,7 +648,7 @@ show global variables like 'innodb_change_buffer_max_size';
 
 
 
-##### 适用场景
+#### 适用场景
 
 `change buffer` 简单来说就是把对普通索引的更新缓存了下来，然后在适当的时候进行 `merge`。所以在 `merge` 之前， `change buffer` 中记录的变更越多，收益就越大。
 
@@ -460,17 +664,21 @@ show global variables like 'innodb_change_buffering';
 
 
 
-##### 官方文档
+#### 官方文档
 
 [InnoDB Change Buffer](https://dev.mysql.com/doc/refman/8.0/en/faqs-innodb-change-buffer.html#faq-innodb-change-buffer-merging)
 
+------
+
+<br/><br/><br/>
 
 
 
 
 
 
-### 给字符串字段创建索引的几种方法
+
+# 给字符串字段创建索引的几种方法
 
 1. 直接创建完整索引，这样可能比较占空间
 
