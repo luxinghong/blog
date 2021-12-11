@@ -15,22 +15,8 @@ tags:
 # 解决的问题
 
 - 脏读：读到还没有提交事务的数据
-
 - 不可重复读：前后读取的记录**内容**不一致
-
-- 幻读：前后读取的记录**数量**不一致
-
-  > 示例：假设存在 person(id,name) 表，含2条数据：(1,"foo")、(2,"bar")
-  >
-  > |                            事务A                             |                          事务B                           |
-  > | :----------------------------------------------------------: | :------------------------------------------------------: |
-  > |           select count(1) from person 查到2条数据            |                                                          |
-  > |                                                              | insert into person(id,name) values(3,"zoo") 插入一条数据 |
-  > |                                                              |                       commit 提交                        |
-  > | insert into person(id,name) values(3,"zoo") 插入一条数据，**报错提示主键重复** |                                                          |
-  > | select * from person where id = 3，又查不到数据，但是又不能insert，就很奇怪，这种现象就被成为“**幻读**” |                                                          |
-  >
-  > 注：使用 select count(1) 并不能看到幻读现象
+- 幻读：使用 `next-key lock` 解决，详见 [MySQL学习笔记(八)-MySQL锁](https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/) 之 `next-key lock`
 
 ------
 
@@ -43,7 +29,7 @@ tags:
 - 读未提交
 - 读提交：可解决脏读问题
 - 可重复读：可解决不可重复读问题
-- 串行化：可解决幻读问题
+- 串行化
 
 ### 如何查询隔离级别？
 
@@ -51,7 +37,7 @@ tags:
 show global variables like '%isolation%';
 ```
 
-![image-20211031200530501](/home/head/.config/Typora/typora-user-images/image-20211031200530501.png)
+![image-20211031200530501](/blog/img/image-20211031200530501.png)
 
 默认级别为<u>**可重复读**</u>。
 
@@ -75,7 +61,7 @@ set global(session) transaction isolation level READ UNCOMMITTED ;
 
 简而言之，就是一行记录在数据库中存在多个版本，如下图所示：
 
-![image-20211103102036454](/home/head/.config/Typora/typora-user-images/image-20211103102036454.png)
+![image-20211103102036454](/blog/img/image-20211103102036454.png)
 
 V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，也就是undo日志。当需要上一个版本的数据时，会通过当前记录和undo日志推算出来。其实每行记录都会有一个我们看不到的隐藏字段trx_id。
 
@@ -230,7 +216,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
   这个实验也可以得出一个结论：**`update`  虽然都是当前读，但不一定都会执行更新操作**。
 
 
-  
+
   上面说过，`binlog_format` 会影响结果，将 `binlog_format` 改为 `row` 后，会发现 sessionA 的第二个 `select ` 读取到的都是 `(1,2)`。这是因为 **`row` 格式的 `binlog` 记录的是行数据的变更，需要拿到所有字段，拿到所有字段后就可以进行判断，发现值相同便不执行更新操作**，所以 sessionA 的第二个 `select ` 读取到的还是一致性视图中的 `(1,2)`。
 
 ------
@@ -247,7 +233,41 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
 
 - 会产生大量undo日志，会占用大量存储空间。在MySQL 5.5 及以前版本中，回滚日志是和数据字典一起放在ibdata文件中的，即使长事务最终被提交，回滚日志被清理，文件也不会变小。
 
+  <br/>
+
 - 还会占用锁，可能拖垮整个库。如之前对当前读的讨论，当前读会加锁来保证读取到的数据是最新且已被提交的数据，若长事务一直不提交，会导致锁一直被占用，存在很大隐患。
+
+  <br/>
+
+- 由于undo日志太多，导致需要快照读的查询变得很慢
+
+  如这个例子：
+
+  ```sql
+  select * from t where id=1;
+  select * from t where id=1 lock in share mode;
+  ```
+
+  按理说，第二句还需要加锁，应该是第一句更快点，而结果却是(慢查询日志)：
+
+  ![image-20211209102019414](/blog/img/image-20211209102019414.png)
+
+  ![image-20211209102038330](/blog/img/image-20211209102038330.png)
+
+  第一句查询需要800ms，第二句只需要0.2ms，为什么有这么大的差距？
+
+  其实它们的执行序列是这样的：
+
+  |                  sessionA                   |                     sessionB                     |
+  | :-----------------------------------------: | :----------------------------------------------: |
+  | start transaction with consistent snapshot; |                                                  |
+  |                                             | #执行100万次<br />update t set c=c+1 where id=1; |
+  |             select * from id=1;             |                                                  |
+  |   select * from id=1 lock in share mode;    |                                                  |
+
+  所以很明显，`sessionB`  产生了大量的回滚日志，而`select * from id=1 lock in share mode` 是当前读 ，读取的是最新版本，所以很快。而 `select * from id=1` 是快照读，需要从当前版本应用100万次回滚日志得到最初的版本，因此自然慢多了。
+
+  <br/>
 
 - 甚至可能会导致优化器选错索引。
 
@@ -293,7 +313,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
   explain select * from t where a between 10000 and 20000
   ```
 
-  ![image-20211124051211671](/home/head/.config/Typora/typora-user-images/image-20211124051211671.png)
+  ![image-20211124051211671](/blog/img/image-20211124051211671.png)
 
   
 
@@ -311,7 +331,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
 
   再查看执行计划，会发现没有选择使用索引 `a`，走的是全表扫描
 
-  ![image-20211124051702688](/home/head/.config/Typora/typora-user-images/image-20211124051702688.png)
+  ![image-20211124051702688](/blog/img/image-20211124051702688.png)
 
   为什么？
 
@@ -319,7 +339,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
 
   可通过 `show index from t` 来查看索引基数 cardinality (近似值，并不精确)，结果如下：
 
-  ![image-20211124160802373](/home/head/.config/Typora/typora-user-images/image-20211124160802373.png)
+  ![image-20211124160802373](/blog/img/image-20211124160802373.png)
 
   索引基数越大，说明区分度越高，选择它的概率就越大。图中可以看出主键和 `a` 的差距并不大，`a` 反而是最高的，不选择索引 `a` 肯定还有其他的原因。
 
@@ -329,7 +349,7 @@ V1、V2、V3 并不是物理真实存在的，真实存在的是U1、U2、U3，�
   explain select * from t force index(a) where a between 10000 and 20000;
   ```
 
-  ![image-20211124161809601](/home/head/.config/Typora/typora-user-images/image-20211124161809601.png)
+  ![image-20211124161809601](/blog/img/image-20211124161809601.png)
 
   rows为39940行。这个差距挺大的，那为什么优化器放着 39940行的 `a` 索引不用而要选择 105033行的全表扫描？
 

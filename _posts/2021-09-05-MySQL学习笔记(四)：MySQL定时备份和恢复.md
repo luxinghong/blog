@@ -131,29 +131,29 @@ fi
 
 ### 利用全量备份和binlog恢复数据
 
-1.  使用全量备份恢复临时库
+1. 使用全量备份恢复临时库
 
    ```bash
    mysql -uroot -p database < dump.sql
    ```
 
-2.  `flush logs` 重开一个binlog，一是避免操作当前binlog文件防止发生意外情况，二是缩小范围排除干扰，在之前的binlog中定位操作范围
+   <br/>
+
+2. `flush logs` 重开一个binlog，一是避免操作当前binlog文件防止发生意外情况，二是缩小范围排除干扰，在之前的binlog中定位操作范围
 
    ```bash
    flush logs
    ```
 
-3. 使用 `mysqlbinlog` 导出 sql，主要是设置 `--start-position` 和 `--stop-position`，不需要设置 `--base64-output=decode-rows`
+   <br/>
 
-   ```bash
-   mysqlbinlog --start-position "6276" --stop-position "6481" --database test binlog.000011 > binlog.sql
+3. 恢复
+
+   ```sql
+   mysqlbinlog --start-position "6276" --stop-position "6481"  binlog.000011 | mysql -uroot -p
    ```
 
-4. 使用导出的sql进行增量恢复
-
-   ```bash
-   mysql -uroot -p database < binlog.sql
-   ```
+   
 
    
 

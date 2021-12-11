@@ -420,34 +420,29 @@
 <h3 id="利用全量备份和binlog恢复数据">利用全量备份和binlog恢复数据</h3>
 
 <ol>
-  <li>使用全量备份恢复临时库</li>
-</ol>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre>   mysql <span class="nt">-uroot</span> <span class="nt">-p</span> database &lt; dump.sql
-</pre></td></tr></tbody></table></code></pre></div></div>
-
-<ol>
-  <li><code class="language-plaintext highlighter-rouge">flush logs</code> 重开一个binlog，一是避免操作当前binlog文件防止发生意外情况，二是缩小范围排除干扰，在之前的binlog中定位操作范围</li>
-</ol>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre>   flush logs
-</pre></td></tr></tbody></table></code></pre></div></div>
-
-<ol>
   <li>
-    <p>使用 <code class="language-plaintext highlighter-rouge">mysqlbinlog</code> 导出 sql，主要是设置 <code class="language-plaintext highlighter-rouge">--start-position</code> 和 <code class="language-plaintext highlighter-rouge">--stop-position</code>，不需要设置 <code class="language-plaintext highlighter-rouge">--base64-output=decode-rows</code></p>
+    <p>使用全量备份恢复临时库</p>
 
     <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre>mysqlbinlog <span class="nt">--start-position</span> <span class="s2">"6276"</span> <span class="nt">--stop-position</span> <span class="s2">"6481"</span> <span class="nt">--database</span> <span class="nb">test </span>binlog.000011 <span class="o">&gt;</span> binlog.sql
+</pre></td><td class="rouge-code"><pre>mysql <span class="nt">-uroot</span> <span class="nt">-p</span> database &lt; dump.sql
 </pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p><br /></p>
   </li>
   <li>
-    <p>使用导出的sql进行增量恢复</p>
+    <p><code class="language-plaintext highlighter-rouge">flush logs</code> 重开一个binlog，一是避免操作当前binlog文件防止发生意外情况，二是缩小范围排除干扰，在之前的binlog中定位操作范围</p>
 
     <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre>mysql <span class="nt">-uroot</span> <span class="nt">-p</span> database &lt; binlog.sql
+</pre></td><td class="rouge-code"><pre>flush logs
+</pre></td></tr></tbody></table></code></pre></div>    </div>
+
+    <p><br /></p>
+  </li>
+  <li>
+    <p>恢复</p>
+
+    <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">mysqlbinlog</span> <span class="c1">--start-position "6276" --stop-position "6481"  binlog.000011 | mysql -uroot -p</span>
 </pre></td></tr></tbody></table></code></pre></div>    </div>
   </li>
 </ol>

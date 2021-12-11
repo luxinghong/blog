@@ -28,6 +28,8 @@ tags:
 
 ```sql
 flush tables with read lock;
+或
+flush table t with read lock;
 ```
 
 解锁：
@@ -316,7 +318,9 @@ MySQL可以通过调整 **`lock_wait_timeout`** 值来控制这个超时时间�
 
 
 
-# 案例二
+
+
+# 案例二：删除大量数据
 
 现需要删除前10000行数据，有以下三种方式：
 
@@ -333,3 +337,484 @@ MySQL可以通过调整 **`lock_wait_timeout`** 值来控制这个超时时间�
 第三种：人为的制造了行锁冲突，而且大概率会重复删除，达不到删除前10000行数据的目的；
 
 第二种方式较好。
+
+------
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+
+
+# 案例三：查询长时间不返回
+
+主要思路：通过 `show processlist` 查看当前语句处于什么状态，一般是被锁住了。
+
+
+
+### 等MDL锁
+
+当有其他线程持有MDL写锁时，就会把查询堵住。
+
+比如以下场景：
+
+|     sessionA      |          sessionB           |
+| :---------------: | :-------------------------: |
+| lock table write; |                             |
+|                   | select * from t where id=1; |
+
+`show processlist` 表现如下：
+
+![image-20211209033333763](/blog/img/image-20211209033333763.png)
+
+可看到状态为 `Waiting for table metadata lock`。
+
+解决办法很简单，谁持有MDL写锁，就把它 kill 掉。
+
+但有时候从 `show processlist` 中不容易看出，可查询 `sys.schema_table_lock_waits`表，前提是 `performance_schema=on`，这个选项在MySQL8中默认开启，相对于不开启大约有 10% 的性能损失。
+
+![image-20211209033730549](/blog/img/image-20211209033730549.png)
+
+或者也可以通过 `sys.innodb_lock_waits` 查询：
+
+![image-20211209100307555](/blog/img/image-20211209100307555.png)
+
+需要注意 `kill query 4`  和  `kill 4` 的区别：
+
+- `kill query 4`  ：表示停止4号线程当前正在执行的语句。有时候这个命令可能没用，因为语句可能已经执行完了，但事务没提交导致锁不能释放。
+- `kill 4` ：直接断开连接，连接断开时会自动释放锁。
+
+
+
+
+
+
+
+### 等行锁
+
+这比较普遍：
+
+|            sessionA            |                    sessionB                    |
+| :----------------------------: | :--------------------------------------------: |
+|             begin;             |                                                |
+| update t set c=c+1 where id=1; |                                                |
+|                                | select * from t where id=1 lock in share mode; |
+
+由于 sessionA 事务未提交，导致 `id=1` 的写锁不能释放，而 sessionB 的查询需要读锁，所以会被堵住。
+
+------
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+# next-key lock
+
+目的：解决幻读问题
+
+什么是幻读？
+
+> The so-called phantom problem occurs within a transaction when the same query produces different sets of rows at different times. For example, if a [`SELECT`](https://dev.mysql.com/doc/refman/8.0/en/select.html) is executed twice, but returns a row the second time that was not returned the first time, the row is a “phantom” row.
+
+即一个事务在前后两次查询同一个范围的时候，后一次查询看到了前一次查询没有看到的行。
+
+**幻读专指新插入的行。**
+
+一个幻读示例：
+
+假设存在 person(id,name) 表，含2条数据：(1,"foo")、(2,"bar")
+
+|                            事务A                             |                          事务B                           |
+| :----------------------------------------------------------: | :------------------------------------------------------: |
+|           select count(1) from person 查到2条数据            |                                                          |
+|                                                              | insert into person(id,name) values(3,"zoo") 插入一条数据 |
+|                                                              |                       commit 提交                        |
+| insert into person(id,name) values(3,"zoo") 插入一条数据，**报错提示主键重复** |                                                          |
+| select * from person where id = 3，又查不到数据，但是又不能insert，就很奇怪 |                                                          |
+
+解决办法：使用 `for update` 加 `next-key lock`。
+
+
+
+`next-key lock` 定义：行锁 +  间隙锁 ，前开后闭区间
+
+> To prevent phantoms, `InnoDB` uses an algorithm called next-key locking that combines index-row locking with gap locking. `InnoDB` performs row-level locking in such a way that **when it searches or scans a table index**, it sets shared or exclusive locks on the index records it encounters. Thus, the row-level locks are actually index-record locks. **In addition, a next-key lock on an index record also affects the “gap” before the index record. That is, a next-key lock is an index-record lock plus a gap lock on the gap <u>preceding the index record</u>.** If one session has a shared or exclusive lock on record `R` in an index, another session cannot insert a new index record in the gap immediately before `R` in the index order
+
+<br/><br/>
+
+
+
+
+
+### 间隙锁
+
+间隙锁即用来锁住行之间的间隙，换句话说，可以锁住 “**不存在**” 的行，也就是 `insert` 操作。
+
+间隙锁之间并不冲突，与间隙锁冲突的是 `insert` 这个操作。两个会话可以同时执行 `select * from t where c=7 for update`，说明两个会话都获取到了同一个间隙锁，但如果此时有 `insert` 操作就会被阻塞。
+
+> 注： `insert` 操作并不单指 sql 中的 insert，而是广义上的索引树上的所有插入行为。
+
+------
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+
+
+# RC 和 RR 在锁问题上的区别
+
+
+
+RC可以禁用间隙锁，**RC下只有行锁**。
+
+**而且RC级别下在语句执行完毕后，就会把“不满足条件”的行锁释放，不需要等到事务提交。RR级别下所有的加锁资源都是在事务提交或回滚时统一释放。**
+
+比如表 t(id,c)，id是主键，c 是普通字段。
+
+将隔离级别设为RC，执行 `select * from t where c = 5 for update`，由于需要扫描主键索引树，会给所有扫描到的行都加上行锁。但是在这句语句执行完毕后，无需事务提交便会把所有 `c!=5` 的行锁都释放，此时其他事务便可对所有 `c!=5` 的行进行更新操作。
+
+同样的实验如果将隔离级别设为RR便会发生阻塞，因为RR级别下所有的锁都是在事务提交时才会释放。
+
+所以 RC 级别下，锁的范围更小，锁的时间更短，在**业务允许的情况下**隔离级别设为RC可以提高并发度。
+
+
+
+当设为RC后，Innodb 会强制要求将 `binlog_format` 设为 `ROW`，这是为了保证数据和binlog日志的一致。以综合示例中的表和数据举例：
+
+|                           sessionA                           |                           sessionB                           |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+| begin;<br />select * from t where d=5 for update;<br />update t set d=100 where d=5; |                                                              |
+|                                                              | update t set d=5 where id=0;<br />update t set c=5 where id=0; |
+|                           commit;                            |                                                              |
+
+在RC级别下，语句执行完就会释放所有 `d!=5` 的行锁，而且没有间隙锁，因此 sessionB 不会阻塞。
+
+执行完毕后数据变为：(id=0, c=5, d=5)、(id=5, c=5, d=100)。
+
+如果 binlog_format 为 statement，那么在 binlog 中会产生类似如下日志：
+
+1. update t set d=5 where id=0;
+2. update t set c=5 where id=0;
+3. update t set d=100 where d=5;  #**事务提交时才会写入日志，所以它出现在了最后**
+
+使用该日志恢复出来的数据变成了：(id=0, c=5, d=100)、(id=5, c=5, d=100)。可以发现，恢复出来的数据和数据库里的数据不一致，这肯定是不行的。
+
+
+
+改为 row 以后，binlog中的日志类似如下，可采用 `mysqlbinlog --base64-output=decode-rows -vv` 查看：
+
+```sql
+### UPDATE `test`.`t`
+### WHERE
+###   @1=0
+###   @2=0
+###   @3=0
+### SET
+###   @1=0
+###   @2=0
+###   @3=5
+```
+
+
+
+```sql
+### UPDATE `test`.`t`
+### WHERE
+###   @1=0
+###   @2=0
+###   @3=5
+### SET
+###   @1=0
+###   @2=5
+###   @3=5
+```
+
+
+
+```sql
+### UPDATE `test`.`t`
+### WHERE
+###   @1=5
+###   @2=5
+###   @3=5
+### SET
+###   @1=5
+###   @2=5
+###   @3=100
+```
+
+可看到日志恢复出来的数据和数据库里的数据是一致的。
+
+事实上，`statement 的 binlog` 由于是基于 sql 语句的日志，在保持数据和日志一致性上会有很多问题，比如 `now()` 函数。因此推荐使用 `row 的binlog`，这也是 MySQL8 的默认配置。
+
+------
+
+<br/><br/><br/><br/>
+
+
+
+# 综合案例：加锁规则
+
+以下规则适用于 5.x 系列 ≤ 5.7.24， 8.x系列 ≤ 8.0.13。其他版本需实践验证，可能会有微调。
+
+**且都是在可重复读默认级别下**，这个前提非常重要，其他级别如读提交有不同的处理。
+
+
+
+**2个原则，2个优化，1个bug**：
+
+- 原则一：加锁的基本单位是 `next-key lock`，前开后闭区间
+- 原则二：查找过程中访问到的才会加锁
+
+- 优化一：唯一索引等值查询， `next-key lock` 会退化成行锁
+
+- 优化二：索引等值查询，向右遍历且最后一个值不满足等值条件时， `next-key lock` 退化成间隙锁
+
+  > 在 8.0.26 版本中，唯一索引的范围查询，向右遍历且最后一个值不满足条件时， `next-key lock` 也会退化成间隙锁。
+  >
+  > 具体从哪个版本开始修复的，尚未确定。
+
+- 一个bug：唯一索引上的范围查询会访问到第一个不满足条件的值为止
+
+  > 在 8.0.26 版本中已修复，具体从哪个版本开始修复的，尚未确定。
+
+
+
+以下示例基于：
+
+```sql
+CREATE TABLE `t` (
+  `id` int(11) NOT NULL,
+  `c` int(11) DEFAULT NULL,
+  `d` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `c` (`c`)
+) ENGINE=InnoDB;
+
+insert into t values(0,0,0),(5,5,5),(10,10,10),(15,15,15),(20,20,20),(25,25,25);
+```
+
+
+
+### 示例一：等值查询间隙锁
+
+|                  sessionA                  |          sessionB           |            sessionC             |
+| :----------------------------------------: | :-------------------------: | :-----------------------------: |
+| begin;<br />update t set d=d+1 where id=7; |                             |                                 |
+|                                            | insert into t values(8,8,8) |                                 |
+|                                            |                             | update t set d=d+1 where id=10; |
+
+分析：
+
+1. 根据原则二：访问到的都加锁。id 是主键索引，能快速定位到 `id=5` 这条记录，向右遍历发现 `id=10≠7`，遍历结束；
+2. 根据原则一：加锁的基本单位是 `next-key lock`。所以 sessionA 的加锁范围是 `(5,10]`；
+3. `id=8` 位于加锁范围内，所以 sessionB 会阻塞；
+4. 根据优化二：索引等值查询，向右遍历且最后一个值不满足等值条件时(这里就是10)， `next-key lock` 退化成间隙锁。所以 `(5,10]` 会退化成 `(5,10)`，因此 sessionC 不会被阻塞。
+
+这里优化一不适用，因为不存在 `id=7` 这行记录，因此没有办法退化成行锁。
+
+<br/><br/><br/>
+
+
+
+
+
+### 示例二：非唯一索引等值锁
+
+|                          sessionA                          |            sessionB            |          sessionC           |
+| :--------------------------------------------------------: | :----------------------------: | :-------------------------: |
+| begin;<br />select id from t where c=5 lock in share mode; |                                |                             |
+|                                                            | update t set d=d+1 where id=5; |                             |
+|                                                            |                                | insert into t values(7,7,7) |
+
+分析：
+
+1. 原则一得出 sessionA 的加锁范围是 `(0,5]` (行锁 + 行之前的间隙锁);
+2. 优化二向右遍历直到 c=10停止，先是 next-key lock `(5,10]`，然后退化成间隙锁 `(5,10)`；
+3. 所以 sessionA 的加锁范围是 `(0,5]`  加上  `(5,10)`；
+4. 因此 sessionC 会阻塞；
+5. 那为什么 sessionB 不会阻塞？按理说 sessionB 需要 id=5 这一行的行锁，同样应该被阻塞才对。 原因在于 sessionA 的查询用的是**覆盖索引**，不需要回表。而根据原则二：访问到的才加锁。所以锁只会加在 c 索引树上，而 sessionB 的条件是 `id=5`，走的是主键索引，因此不会被阻塞。
+
+但如果 sessionA 换成 `for update`  就不一样了， `for update`  会同时给主键索引上满足条件的行上锁，而 `lock in share mode` 如果有覆盖索引的情况下只会给覆盖索引上锁。
+
+所以，如果使用的是  `lock in share mode` 加锁的话，为了避免数据被更新，需要绕过覆盖索引的优化：在查询字段中加入索引中不存在的字段，让查询回表，如改成 `select d from t where c=5 lock in share mode;` 。
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+### 示例三：主键索引范围锁
+
+|                           sessionA                           |                           sessionB                           |            sessionC             |
+| :----------------------------------------------------------: | :----------------------------------------------------------: | :-----------------------------: |
+| begin;<br />select * from t where id>=10 and id<11 for update; |                                                              |                                 |
+|                                                              | insert into t values(8,8,8);<br />insert into t values(13,13,13); |                                 |
+|                                                              |                                                              | update t set d=d+1 where id=15; |
+
+sessionA 的查询在逻辑上和 `select * from t where id=10` 是一致的，但是加锁范围却有很大区别。
+
+分析：
+
+1. 初步分析，sessionA 的加锁范围是 `(5,10]` +  `(10,15]`;
+
+   > `id>=10` 是等值查询，会先定位到 `id=10` 这行记录，会先加一个 next-key lock  `(5,10]` ；
+   >
+   > `id<11` 是范围查询，会向右遍历到 `id=15` 停止，发现不满足条件，于是再加一个 next-key lock (10,15]。
+
+2. 根据优化一：唯一索引等值查询会退化成行锁。所以 `(5,10]` 会退化成 `id=10 的行锁`；
+
+3. 综上，sessionA 的加锁范围是  `id=10 的行锁` +   `(10,15]`；
+
+4. 因此，sessionB 的第一条语句可正常执行，第二条语句会被阻塞；
+
+5. sessionC 的语句也会被阻塞。
+
+   > 以上示例是在8.x系列 ≤ 8.0.13中验证的。
+   >
+   > **在 8.0.26 中，`(10,15]` 退化成了间隙锁 `(10,15)`，这条语句不会被阻塞。**
+   >
+   > **估计是调整了优化二：不光是普通索引的等值查询，<u>唯一索引的范围查询</u>也是一样，向右遍历到不满足条件的第一个值时， `next-key lock` 也会退化成间隙锁。具体是哪个版本调整的，尚未确定。见示例四。**
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+### 示例四：非唯一索引范围锁
+
+|                           sessionA                           |           sessionB           |            sessionC            |
+| :----------------------------------------------------------: | :--------------------------: | :----------------------------: |
+| begin;<br />select * from t where c>=10 and c<11 for update; |                              |                                |
+|                                                              | insert into t values(8,8,8); |                                |
+|                                                              |                              | update t set d=d+1 where c=15; |
+
+将示例三中 where 字段由 id 改为 c，分析如下：
+
+1. 同示例三，初步分析，sessionA 加锁范围是 `(5,10]` + `(10,15]`；
+2. 区别在于优化一不适用了，因为不是唯一索引，所以`(5,10]` 不能退化成行锁；
+3. 所以 sessionB 会被阻塞；
+4. 由于 c 是普通索引，所以 c 上的范围查询不满足优化二，不会退化成间隙锁。sessionC 会被锁住。
+
+<br/><br/><br/>
+
+
+
+
+
+### 示例五：唯一索引范围锁bug
+
+|                           sessionA                           |            sessionB             |            sessionC             |
+| :----------------------------------------------------------: | :-----------------------------: | :-----------------------------: |
+| begin;<br />select * from t where id>10 and id<=15 for update; |                                 |                                 |
+|                                                              | update t set d=d+1 where id=20; |                                 |
+|                                                              |                                 | insert into t values(16,16,16); |
+
+> 基于8.x系列 ≤ 8.0.13。在 8.0.26 版本中已修复，具体从哪个版本开始修复的，尚未确定。
+
+
+
+1. 初步分析，sessionA 加锁范围是 `(10,15]`(直接就定位到了 id=15 这一行)；
+2.  id 是主键索引，按理说扫描到 `id=15` 时就可以结束了，因为 id 是唯一的且在主键索引中是递增的，再往后遍历都是 >15 的，不可能满足 `id<=15`。但事实上还会继续往后扫描到第一个不满足条件的值为止，即 `id=20`，所以加锁范围还会加上 `(15,20]`。结果就是导致 sessionB 和 sessionC 都会被锁住。
+
+<br/><br/><br/>
+
+
+
+
+
+### 示例六：非唯一索引上存在“等值”
+
+先插入一条记录：
+
+```sql
+insert into t values(30,10,30);
+```
+
+然后执行以下序列：
+
+|               sessionA                |            sessionB             |            sessionC            |
+| :-----------------------------------: | :-----------------------------: | :----------------------------: |
+| begin;<br />delete from t where c=10; |                                 |                                |
+|                                       | insert into t values(12,12,12); |                                |
+|                                       |                                 | update t set d=d+1 where c=15; |
+
+1. delete 和 for update 加锁的逻辑是类似的。sessionA 的加锁范围是 `(5,10]` + `(10,15)`；
+
+   > **注意**，现在 `c=10` 的记录在 c 索引树上有两条：(c=10,id=10) 和 (c=10,id=30) ，**在这两条记录中间还有一个间隙锁**。这个间隙锁只存在于 c 索引树上，主键索引上只有行锁，见第3点。
+   >
+   > 由于这个间隙锁只在 c 索引树上，所以它实际上没有任何作用，因为在两个10之间不存在任何int值，知道这个间隙锁的存在就行。
+
+2.  sessionB 会阻塞，sessionC 正常执行。
+
+3. **写锁会回表给主键索引加锁**，因此在主键索引树还有 `id=10` 和 `id=30` 两个行锁。
+
+------
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+### 示例七：limit加锁
+
+|                   sessionA                    |            sessionB             |
+| :-------------------------------------------: | :-----------------------------: |
+| begin;<br />delete from t where c=10 limit 2; |                                 |
+|                                               | insert into t values(12,12,12); |
+
+示例六的对照示例，按照示例六的分析加锁范围为  `(5,10]` + `(10,15)` ，但是由于加了 `limit 2`，因此在扫描到两行记录，(c=10,id=10) 和 (c=10,id=30) 后便结束了，因此加锁范围变为了 `(5,10]`，所以 sessionB 不会被阻塞。
+
+**这个示例也说明了删除数据时尽量使用limit，不仅可以控制删除的条数更安全，而且还可以减小锁的范围。**
+
+<br/><br/><br/>
+
+
+
+
+
+
+
+### 示例八：死锁
+
+|                          sessionA                          |                           sessionB                           |
+| :--------------------------------------------------------: | :----------------------------------------------------------: |
+| begin;<br />select * from t where c=10 lock in share mode; |                                                              |
+|                                                            |                update t set d=d+1 where c=10;                |
+|                insert into t values(8,8,8);                |                                                              |
+|                                                            | Error 40001 1213  Deadlock found when trying to get lock; try restarting transaction |
+
+1.  sessionA 的第一条语句的加锁范围是 `(5,10]` + `(10,15)`；
+
+2. 毫无疑问sessionB 会被阻塞，但按理说 sessionB 此时应该还没有获取到任何锁，那么 sessionA 的第二条语句应该能执行才对，但是立马报了一个死锁错误？
+
+   **实际上，`next-key lock` 的加锁分为两个阶段：先加间隙锁，再加行锁。**
+
+   sessionB 需要申请 `(5,10]`  的next-key lock，**会先加 `(5,10)` 的间隙锁，<u>加锁成功</u>；然后再加 `c=10` 的行锁，<u>这时候才进入了锁等待</u>。**
+
+   然后 sessionA 第二条语句被 sessionB `(5,10)`  的间隙锁锁住()，而 sessionB 又在等待 sessionA 释放 `c=10` 的行锁，于是出现了死锁。
+
+**所以，在分析加锁规则的时候可以用 next-key lock 来分析，但是要知道具体执行的时候是先加间隙锁，再加行锁。**
+
