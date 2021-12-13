@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Mon, 13 Dec 2021 13:27:31 +0800</pubDate>
-    <lastBuildDate>Mon, 13 Dec 2021 13:27:31 +0800</lastBuildDate>
+    <pubDate>Mon, 13 Dec 2021 16:45:32 +0800</pubDate>
+    <lastBuildDate>Mon, 13 Dec 2021 16:45:32 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -3681,18 +3681,18 @@
     
       <item>
         <title>MySQL学习笔记(三)：redo log 和 binlog</title>
-        <description>&lt;h3 id=&quot;binlog&quot;&gt;binlog&lt;/h3&gt;
+        <description>&lt;h1 id=&quot;binlog&quot;&gt;binlog&lt;/h1&gt;
 
 &lt;p&gt;MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，可理解为sql语句。&lt;/p&gt;
 
-&lt;h4 id=&quot;主要作用&quot;&gt;主要作用：&lt;/h4&gt;
+&lt;h3 id=&quot;主要作用&quot;&gt;主要作用：&lt;/h3&gt;
 
 &lt;ol&gt;
   &lt;li&gt;如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。&lt;/li&gt;
   &lt;li&gt;常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用的数据来源通道。&lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;h4 id=&quot;如何查看&quot;&gt;如何查看？&lt;/h4&gt;
+&lt;h3 id=&quot;如何查看&quot;&gt;如何查看？&lt;/h3&gt;
 
 &lt;ol&gt;
   &lt;li&gt;
@@ -3765,7 +3765,7 @@
   &lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;h4 id=&quot;binlog的写入时机&quot;&gt;binlog的写入时机&lt;/h4&gt;
+&lt;h3 id=&quot;binlog的写入时机&quot;&gt;binlog的写入时机&lt;/h3&gt;
 
 &lt;p&gt;binlog会首先写到cache里，cache满了就会暂存到磁盘上，这个参数大小由 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_cache_size&lt;/code&gt; 控制，默认是32K。&lt;strong&gt;注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。&lt;/strong&gt;&lt;/p&gt;
 
@@ -3783,7 +3783,11 @@
 
 &lt;p&gt;设为N时，如果主机异常重启会丢失最近N个事务的数据，但是可以提升性能，需评估使用。&lt;/p&gt;
 
-&lt;h3 id=&quot;redo-log&quot;&gt;redo log&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;redo-log&quot;&gt;redo log&lt;/h1&gt;
 
 &lt;p&gt;Innodb 特有的日志，存储的是物理日志，即数据页上的改动。&lt;/p&gt;
 
@@ -3795,21 +3799,21 @@
 
 &lt;p&gt;主要作用：提供事务能力，保证 crash-safe&lt;/p&gt;
 
-&lt;h4 id=&quot;redo-log-格式&quot;&gt;redo log 格式&lt;/h4&gt;
+&lt;h3 id=&quot;redo-log-格式&quot;&gt;redo log 格式&lt;/h3&gt;
 
 &lt;p&gt;采用循环写的方式，有2个游标：checkpoint、writepos。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;writepos&lt;/code&gt; 表示当前写的位置，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;checkpoint&lt;/code&gt; 表示要擦除的位置，都是边写边往后推移。&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;/home/head/图片/16a7950217b3f0f4ed02db5db59562a7.webp&quot; alt=&quot;16a7950217b3f0f4ed02db5db59562a7&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/blog/img/16a7950217b3f0f4ed02db5db59562a7.webp&quot; alt=&quot;16a7950217b3f0f4ed02db5db59562a7&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;绿色的部分表示空闲的空间。&lt;/p&gt;
 
-&lt;h4 id=&quot;查看-redo-log-相关设置&quot;&gt;查看 redo log 相关设置&lt;/h4&gt;
+&lt;h3 id=&quot;查看-redo-log-相关设置&quot;&gt;查看 redo log 相关设置&lt;/h3&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variables&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;%innodb_log%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;&lt;img src=&quot;/home/head/图片/Screenshot_20211028_111202.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/blog/img/Screenshot_20211028_111202.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_log_buffer_size&lt;/code&gt;：redo log 缓冲区大小，默认16M&lt;/p&gt;
 
@@ -3817,13 +3821,13 @@
 
 &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_log_files_in_group&lt;/code&gt;：每组有多少个redo log 文件，默认2个：ib_logfile0、ib_logfile1&lt;/p&gt;
 
-&lt;h4 id=&quot;redo-log-一般设多大&quot;&gt;redo log 一般设多大？&lt;/h4&gt;
+&lt;h3 id=&quot;redo-log-一般设多大&quot;&gt;redo log 一般设多大？&lt;/h3&gt;
 
 &lt;p&gt;redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo log，发挥不出 WAL 的作用。&lt;/p&gt;
 
 &lt;p&gt;所以，磁盘空间不是很紧张的话，设大点吧，比如设置为4个文件，每个文件1G。&lt;/p&gt;
 
-&lt;h4 id=&quot;redo-log-的写入时机&quot;&gt;redo log 的写入时机？&lt;/h4&gt;
+&lt;h3 id=&quot;redo-log-的写入时机&quot;&gt;redo log 的写入时机？&lt;/h3&gt;
 
 &lt;p&gt;同样，redo log 也分为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;write&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fsync&lt;/code&gt;，由参数 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commit&lt;/code&gt;控制，默认值为1：&lt;/p&gt;
 
@@ -3844,17 +3848,21 @@
 
 &lt;p&gt;再次强调，写完内存和rodo log、binlog就算事务提交成功了。所以结合两阶段提交，&lt;strong&gt;当默认值为1时&lt;/strong&gt;，在redo log的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;prepare&lt;/code&gt; 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;commit&lt;/code&gt;（&lt;strong&gt;但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性&lt;/strong&gt;）&lt;/p&gt;
 
-&lt;h4 id=&quot;最终数据落盘的过程是&quot;&gt;最终数据落盘的过程是？&lt;/h4&gt;
+&lt;h3 id=&quot;最终数据落盘的过程是&quot;&gt;最终数据落盘的过程是？&lt;/h3&gt;
 
 &lt;p&gt;1、正常运行过程中，MySQL更新完内存后，内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程甚至和redo log 毫无关系。（当然，猜测还会向前推进redo log中 checkpoint的位置）&lt;/p&gt;
 
 &lt;p&gt;2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将redo log中的数据更新到内存中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。&lt;/p&gt;
 
-&lt;h3 id=&quot;什么是mysql中的两阶段提交&quot;&gt;什么是MySQL中的两阶段提交？&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;两阶段提交&quot;&gt;两阶段提交&lt;/h1&gt;
 
 &lt;p&gt;一个事务当写完内存和redo log、binlog以后就算提交成功了，并不需要写真正的数据文件。为了保证2个日志文件都写入成功，采用了两阶段提交的方法，如下图所示&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;/home/head/图片/两阶段提交.svg&quot; alt=&quot;两阶段提交&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/blog/img/两阶段提交.svg&quot; alt=&quot;两阶段提交&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;两阶段提交并不是MySQL特有的，它是一种分布式事务的策略。其本质说来也很通俗，就是一个人的时候好办，多个人的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了才能继续下一步。&lt;/p&gt;
 
@@ -3880,7 +3888,7 @@
 
 &lt;h4 id=&quot;如何知道binlog是否完整&quot;&gt;如何知道binlog是否完整？&lt;/h4&gt;
 
-&lt;p&gt;完整的binlog最后会有个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;XID EVENT&lt;/code&gt; 和  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;COMMIT&lt;/code&gt;&lt;img src=&quot;/home/head/.config/Typora/typora-user-images/image-20211029160948653.png&quot; alt=&quot;image-20211029160948653&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;完整的binlog最后会有个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;XID EVENT&lt;/code&gt; 和  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;COMMIT&lt;/code&gt;&lt;img src=&quot;/blog/img/image-20211029160948653.png&quot; alt=&quot;image-20211029160948653&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;此外，还提供了一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog-checksum&lt;/code&gt; 参数用于校验binlog的完整性。&lt;/p&gt;
 
@@ -3898,16 +3906,24 @@
 
 &lt;p&gt;2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。简而言之，binlog粒度太大。&lt;/p&gt;
 
-&lt;h3 id=&quot;为什么要写2个日志直接更新数据文件不是更快吗&quot;&gt;为什么要写2个日志，直接更新数据文件不是更快吗？&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;为什么要写2个日志直接更新数据文件不是更快吗&quot;&gt;为什么要写2个日志，直接更新数据文件不是更快吗？&lt;/h1&gt;
 
 &lt;p&gt;这种思路叫做 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;write ahead log&lt;/code&gt;，简称 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;WAL&lt;/code&gt;，是数据库的通用技术，主要基于以下两点：&lt;/p&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;顺序写快于随机写。写日志文件都是顺序写，而直接更新数据文件大多数都是随机写，在机械硬盘时代这个速度差异非常大。&lt;/li&gt;
-  &lt;li&gt;虽然是写2个日志，看似意味着一次事务提交要经历两次刷盘，实际上利用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;组提交&lt;/code&gt; 的策略，fsync 的次数会大大减少，而write 到 操作系统page cache 基本上可以认为和写到内存差不多，可认为只有 fsync 会占用磁盘的 IOPS。&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;顺序写快于随机写。写日志文件都是顺序写，而直接更新数据文件大多数都是随机写，在机械硬盘时代这个速度差异非常大。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;虽然是写2个日志，看似意味着一次事务提交要经历两次刷盘，实际上利用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;组提交&lt;/code&gt; 的策略，fsync 的次数会大大减少，而write 到 操作系统page cache 基本上可以认为和写到内存差不多，可认为只有 fsync 会占用磁盘的 IOPS。&lt;/p&gt;
+  &lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;h4 id=&quot;说下组提交&quot;&gt;说下组提交&lt;/h4&gt;
+&lt;h3 id=&quot;组提交&quot;&gt;组提交&lt;/h3&gt;
 
 &lt;p&gt;在双1配置下，即&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commit&lt;/code&gt;和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync_binlog&lt;/code&gt; 都为1，也就是默认情况下，redo log 会在 prepare 阶段 fsync。结合两阶段提交，写binlog其实也分为两步：write 和 fsync。MySQL做了一个优化：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;拖时间&lt;/code&gt;。即将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前。这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。&lt;/p&gt;
 
@@ -3919,7 +3935,11 @@
 
 &lt;p&gt;第一个参数为0时，第二个参数无效。&lt;/p&gt;
 
-&lt;h3 id=&quot;如何提高mysql的io性能&quot;&gt;如何提高MySQL的IO性能？&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;如何提高mysql的io性能&quot;&gt;如何提高MySQL的IO性能？&lt;/h1&gt;
 
 &lt;p&gt;从提高写redo log 和 binlog 的性能入手。&lt;/p&gt;
 
@@ -3938,7 +3958,11 @@
   &lt;li&gt;调整 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_sync_delay&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_no_delay_count&lt;/code&gt;，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;sql语句突然变慢了&quot;&gt;sql语句突然变慢了？&lt;/h3&gt;
+&lt;hr /&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;sql语句突然变慢了&quot;&gt;sql语句突然变慢了？&lt;/h1&gt;
 
 &lt;p&gt;有时会遇到这种情况，一条sql平时执行都很快，但有时候不知道为什么突然就变得很慢，而且这个情况还是随机的、持续时间也很短，很难复现。&lt;/p&gt;
 
@@ -4084,10 +4108,14 @@
 &lt;h3 id=&quot;子程序级&quot;&gt;子程序级&lt;/h3&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;procs_priv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;procs_priv&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;h3 id=&quot;也可通过-show-grants-for-user-查询授权语句&quot;&gt;也可通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show grants for user&lt;/code&gt; 查询授权语句&lt;/h3&gt;
+&lt;h3 id=&quot;查询用户拥有权限&quot;&gt;查询用户拥有权限&lt;/h3&gt;
+
+&lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;grants&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;localhost&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;h3 id=&quot;示例&quot;&gt;示例&lt;/h3&gt;
 
@@ -4111,30 +4139,26 @@
 18
 19
 20
-21
-22
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;err&quot;&gt;创建用户：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;identified&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt;  &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;创建用户&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;create&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;identified&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;by&lt;/span&gt;  &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;授予全局级查询权限&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
-&lt;span class=&quot;err&quot;&gt;授予全局级查询权限：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;授予数据库级查询权限&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;授予表级查询权限&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
-&lt;span class=&quot;err&quot;&gt;授予数据库级查询权限：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;授予列级权限（只能查询&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;person&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;表的&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;字段）&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;person&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;撤销权限&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;revoke&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
-&lt;span class=&quot;err&quot;&gt;授予表级查询权限：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-
-&lt;span class=&quot;err&quot;&gt;授予表级查询权限：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;mysql&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;user&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-
-&lt;span class=&quot;err&quot;&gt;授予列级权限（只能查询&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;person&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;表的&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;字段）：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;grant&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;person&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;to&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-
-&lt;span class=&quot;err&quot;&gt;撤销权限：&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;revoke&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;on&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;test&apos;&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;@&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&apos;%&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-
-
-&lt;span class=&quot;err&quot;&gt;刷新权限：&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;flush&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;privileges&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;#&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;刷新权限&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;flush&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;privileges&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 </description>

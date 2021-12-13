@@ -283,18 +283,18 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h3 id="binlog">binlog</h3>
+				<h1 id="binlog">binlog</h1>
 
 <p>MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，可理解为sql语句。</p>
 
-<h4 id="主要作用">主要作用：</h4>
+<h3 id="主要作用">主要作用：</h3>
 
 <ol>
   <li>如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。</li>
   <li>常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用的数据来源通道。</li>
 </ol>
 
-<h4 id="如何查看">如何查看？</h4>
+<h3 id="如何查看">如何查看？</h3>
 
 <ol>
   <li>
@@ -367,7 +367,7 @@
   </li>
 </ol>
 
-<h4 id="binlog的写入时机">binlog的写入时机</h4>
+<h3 id="binlog的写入时机">binlog的写入时机</h3>
 
 <p>binlog会首先写到cache里，cache满了就会暂存到磁盘上，这个参数大小由 <code class="language-plaintext highlighter-rouge">binlog_cache_size</code> 控制，默认是32K。<strong>注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。</strong></p>
 
@@ -385,7 +385,11 @@
 
 <p>设为N时，如果主机异常重启会丢失最近N个事务的数据，但是可以提升性能，需评估使用。</p>
 
-<h3 id="redo-log">redo log</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="redo-log">redo log</h1>
 
 <p>Innodb 特有的日志，存储的是物理日志，即数据页上的改动。</p>
 
@@ -397,21 +401,21 @@
 
 <p>主要作用：提供事务能力，保证 crash-safe</p>
 
-<h4 id="redo-log-格式">redo log 格式</h4>
+<h3 id="redo-log-格式">redo log 格式</h3>
 
 <p>采用循环写的方式，有2个游标：checkpoint、writepos。<code class="language-plaintext highlighter-rouge">writepos</code> 表示当前写的位置，<code class="language-plaintext highlighter-rouge">checkpoint</code> 表示要擦除的位置，都是边写边往后推移。</p>
 
-<p><img src="/home/head/图片/16a7950217b3f0f4ed02db5db59562a7.webp" alt="16a7950217b3f0f4ed02db5db59562a7" /></p>
+<p><img src="/blog/img/16a7950217b3f0f4ed02db5db59562a7.webp" alt="16a7950217b3f0f4ed02db5db59562a7" /></p>
 
 <p>绿色的部分表示空闲的空间。</p>
 
-<h4 id="查看-redo-log-相关设置">查看 redo log 相关设置</h4>
+<h3 id="查看-redo-log-相关设置">查看 redo log 相关设置</h3>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 </pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="k">global</span> <span class="n">variables</span> <span class="k">like</span> <span class="s1">'%innodb_log%'</span><span class="p">;</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p><img src="/home/head/图片/Screenshot_20211028_111202.png" alt="" /></p>
+<p><img src="/blog/img/Screenshot_20211028_111202.png" alt="" /></p>
 
 <p><code class="language-plaintext highlighter-rouge">innodb_log_buffer_size</code>：redo log 缓冲区大小，默认16M</p>
 
@@ -419,13 +423,13 @@
 
 <p><code class="language-plaintext highlighter-rouge">innodb_log_files_in_group</code>：每组有多少个redo log 文件，默认2个：ib_logfile0、ib_logfile1</p>
 
-<h4 id="redo-log-一般设多大">redo log 一般设多大？</h4>
+<h3 id="redo-log-一般设多大">redo log 一般设多大？</h3>
 
 <p>redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo log，发挥不出 WAL 的作用。</p>
 
 <p>所以，磁盘空间不是很紧张的话，设大点吧，比如设置为4个文件，每个文件1G。</p>
 
-<h4 id="redo-log-的写入时机">redo log 的写入时机？</h4>
+<h3 id="redo-log-的写入时机">redo log 的写入时机？</h3>
 
 <p>同样，redo log 也分为 <code class="language-plaintext highlighter-rouge">write</code> 和 <code class="language-plaintext highlighter-rouge">fsync</code>，由参数 <code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit</code>控制，默认值为1：</p>
 
@@ -446,17 +450,21 @@
 
 <p>再次强调，写完内存和rodo log、binlog就算事务提交成功了。所以结合两阶段提交，<strong>当默认值为1时</strong>，在redo log的 <code class="language-plaintext highlighter-rouge">prepare</code> 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 <code class="language-plaintext highlighter-rouge">commit</code>（<strong>但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性</strong>）</p>
 
-<h4 id="最终数据落盘的过程是">最终数据落盘的过程是？</h4>
+<h3 id="最终数据落盘的过程是">最终数据落盘的过程是？</h3>
 
 <p>1、正常运行过程中，MySQL更新完内存后，内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程甚至和redo log 毫无关系。（当然，猜测还会向前推进redo log中 checkpoint的位置）</p>
 
 <p>2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将redo log中的数据更新到内存中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。</p>
 
-<h3 id="什么是mysql中的两阶段提交">什么是MySQL中的两阶段提交？</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="两阶段提交">两阶段提交</h1>
 
 <p>一个事务当写完内存和redo log、binlog以后就算提交成功了，并不需要写真正的数据文件。为了保证2个日志文件都写入成功，采用了两阶段提交的方法，如下图所示</p>
 
-<p><img src="/home/head/图片/两阶段提交.svg" alt="两阶段提交" /></p>
+<p><img src="/blog/img/两阶段提交.svg" alt="两阶段提交" /></p>
 
 <p>两阶段提交并不是MySQL特有的，它是一种分布式事务的策略。其本质说来也很通俗，就是一个人的时候好办，多个人的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了才能继续下一步。</p>
 
@@ -482,7 +490,7 @@
 
 <h4 id="如何知道binlog是否完整">如何知道binlog是否完整？</h4>
 
-<p>完整的binlog最后会有个 <code class="language-plaintext highlighter-rouge">XID EVENT</code> 和  <code class="language-plaintext highlighter-rouge">COMMIT</code><img src="/home/head/.config/Typora/typora-user-images/image-20211029160948653.png" alt="image-20211029160948653" /></p>
+<p>完整的binlog最后会有个 <code class="language-plaintext highlighter-rouge">XID EVENT</code> 和  <code class="language-plaintext highlighter-rouge">COMMIT</code><img src="/blog/img/image-20211029160948653.png" alt="image-20211029160948653" /></p>
 
 <p>此外，还提供了一个 <code class="language-plaintext highlighter-rouge">binlog-checksum</code> 参数用于校验binlog的完整性。</p>
 
@@ -500,16 +508,24 @@
 
 <p>2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。简而言之，binlog粒度太大。</p>
 
-<h3 id="为什么要写2个日志直接更新数据文件不是更快吗">为什么要写2个日志，直接更新数据文件不是更快吗？</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="为什么要写2个日志直接更新数据文件不是更快吗">为什么要写2个日志，直接更新数据文件不是更快吗？</h1>
 
 <p>这种思路叫做 <code class="language-plaintext highlighter-rouge">write ahead log</code>，简称 <code class="language-plaintext highlighter-rouge">WAL</code>，是数据库的通用技术，主要基于以下两点：</p>
 
 <ol>
-  <li>顺序写快于随机写。写日志文件都是顺序写，而直接更新数据文件大多数都是随机写，在机械硬盘时代这个速度差异非常大。</li>
-  <li>虽然是写2个日志，看似意味着一次事务提交要经历两次刷盘，实际上利用了 <code class="language-plaintext highlighter-rouge">组提交</code> 的策略，fsync 的次数会大大减少，而write 到 操作系统page cache 基本上可以认为和写到内存差不多，可认为只有 fsync 会占用磁盘的 IOPS。</li>
+  <li>
+    <p>顺序写快于随机写。写日志文件都是顺序写，而直接更新数据文件大多数都是随机写，在机械硬盘时代这个速度差异非常大。</p>
+  </li>
+  <li>
+    <p>虽然是写2个日志，看似意味着一次事务提交要经历两次刷盘，实际上利用了 <code class="language-plaintext highlighter-rouge">组提交</code> 的策略，fsync 的次数会大大减少，而write 到 操作系统page cache 基本上可以认为和写到内存差不多，可认为只有 fsync 会占用磁盘的 IOPS。</p>
+  </li>
 </ol>
 
-<h4 id="说下组提交">说下组提交</h4>
+<h3 id="组提交">组提交</h3>
 
 <p>在双1配置下，即<code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit</code>和 <code class="language-plaintext highlighter-rouge">sync_binlog</code> 都为1，也就是默认情况下，redo log 会在 prepare 阶段 fsync。结合两阶段提交，写binlog其实也分为两步：write 和 fsync。MySQL做了一个优化：<code class="language-plaintext highlighter-rouge">拖时间</code>。即将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前。这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。</p>
 
@@ -521,7 +537,11 @@
 
 <p>第一个参数为0时，第二个参数无效。</p>
 
-<h3 id="如何提高mysql的io性能">如何提高MySQL的IO性能？</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="如何提高mysql的io性能">如何提高MySQL的IO性能？</h1>
 
 <p>从提高写redo log 和 binlog 的性能入手。</p>
 
@@ -540,7 +560,11 @@
   <li>调整 <code class="language-plaintext highlighter-rouge">binlog_group_commit_sync_delay</code> 和 <code class="language-plaintext highlighter-rouge">binlog_group_commit_no_delay_count</code>，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险</li>
 </ul>
 
-<h3 id="sql语句突然变慢了">sql语句突然变慢了？</h3>
+<hr />
+
+<p><br /><br /><br /></p>
+
+<h1 id="sql语句突然变慢了">sql语句突然变慢了？</h1>
 
 <p>有时会遇到这种情况，一条sql平时执行都很快，但有时候不知道为什么突然就变得很慢，而且这个情况还是随机的、持续时间也很短，很难复现。</p>
 

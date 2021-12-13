@@ -304,10 +304,14 @@
 <h3 id="子程序级">子程序级</h3>
 
 <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
-</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">procs_priv</span><span class="p">;</span>
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">mysql</span><span class="p">.</span><span class="n">procs_priv</span><span class="p">;</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<h3 id="也可通过-show-grants-for-user-查询授权语句">也可通过 <code class="language-plaintext highlighter-rouge">show grants for user</code> 查询授权语句</h3>
+<h3 id="查询用户拥有权限">查询用户拥有权限</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">show</span> <span class="n">grants</span> <span class="k">for</span> <span class="n">root</span><span class="o">@</span><span class="n">localhost</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
 
 <h3 id="示例">示例</h3>
 
@@ -331,30 +335,26 @@
 18
 19
 20
-21
-22
-</pre></td><td class="rouge-code"><pre><span class="err">创建用户：</span><span class="k">create</span> <span class="k">user</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span> <span class="n">identified</span> <span class="k">by</span>  <span class="s1">'test'</span><span class="p">;</span>
+</pre></td><td class="rouge-code"><pre><span class="o">#</span><span class="err">创建用户</span>
+<span class="k">create</span> <span class="k">user</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span> <span class="n">identified</span> <span class="k">by</span>  <span class="s1">'test'</span><span class="p">;</span>
 
+<span class="o">#</span><span class="err">授予全局级查询权限</span>
+<span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
 
-<span class="err">授予全局级查询权限：</span><span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
+<span class="o">#</span><span class="err">授予数据库级查询权限</span>
+<span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="n">test</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
 
+<span class="o">#</span><span class="err">授予表级查询权限</span>
+<span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="n">mysql</span><span class="p">.</span><span class="k">user</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
 
-<span class="err">授予数据库级查询权限：</span><span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="n">test</span><span class="p">.</span><span class="o">*</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
+<span class="o">#</span><span class="err">授予列级权限（只能查询</span><span class="n">person</span><span class="err">表的</span><span class="n">name</span><span class="err">字段）</span>
+<span class="k">grant</span> <span class="k">select</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">on</span> <span class="n">test</span><span class="p">.</span><span class="n">person</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
 
+<span class="o">#</span><span class="err">撤销权限</span>
+<span class="k">revoke</span> <span class="k">select</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
 
-<span class="err">授予表级查询权限：</span><span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="n">mysql</span><span class="p">.</span><span class="k">user</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
-
-
-<span class="err">授予表级查询权限：</span><span class="k">grant</span> <span class="k">select</span> <span class="k">on</span> <span class="n">mysql</span><span class="p">.</span><span class="k">user</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
-
-
-<span class="err">授予列级权限（只能查询</span><span class="n">person</span><span class="err">表的</span><span class="n">name</span><span class="err">字段）：</span><span class="k">grant</span> <span class="k">select</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">on</span> <span class="n">test</span><span class="p">.</span><span class="n">person</span> <span class="k">to</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
-
-
-<span class="err">撤销权限：</span><span class="k">revoke</span> <span class="k">select</span> <span class="k">on</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span> <span class="s1">'test'</span><span class="o">@</span><span class="s1">'%'</span><span class="p">;</span>
-
-
-<span class="err">刷新权限：</span><span class="n">flush</span> <span class="k">privileges</span><span class="p">;</span>
+<span class="o">#</span><span class="err">刷新权限</span>
+<span class="n">flush</span> <span class="k">privileges</span><span class="p">;</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
 
