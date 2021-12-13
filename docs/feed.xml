@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Coding Life</title>
+    <title>What a Life</title>
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sun, 12 Dec 2021 03:50:42 +0800</pubDate>
-    <lastBuildDate>Sun, 12 Dec 2021 03:50:42 +0800</lastBuildDate>
+    <pubDate>Mon, 13 Dec 2021 13:27:31 +0800</pubDate>
+    <lastBuildDate>Mon, 13 Dec 2021 13:27:31 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -1821,7 +1821,48 @@
 
 &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
-&lt;h3 id=&quot;示例八死锁&quot;&gt;示例八：死锁&lt;/h3&gt;
+&lt;h3 id=&quot;示例八降序排序加锁&quot;&gt;示例八：降序排序加锁&lt;/h3&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;sessionA&lt;/th&gt;
+      &lt;th style=&quot;text-align: center&quot;&gt;sessionB&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;begin;&lt;br /&gt;select * from t where c&amp;gt;=15 and c&amp;lt;=20 order by c desc lock in share mode;&lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;insert into t values(6,6,6);&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;update t set d=d+1 where id=10;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
+      &lt;td style=&quot;text-align: center&quot;&gt;update t set c=c+1 where id=10;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;降序排序，整体从右往左扫描。首先定位到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=20&lt;/code&gt;，加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(15,20]&lt;/code&gt; 的 next-key lock；由于是普通索引，继续向右扫描到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=25&lt;/code&gt;，不满足条件 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c&amp;lt;=20&lt;/code&gt; 停止，于是再加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(20,25]&lt;/code&gt; 的 next-key lock，然后退化成间隙锁 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(20,26)&lt;/code&gt;；&lt;/li&gt;
+  &lt;li&gt;向左扫描，直到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=10&lt;/code&gt; 不满足条件 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c&amp;gt;=15&lt;/code&gt; 停止，于是加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(5,10]&lt;/code&gt; 的 next-key lock;&lt;/li&gt;
+  &lt;li&gt;综上，sessionA &lt;strong&gt;在 c 索引树上&lt;/strong&gt;的加锁范围是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(5,25)&lt;/code&gt;；因此&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert into t values(6,6,6)&lt;/code&gt; 阻塞；&lt;/li&gt;
+  &lt;li&gt;由于是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select *&lt;/code&gt;，需要回表。虽然在索引c上的扫描范围是 (5,25)，但是满足条件的行是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=15、c=20&lt;/code&gt;，回表的也是这两行。因此，会在主键索引上加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id=15、id=20&lt;/code&gt; 两个行锁；&lt;/li&gt;
+  &lt;li&gt;因此 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update t set d=d+1 where id=10&lt;/code&gt; 不会阻塞；但如果把条件换成 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=10&lt;/code&gt; 就会阻塞，由此可见，&lt;strong&gt;锁是加在索引上的&lt;/strong&gt;，c索引上有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=10&lt;/code&gt; 的行锁， 主键索引上没有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id=10&lt;/code&gt; 的行锁；&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update t set c=c+1 where id=10&lt;/code&gt; 与上一句不同的是：上一句只需更新主键索引树，这一句需要同时更新主键索引和索引c两棵索引树。 更新主键索引不会被锁住，锁住是因为需要更新 c 索引树(需要更新 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c=10&lt;/code&gt; 的行)。&lt;/li&gt;
+  &lt;li&gt;如果去掉 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;desc&lt;/code&gt;，那么加锁范围就变成了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(10,25]&lt;/code&gt;，可以实验验证一下。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;示例九死锁&quot;&gt;示例九：死锁&lt;/h3&gt;
 
 &lt;table&gt;
   &lt;thead&gt;

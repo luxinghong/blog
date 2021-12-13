@@ -7,11 +7,11 @@
     <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
-    <meta name="keywords"  content="陆星宏, 陆星宏的博客, Coding Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | Coding Life">
+    <meta property="og:title" content="MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | What a Life">
     
     <meta property="og:type" content="article">
     <meta property="og:description" content="MySQL中的锁有三类：全局锁、表级锁、行级锁
@@ -28,11 +28,11 @@
     <meta property="article:tag" content="锁">
     
     
-    <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
+    <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
     <meta property="og:url" content="http://localhost:4000/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/">
-    <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
+    <meta property="og:site_name" content="陆星宏的博客 | What a Life">
     
-    <title>MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | Coding Life</title>
+    <title>MySQL学习笔记(八)：MySQL锁 - 陆星宏的博客 | What a Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -97,7 +97,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="/blog/">Coding Life</a>
+                <a class="navbar-brand" href="/blog/">What a Life</a>
             </div>
 
             <!-- Collect the nav links, forms, and other content for toggling -->
@@ -1325,7 +1325,48 @@
 
 <p><br /><br /><br /></p>
 
-<h3 id="示例八死锁">示例八：死锁</h3>
+<h3 id="示例八降序排序加锁">示例八：降序排序加锁</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center">sessionA</th>
+      <th style="text-align: center">sessionB</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">begin;<br />select * from t where c&gt;=15 and c&lt;=20 order by c desc lock in share mode;</td>
+      <td style="text-align: center"> </td>
+    </tr>
+    <tr>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">insert into t values(6,6,6);</td>
+    </tr>
+    <tr>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">update t set d=d+1 where id=10;</td>
+    </tr>
+    <tr>
+      <td style="text-align: center"> </td>
+      <td style="text-align: center">update t set c=c+1 where id=10;</td>
+    </tr>
+  </tbody>
+</table>
+
+<ol>
+  <li>降序排序，整体从右往左扫描。首先定位到 <code class="language-plaintext highlighter-rouge">c=20</code>，加上 <code class="language-plaintext highlighter-rouge">(15,20]</code> 的 next-key lock；由于是普通索引，继续向右扫描到 <code class="language-plaintext highlighter-rouge">c=25</code>，不满足条件 <code class="language-plaintext highlighter-rouge">c&lt;=20</code> 停止，于是再加上 <code class="language-plaintext highlighter-rouge">(20,25]</code> 的 next-key lock，然后退化成间隙锁 <code class="language-plaintext highlighter-rouge">(20,26)</code>；</li>
+  <li>向左扫描，直到 <code class="language-plaintext highlighter-rouge">c=10</code> 不满足条件 <code class="language-plaintext highlighter-rouge">c&gt;=15</code> 停止，于是加上 <code class="language-plaintext highlighter-rouge">(5,10]</code> 的 next-key lock;</li>
+  <li>综上，sessionA <strong>在 c 索引树上</strong>的加锁范围是 <code class="language-plaintext highlighter-rouge">(5,25)</code>；因此<code class="language-plaintext highlighter-rouge">insert into t values(6,6,6)</code> 阻塞；</li>
+  <li>由于是 <code class="language-plaintext highlighter-rouge">select *</code>，需要回表。虽然在索引c上的扫描范围是 (5,25)，但是满足条件的行是 <code class="language-plaintext highlighter-rouge">c=15、c=20</code>，回表的也是这两行。因此，会在主键索引上加上 <code class="language-plaintext highlighter-rouge">id=15、id=20</code> 两个行锁；</li>
+  <li>因此 <code class="language-plaintext highlighter-rouge">update t set d=d+1 where id=10</code> 不会阻塞；但如果把条件换成 <code class="language-plaintext highlighter-rouge">c=10</code> 就会阻塞，由此可见，<strong>锁是加在索引上的</strong>，c索引上有 <code class="language-plaintext highlighter-rouge">c=10</code> 的行锁， 主键索引上没有 <code class="language-plaintext highlighter-rouge">id=10</code> 的行锁；</li>
+  <li><code class="language-plaintext highlighter-rouge">update t set c=c+1 where id=10</code> 与上一句不同的是：上一句只需更新主键索引树，这一句需要同时更新主键索引和索引c两棵索引树。 更新主键索引不会被锁住，锁住是因为需要更新 c 索引树(需要更新 <code class="language-plaintext highlighter-rouge">c=10</code> 的行)。</li>
+  <li>如果去掉 <code class="language-plaintext highlighter-rouge">desc</code>，那么加锁范围就变成了 <code class="language-plaintext highlighter-rouge">(10,25]</code>，可以实验验证一下。</li>
+</ol>
+
+<p><br /><br /><br /></p>
+
+<h3 id="示例九死锁">示例九：死锁</h3>
 
 <table>
   <thead>
@@ -1582,7 +1623,7 @@
 </ul>
 
                 <p class="copyright text-muted">
-                    Copyright &copy; Coding Life 2021
+                    Copyright &copy; What a Life 2021
                     <br>
                     模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
                 </p>

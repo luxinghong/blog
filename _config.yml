@@ -1,12 +1,12 @@
 destination: docs
 
 # Site settings
-title: Coding Life
-SEOTitle: 陆星宏的博客 | Coding Life
+title: What a Life
+SEOTitle: 陆星宏的博客 | What a Life
 header-img: img/niuniu.jpg
 email: 452228391@qq.com
 description: "这是一个Java程序员的博客 | Java Blog"
-keyword: "陆星宏, 陆星宏的博客, Coding Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing"
+keyword: "陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing"
 url: "https://luxinghong.github.io"              # your host, for absolute URL
 baseurl: "/blog"                             # for example, '/blog' if your blog hosted on 'host/blog'
 
@@ -80,8 +80,8 @@ ga_domain: huangxuan.me
 
 # Sidebar settings
 sidebar: true                           # whether or not using Sidebar.
-sidebar-about-description: "一个Java程序员.<br/>有只猫,名叫妞妞.<br/>编码之外:打篮球,吃饭,睡觉."
-sidebar-avatar: /blog/img/me.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
+sidebar-about-description: "一个Java程序员.<br/>有只猫,名叫妞妞.<br/>编码之外:打篮球,吃饭,睡觉.<br/>寻求一份长期稳定的远程后端开发工作.<br/>452228391@qq.com"
+sidebar-avatar: /blog/img/微信图片_20211213132145.jpg      # use absolute URL, seeing it's used in both `/` and `/about/`
 
 
 

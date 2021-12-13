@@ -7,11 +7,11 @@
     <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
-    <meta name="keywords"  content="陆星宏, 陆星宏的博客, Coding Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="MySQL学习笔记(一)：一条sql查询语句是如何执行的？ - 陆星宏的博客 | Coding Life">
+    <meta property="og:title" content="MySQL学习笔记(一)：一条sql查询语句是如何执行的？ - 陆星宏的博客 | What a Life">
     
     <meta property="og:type" content="article">
     <meta property="og:description" content="先放一张MySQL架构图，有助理解，一条sql查询语句经历了从上到下的以下过程。
@@ -26,11 +26,11 @@
     <meta property="article:tag" content="mysql">
     
     
-    <meta property="og:image" content="http://localhost:4000/blog/img/me.jpg">
+    <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
     <meta property="og:url" content="http://localhost:4000/2021/08/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%80)-%E4%B8%80%E6%9D%A1sql%E6%9F%A5%E8%AF%A2%E8%AF%AD%E5%8F%A5%E6%98%AF%E5%A6%82%E4%BD%95%E6%89%A7%E8%A1%8C%E7%9A%84/">
-    <meta property="og:site_name" content="陆星宏的博客 | Coding Life">
+    <meta property="og:site_name" content="陆星宏的博客 | What a Life">
     
-    <title>MySQL学习笔记(一)：一条sql查询语句是如何执行的？ - 陆星宏的博客 | Coding Life</title>
+    <title>MySQL学习笔记(一)：一条sql查询语句是如何执行的？ - 陆星宏的博客 | What a Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -95,7 +95,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="/blog/">Coding Life</a>
+                <a class="navbar-brand" href="/blog/">What a Life</a>
             </div>
 
             <!-- Collect the nav links, forms, and other content for toggling -->
@@ -277,11 +277,11 @@
 
 				<p>先放一张MySQL架构图，有助理解，一条sql查询语句经历了从上到下的以下过程。</p>
 
-<p><img src="/home/head/图片/mysql.svg" alt="" /></p>
+<p><img src="/blog/img/mysql.svg" alt="" /></p>
 
 <p>整体可分为两大块：Server层和存储引擎层。所有跨存储引擎层的功能都在Server层实现，如内置函数（日期、时间、数学、加密函数等）、存储过程、触发器、视图等。</p>
 
-<h3 id="连接器">连接器</h3>
+<h1 id="连接器">连接器</h1>
 
 <p>作用：建立连接、检查权限、维持和管理连接</p>
 
@@ -289,19 +289,37 @@
 
 <p>连接建立后如果没有后续动作，该连接就处于空闲状态，可以在 <code class="language-plaintext highlighter-rouge">show processlist</code> 中看到它。<code class="language-plaintext highlighter-rouge">Sleep</code>表示当前系统中有一个空闲连接。</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211026100717263.png" alt="image-20211026100717263" /></p>
+<p><img src="/blog/img/image-20211026100717263.png" alt="image-20211026100717263" /></p>
 
 <p>如果长时间没有动作，连接就会断开。由参数<code class="language-plaintext highlighter-rouge">wait_timeout</code>控制，默认是8小时。</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211026100919509.png" alt="image-20211026100919509" /></p>
+<p><img src="/blog/img/image-20211026100919509.png" alt="image-20211026100919509" /></p>
 
-<h4 id="长连接-vs-短连接">长连接 vs 短连接</h4>
+<h3 id="长连接-vs-短连接">长连接 vs 短连接</h3>
 
 <p>长连接和短连接是一种行为，并不是由某个参数控制。如果一个连接建立后，一直有后续行为，它就会一直维持连接状态。如果建立连接做出某些动作以后就断开，它就是短连接。</p>
 
 <p>长连接后续的所有操作使用的内存都是管理在该长连接的对象里，直到连接断开才会释放。所以有时候执行一些比较大的占用内存的操作后，长连接一直累积，可能会导致OOM，MySQL重启。</p>
 
-<h3 id="查询缓存">查询缓存</h3>
+<h3 id="短连接风暴">短连接风暴</h3>
+
+<p>数据库连接数突然暴涨，超过了最大连接数 <code class="language-plaintext highlighter-rouge">max_connections</code>(默认值151)，数据库会拒绝接下来的连接请求，并提示 <code class="language-plaintext highlighter-rouge">Too many connections</code>。</p>
+
+<p>这个值并不是设的越大越好，因为建立连接的成本是很高的，需要经过三次握手、各种权限的判断等。如果设的过大，会适得其反，将大量资源消耗在建立连接上，已经拿到连接的线程反而得不到 CPU 资源。和线程池是一个道理。</p>
+
+<p>可通过查看 <code class="language-plaintext highlighter-rouge">Max_used_connections</code> status变量，历史最高同时连接数，作为参考。[<a href="https://www.cnblogs.com/helloyb/p/5025782.html">MySQL服务器最大连接数怎么设置才合理</a>]</p>
+
+<p>除此之外，可以杀掉一些<strong>占着连接不工作的线程</strong>。</p>
+
+<p>可通过 <code class="language-plaintext highlighter-rouge">show processlist</code> 查看，杀掉 <code class="language-plaintext highlighter-rouge">Command=Sleep</code> 的线程；或者更详细点可以查看 <code class="language-plaintext highlighter-rouge">information_schema.innodb_trx</code>，来选择要 kill 掉的连接。</p>
+
+<blockquote>
+  <p>优先断开事务外空闲太久的连接，不行的话再考虑断开事务内空闲太久的连接。</p>
+
+  <p>Innodb_trx 有个字段 <code class="language-plaintext highlighter-rouge">trx_rows_modified</code>，表示此次事务更新的行数，为0的话可放心kill，否则会造成事务回滚。</p>
+</blockquote>
+
+<h1 id="查询缓存">查询缓存</h1>
 
 <p><strong>MySQL 8 以后将整个缓存模块删除了，不再提供查询缓存功能。</strong></p>
 
@@ -313,7 +331,7 @@
 </pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">SQL_CACHE</span> <span class="o">*</span> <span class="k">from</span> <span class="n">test</span><span class="p">.</span><span class="n">person</span><span class="p">;</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<h3 id="分析器">分析器</h3>
+<h1 id="分析器">分析器</h1>
 
 <p>主要作用： 词法分析和语法分析。</p>
 
@@ -321,13 +339,13 @@
 
 <p>语法分析：分析语句是否符合sql语法规范，经常看见的 <code class="language-plaintext highlighter-rouge">You have an error in your SQL syntax</code> 就是在这个阶段。</p>
 
-<h3 id="优化器">优化器</h3>
+<h1 id="优化器">优化器</h1>
 
 <p>主要作用：决定选择哪个索引或者join的连接顺序。</p>
 
 <p>不同的索引、不同的表连接顺序会对执行效率有很大影响。</p>
 
-<h3 id="执行器">执行器</h3>
+<h1 id="执行器">执行器</h1>
 
 <p>主要作用：调用存储引擎提供的接口完成操作，如 <code class="language-plaintext highlighter-rouge">取 id=1 的数据</code>。存储引擎是以插件的形式接入MySQL的，可以把存储引擎看作一个黑盒，它对外提供了很多接口，只需要调用即可。</p>
 
@@ -544,7 +562,7 @@
 </ul>
 
                 <p class="copyright text-muted">
-                    Copyright &copy; Coding Life 2021
+                    Copyright &copy; What a Life 2021
                     <br>
                     模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
                 </p>
