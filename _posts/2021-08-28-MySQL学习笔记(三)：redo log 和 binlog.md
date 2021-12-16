@@ -19,7 +19,7 @@ MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，�
 ### 主要作用：
 
 1. 如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。
-2. 常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用的数据来源通道。
+2. 常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用系统数据来源通道。
 
 ### 如何查看？
 
@@ -67,11 +67,11 @@ MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，�
 
 6. 选择哪种格式？
 
-   `STATEMENT`直接记录sql，可能会在某些情况下导致执行结果不一致，比如 `delete` 时走的索引不同会导致删除的记录不同；
+   -  `STATEMENT` ：直接记录sql，可能会在某些情况下导致通过日志恢复出来的数据不一致，比如 [RC 和 RR 在锁问题上的区别](https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#rc-%E5%92%8C-rr-%E5%9C%A8%E9%94%81%E9%97%AE%E9%A2%98%E4%B8%8A%E7%9A%84%E5%8C%BA%E5%88%AB)、[更新的值与原来的值相同的情况下，MySQL还会执行更新吗？](/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/#%E7%A4%BA%E4%BE%8B%E4%BA%8C)、 `delete` 时走的索引不同会导致删除的记录不同、一些函数结果不同等等
 
-   `ROW` 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 `ROW`；
+   - `ROW`： 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 `ROW`
 
-   `MIXED` 需要检查会不会有不在自动切换的条件中，但可能会导致执行结果不一致的特殊情况，自动其实意味着熟悉
+   - `MIXED`： 需要非常熟悉切换的条件，以确保用日志恢复数据不会有问题
 
 7. 切换当前连接 binlog 格式
 
@@ -100,11 +100,15 @@ binlog会被首先`write`到操作系统的`page cache`中，然后才会被 `fs
 
 `write`  和 `fsync` 的时机由参数 `sync_binlog`控制，默认值是1，总共有3种设置：
 
-- 0：每次事务提交时都只write，不fsync。由于只保存到操作系统缓存，所以如果主机重启会丢失数据
-- 1：每次事务都 fsync
-- N(N>1)：每次事务提交都write，但只有累计了 N 个事务以后才会 fsync
+- 0：每次事务提交时都只write，不fsync。由于只保存到操作系统缓存，依赖操作系统来时不时的fsync，如果主机掉电或崩溃会丢失binlog
 
-设为N时，如果主机异常重启会丢失最近N个事务的数据，但是可以提升性能，需评估使用。
+- 1：每次事务都 fsync
+
+- N(N>1)：每次事务提交都write，但只有累计了 N 个事务以后才会 fsync，如果主机掉电或崩溃会丢失最近N个事务的binlog
+
+  
+
+[参考：mysql8 doc sync_binlog](https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_sync_binlog)
 
 ------
 
@@ -120,7 +124,7 @@ binlog会被首先`write`到操作系统的`page cache`中，然后才会被 `fs
 
 Innodb 特有的日志，存储的是物理日志，即数据页上的改动。
 
-数据页：Innodb 从磁盘读取数据的基本单位，即使只取一行记录，也会将改行所在的整个数据页读入内存。数据页的大小可通过以下参数查看，默认为16k
+**数据页**：Innodb 从磁盘读取数据的基本单位，即使只取一行记录，也会将改行所在的整个数据页读入内存。数据页的大小可通过以下参数查看，默认为16k
 
 ```sql
 show global variables like 'innodb_page_size';
@@ -136,7 +140,7 @@ show global variables like 'innodb_page_size';
 
 ![16a7950217b3f0f4ed02db5db59562a7](/blog/img/16a7950217b3f0f4ed02db5db59562a7.webp)
 
-绿色的部分表示空闲的空间。
+这个图画的不太好，一开始 checkpoint 和 writepos 都处于同一位置，边写边往后推移。上图可理解为：两者一开始都处于 checkpoint 现在的位置，writepos 写了一圈又转到 checkpoint 后面了。 所以绿色的部分表示空闲的空间，黄色的表示已写的空间。
 
 
 
@@ -174,13 +178,23 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 同样，redo log 也分为 `write` 和 `fsync`，由参数 `innodb_flush_log_at_trx_commit`控制，默认值为1：
 
-- 0：每次事务提交只把redo log保留在 redo log buffer 中
-- 1：每次事务提交都 fsync 到磁盘（prepare阶段fsync，commit阶段write就行了）
-- 2：每次事务提交都只将redo log 写到 page cache 中
+- 0：只把 redo log 写到 redo log buffer 中，后台线程每隔1s会将 buffer 中的内容 write、fsync 到磁盘
+
+  > 如果 MySQL 崩溃，会丢失1s的事务数据
+
+- 1：每次事务提交都 fsync 到磁盘
+
+  > 最安全，严格保证了事务的持久性，只要事务提交成功，就说明对应的日志已落盘
+
+- 2：每次事务提交都只将redo log 写到 page cache 中，后台线程每隔1s会将 page cache 中的内容 fsync 到磁盘
+
+  > 如果主机掉电或异常重启，会丢失1s的事务数据
+
+0 和 2 的区别在于，0是写到了 redo log buffer 中，属于 MySQL 管理的内存。2是写到了 page cache 中，属于操作系统的内存。
+
+可靠性 1 最高，性能 0和2 最好（2 可靠性要比 0 高，因为主机重启的概率一般比MySQL崩溃的概率低，二者选一的话，建议设置为2）。
 
 
-
-**除此之外，后台还会有一个线程，每隔1秒会将redo log buffer中的内容先 write 到 page cache，再 fsync 到磁盘。**
 
 没提交的事务也会被 **<u>被动的</u>** 写入磁盘：
 
@@ -189,9 +203,9 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 
 
-再次强调，写完内存和rodo log、binlog就算事务提交成功了。所以结合两阶段提交，**当默认值为1时**，在redo log的 `prepare` 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 `commit`（**但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性**）
+[参考：mysql8 doc innodb_flush_log_at_trx_commit](https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_flush_log_at_trx_commit)
 
-
+<br/><br/>
 
 
 
@@ -199,9 +213,9 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 ### 最终数据落盘的过程是？
 
-1、正常运行过程中，MySQL更新完内存后，内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程甚至和redo log 毫无关系。（当然，猜测还会向前推进redo log中 checkpoint的位置）
+1、正常运行过程中，MySQL更新完内存后便可返回响应。内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程和redo log 毫无关系。当然，此时 redo log 中已经记录了相关数据页的改动。写盘的时候还会向前推进redo log 中 checkpoint 的位置。
 
-2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将redo log中的数据更新到内存中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。
+2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将 redo log 中记录的变更应用到内存数据页中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。
 
 ------
 
@@ -219,9 +233,11 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 ![两阶段提交](/blog/img/两阶段提交.svg)
 
-两阶段提交并不是MySQL特有的，它是一种分布式事务的策略。其本质说来也很通俗，就是一个人的时候好办，多个人的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了才能继续下一步。
+两阶段提交并不是MySQL特有的，它是一种通用的分布式处理策略。其本质说来也很直白，就是一个人的时候好办，人多的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了再继续下一步。
 
+这里有个细节，当  `innodb_flush_log_at_trx_commit=1` 时，在redo log的 `prepare` 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 `commit`（**但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性**）
 
+<br/><br/>
 
 
 
@@ -240,6 +256,8 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 
 #### 具体如何实现？
+
+在崩溃恢复时，检查 redo log 和 binlog 的状态，如果：
 
 1、redo log 状态为commit，直接提交事务
 
@@ -269,9 +287,7 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 #### 为什么要引入两个日志，只用binlog 不就行了？
 
-（现在只能理解到这个程度）
-
-**binlog不具备 crash-safe 的能力**
+**很重要的一点：binlog不具备 crash-safe 的能力。**
 
 1、binlog 中没有checkpoint，不能区分哪些是已经落盘到磁盘数据文件（即最终存储数据的文件），哪些是需要应用到内存中用于崩溃恢复的
 
@@ -299,15 +315,27 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 ### 组提交
 
-在双1配置下，即`innodb_flush_log_at_trx_commit`和 `sync_binlog` 都为1，也就是默认情况下，redo log 会在 prepare 阶段 fsync。结合两阶段提交，写binlog其实也分为两步：write 和 fsync。MySQL做了一个优化：`拖时间`。即将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前。这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。
+**写binlog在是实现上其实也分为两步：write 和 fsync**。
+
+这里 MySQL 做了一个优化：`拖时间`。即**将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前**。
+
+这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。如下图所示，在两阶段提交的图上进一步细化：
+
+![img](/blog/img/5ae7d074c34bc5bd55c82781de670c28.webp)
 
 与此同时，也给了binlog  组提交的机会，因为binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：
 
-`binlog_group_commit_sync_delay`：表示延迟多少毫秒以后才调用 fsync
+`binlog_group_commit_sync_delay`：表示延迟多少微秒以后才调用 fsync
 
 `binlog_group_commit_no_delay_count`：表示积累多少次以后才调用 fsync
 
-第一个参数为0时，第二个参数无效。
+两者是或的关系，当第一个参数为0时，表示不延迟，直接fsync，状态为true，则不再考虑第二个参数的设置了。
+
+组提交与 `sync_binlog` 不冲突，可一起使用。
+
+
+
+[参考：mysql8 doc binlog_group_commit_sync_delay](https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_binlog_group_commit_sync_delay)
 
 ------
 
@@ -323,18 +351,37 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 从提高写redo log 和 binlog 的性能入手。
 
-redo log：
+**redo log**：
 
 - 增大redo log buffer 大小
-- 增大redo log file 大小
+
+  > 尤其对于需要更新很多行的大事务，大的redo log buffer 意味着事务提交前不会由于buffer满了而需要先写到磁盘上
+
+- 增大redo log file 大小和个数
+
 - 将 `innodb_flush_log_at_trx_commt` 设为2，表示每次事务提交都只 write 到 page cache，由后台定时线程来fsync。这样做的风险是主机掉电重启后会丢失数据（正常关闭不影响，MySQL在正常关闭前会完成一系列收尾工作）
 
+​		[参考：Optimizing InnoDB Redo Logging](https://dev.mysql.com/doc/refman/8.0/en/optimizing-innodb-logging.html)
 
 
-binlog：
+
+**binlog**：
 
 - 将 `sync_binlog` 设为大于1的值（通常是100-1000），这样做的风险是主机掉电会丢失binlog日志
-- 调整 `binlog_group_commit_sync_delay` 和 `binlog_group_commit_no_delay_count`，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险
+
+- 调整 `binlog_group_commit_sync_delay` 和 `binlog_group_commit_no_delay_count`，提高binlog组提交效率，减少写盘次数。<u>这样做会增加语句的响应时间，但是不会有丢失数据的风险</u>
+
+  
+
+**增大 buffer pool 大小**：
+
+buffer pool 是用来缓存表数据的内存，默认值是128M，增大这个值可以显著减少磁盘IO。
+
+如果是数据库专用服务器，可以把 buffer pool 设为物理内存的 80%。
+
+当 buffer pool 大小超过1G，建议同时把 `innodb_buffer_pool_instances` 设为大于1的值。相当于把 buffer pool 划分为了多个区域，可提高并发度。
+
+[参考：mysql8 doc innodb_buffer_pool_size](https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_buffer_pool_size)
 
 ------
 
@@ -355,7 +402,7 @@ binlog：
 以下4种情况会引发刷脏页：
 
 1. 当需要读入新的内存页时，如果系统内存不足，就需要淘汰旧的数据页。如果淘汰的是脏页，就需要把脏页刷到磁盘。当一次淘汰的脏页太多时，就会明显影响性能。
-2. redo log 写满了。此时需要把redo log的 checkpoint 往前推进，并把 write pos 到新的 checkpoint 之间对应的脏页刷到磁盘。**这种情况是很严重的，此时MySQL将不再接受更新，所有更新都会堵住。**
+2. redo log 写满了。此时需要把 checkpoint 到 write pos 之间的redo log对应的脏页刷到磁盘，并把 checkpoint 往前推进。**这种情况是很严重的，此时MySQL将不再接受更新，所有更新都会堵住。**
 3. 后台任务 `purge` 会在系统空闲时刷脏页。
 4. MySQL正常关闭时。
 
@@ -367,7 +414,7 @@ binlog：
 
 对于情况二，调整 redo log 的大小即可，默认值明显太小，上文有讲过。
 
-对于情况一，需要先了解下Innodb刷脏页的控制策略和相关参数。
+对于情况一，除了上面提到过的 buffer pool，还需要先了解下Innodb刷脏页的控制策略和相关参数。
 
 这里主要的参数是 `innodb_io_capacity`，从名字就可以看出是控制 IO 能力的，官方描述如下：
 
@@ -395,11 +442,13 @@ binlog：
    > ```c
    > F1(M)
    > {
-   >   if M>=innodb_max_dirty_pages_pct then
-   >       return 100;
-   >   return 100*M/innodb_max_dirty_pages_pct;
+   > if M>=innodb_max_dirty_pages_pct then
+   >    return 100;
+   > return 100*M/innodb_max_dirty_pages_pct;
    > }
    > ```
+   >
+   > 
 
 2. InnoDB 每次写入的日志都有一个序号(LSN)，当前写入的序号跟 checkpoint 对应的序号之间的差值，假设为 N。InnoDB 会根据这个 N 算出一个范围在 0 到 100 之间的数字，N 越大，算出来的值越大。
 

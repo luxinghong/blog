@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Mon, 13 Dec 2021 16:45:32 +0800</pubDate>
-    <lastBuildDate>Mon, 13 Dec 2021 16:45:32 +0800</lastBuildDate>
+    <pubDate>Thu, 16 Dec 2021 11:13:27 +0800</pubDate>
+    <lastBuildDate>Thu, 16 Dec 2021 11:13:27 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -814,9 +814,9 @@
 
 &lt;p&gt;不加锁，&lt;strong&gt;会导致备份出来的库不是同一个逻辑时间点的&lt;/strong&gt;，数据从业务逻辑上看是不一致的。&lt;/p&gt;
 
-&lt;p&gt;比如在备份过程中先备份了A表，然后执行了一个业务操作，再备份B表，这个业务操作会同时更新A表和B表。那么这个时候备份出来的数据A表还是老版本，而B表已经被更新了，这个备份就是有问题的，是逻辑不一致的。&lt;/p&gt;
+&lt;p&gt;比如在备份过程中先备份了A表，然后执行了一个业务操作，这个业务操作会同时更新A表和B表，再备份B表。那么这个时候备份出来的数据A表还是老版本，而B表已经被更新了，这个备份就是有问题的，是逻辑不一致的。&lt;/p&gt;
 
-&lt;p&gt;&lt;u&gt;为了既不影响业务，也要保证备份视图的逻辑一致性&lt;/u&gt;，推荐采用另一种全库备份的方法：&lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mysqldump -single-transaction&lt;/code&gt;&lt;/strong&gt;。导数据之前会启动一个事务，来确保拿到一致性视图。而且由于 MVCC 的支持，在此期间是可以正常更新的。&lt;/p&gt;
+&lt;p&gt;&lt;u&gt;为了既不影响业务，也要保证备份视图的逻辑一致性&lt;/u&gt;，&lt;strong&gt;推荐采用另一种全库备份的方法&lt;/strong&gt;：&lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;mysqldump -single-transaction&lt;/code&gt;&lt;/strong&gt;。导数据之前会启动一个事务，来确保拿到一致性视图。而且由于 MVCC 的支持，在此期间是可以正常更新的。&lt;/p&gt;
 
 &lt;p&gt;当然显而易见，这种方法只适用于支持事务的存储引擎，所以这也是为什么推荐使用 Innodb 而不是 MyISAM 的一个原因。&lt;/p&gt;
 
@@ -826,7 +826,7 @@
 
 &lt;h1 id=&quot;表级锁&quot;&gt;表级锁&lt;/h1&gt;
 
-&lt;p&gt;&lt;strong&gt;server层实现，分两种：表锁和元数据锁(MDL)。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;server层实现，分两种：元数据锁(MDL)和表锁。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;表锁&quot;&gt;表锁&lt;/h3&gt;
 
@@ -851,8 +851,10 @@
 &lt;ul&gt;
   &lt;li&gt;任何线程都不能写 t1 ，包括本线程&lt;/li&gt;
   &lt;li&gt;只有本线程能读写 t2&lt;/li&gt;
-  &lt;li&gt;&lt;strong&gt;本线程甚至不能访问除 t1、t2 之外的任何表&lt;/strong&gt;，这点很奇怪，不懂为什么这么设计&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;本线程甚至不能访问除 t1、t2 之外的任何表&lt;/strong&gt;，这点很奇怪，不懂为什么这么设计，访问其他表时会报错 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Table &apos;xxx&apos; was not locked with LOCK TABLES&lt;/code&gt;&lt;/li&gt;
 &lt;/ul&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;元数据锁&quot;&gt;元数据锁&lt;/h3&gt;
 
@@ -940,6 +942,10 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;p&gt;MySQL可以通过调整 &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;lock_wait_timeout&lt;/code&gt;&lt;/strong&gt; 值来控制这个超时时间，默认值是 31536000s，即1年，显然这个时间太长了。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;获取元数据锁的超时时间，注意与 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_lock_wait_timeout&lt;/code&gt; 区分开来&lt;/p&gt;
+&lt;/blockquote&gt;
 
 &lt;hr /&gt;
 
@@ -1925,9 +1931,19 @@
         <description>&lt;h1 id=&quot;索引的常见实现方式有哪些&quot;&gt;索引的常见实现方式有哪些？&lt;/h1&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;哈希表：O(1) 的时间复杂度，速度最快，但缺点是只适用于等值查询。因为key是无序的，所以区间查询时只能全部遍历一遍。&lt;/li&gt;
-  &lt;li&gt;有序数组：O(logn)的时间复杂度，利用二分法。可用于等值查询和区间查询，但插入删除时间复杂度较高，因为需要移动插入点后面的所有元素。所以有序数组比较适合静态存储引擎，即基本不会变的数据。&lt;/li&gt;
-  &lt;li&gt;搜索树：常用实现是B+树。&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;哈希表：O(1) 的时间复杂度，速度最快，但&lt;strong&gt;缺点是只适用于等值查询&lt;/strong&gt;。因为key是无序的，所以区间查询时只能全部遍历一遍。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;有序数组：O(logn)的时间复杂度，利用二分法。可用于等值查询和区间查询，&lt;strong&gt;但插入删除时间复杂度较高&lt;/strong&gt;，因为需要移动插入点后面的所有元素。所以有序数组&lt;strong&gt;比较适合静态存储引擎，即基本不会变的数据&lt;/strong&gt;。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;搜索树：常用实现是B+树。&lt;/p&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;hr /&gt;
@@ -1936,16 +1952,16 @@
 
 &lt;h1 id=&quot;为什么采用b树而不是常见的二叉树&quot;&gt;为什么采用B+树而不是常见的二叉树?&lt;/h1&gt;
 
-&lt;p&gt;二叉树即每个节点只有左右2个子节点，所以显而易见的问题就是当节点变多时树的高度会很高。比如需要存储100万条数据，就需要20层（n层二叉树的节点数为 $2^n-1$，20层二叉树的节点总数为1048576）。因为一个节点就是一页，那么一次查询很可能就需要进行20次随机IO（大概率会触发随机IO），在传统机械硬盘时代，一次随机IO大约10ms，那么单一次查询可能就需要200ms，这个查询是很慢的。&lt;/p&gt;
+&lt;p&gt;二叉树即每个节点只有左右2个子节点，所以显而易见的问题就是当节点变多时树的高度会很高。比如需要存储100万条数据，就需要20层（n层二叉树的节点数为 $2^n-1$，20层二叉树的节点总数为1048576）。因为一个节点就是一个数据页，那么一次查询很可能就需要进行20次随机IO（大概率会触发随机IO），在传统机械硬盘时代，一次随机IO大约10ms，那么单一次查询可能就需要200ms，这个查询是很慢的。&lt;/p&gt;
 
 &lt;p&gt;所以解决办法就是增加树的子节点数，由二叉变为N叉。&lt;/p&gt;
 
-&lt;p&gt;B+树就是一颗N叉树。一个节点就是一页，页是Innodb磁盘IO的基本单位，一页在Innodb中默认是16k，假如索引字段为整数类型占4个字节，每个key还有一个指向下一层节点的指针固定占6字节，再加上一些辅助字节总共差不多占13字节左右（非叶子节点）。16k/13=1260，那么一个节点就可以差不多有1200个分叉，一颗树高为4的B+树，就可以存 $1200^3≈17亿$ 个值。因为根节点总是在内存中，第二层大概率也在内存中，这时17亿数据量的单次查询页只需要进行2-3次磁盘IO，速度大大提高了。&lt;/p&gt;
+&lt;p&gt;B+树就是一颗N叉树。一个节点就是一页，页是Innodb磁盘IO的基本单位，一页在Innodb中默认是16k，&lt;strong&gt;假如索引字段为整数类型占4个字节，每个key还有一个指向下一层节点的指针固定占6字节，再加上一些辅助字节总共差不多占13字节左右（非叶子节点）。16k/13=1260，那么一个节点就可以差不多有1200个分叉，一颗树高为4的B+树，就可以存 $1200^3≈17亿$ 个值&lt;/strong&gt;。因为根节点总是在内存中，第二层大概率也在内存中，这时17亿数据量的单次查询理论上只需要进行2-3次磁盘IO，速度大大提高了。&lt;/p&gt;
 
-&lt;p&gt;顺便说一下 Innodb 中B+树的特点：&lt;/p&gt;
+&lt;p&gt;顺便说一下 Innodb 中B+树 (不是严格定义下的 B+树，做了一些优化)的特点：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;N叉树，即每个节点可以有多个key&lt;/li&gt;
+  &lt;li&gt;N叉树，即每个节点可以有多个key，每个key对应一个分叉&lt;/li&gt;
   &lt;li&gt;内部节点不存储数据，只有指针，只在叶子节点存储数据&lt;/li&gt;
   &lt;li&gt;每一层页与页之间构成一个双向链表&lt;/li&gt;
   &lt;li&gt;页内 records 之间构成一个单向链表&lt;/li&gt;
@@ -1953,12 +1969,18 @@
   &lt;li&gt;一个节点就是一个page&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h3 id=&quot;innodb中的页是什么&quot;&gt;Innodb中的页是什么？&lt;/h3&gt;
+&lt;hr /&gt;
 
-&lt;h4 id=&quot;innodb表空间&quot;&gt;Innodb表空间&lt;/h4&gt;
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;innodb中的页是什么&quot;&gt;Innodb中的页是什么？&lt;/h1&gt;
+
+&lt;p&gt;先从表空间说起。&lt;/p&gt;
+
+&lt;h3 id=&quot;innodb表空间&quot;&gt;Innodb表空间&lt;/h3&gt;
 
 &lt;blockquote&gt;
-  &lt;p&gt;详见：&lt;a href=&quot;https://blog.jcole.us/2013/01/03/the-basics-of-innodb-space-file-layout/&quot;&gt;The basics of InnoDB space file layout&lt;/a&gt;&lt;/p&gt;
+  &lt;p&gt;参考：&lt;a href=&quot;https://blog.jcole.us/2013/01/03/the-basics-of-innodb-space-file-layout/&quot;&gt;The basics of InnoDB space file layout&lt;/a&gt;&lt;/p&gt;
 
 &lt;/blockquote&gt;
 
@@ -1966,7 +1988,23 @@
 
 &lt;p&gt;每个space会被划分为多个page，一个page默认16k。page也有一个32位的page number（页号），表示在space内的偏移量（offset），比如page 0 对应 offset 为0，page 1 对应 offset 为16384。注意一个space可能包含多个文件，所以这个offset不一定是文件内的，而是整个space中的。Innodb单表空间最大为64TB，是因为 $2^{32} * 16k$。&lt;/p&gt;
 
-&lt;h4 id=&quot;页的基本结构&quot;&gt;页的基本结构&lt;/h4&gt;
+&lt;h3 id=&quot;表空间space-file文件结构&quot;&gt;表空间(space file)文件结构&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112125701387.png&quot; alt=&quot;image-20211112125701387&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;系统表空间system-space文件结构&quot;&gt;系统表空间(system space)文件结构&lt;/h3&gt;
+
+&lt;p&gt;系统表空间(system space)的 space ID 为 0 。它采用了一些固定页号的页来存储一些关键信息。结构如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112130023998.png&quot; alt=&quot;image-20211112130023998&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;单表空间per-table-space-file文件结构&quot;&gt;单表空间(per-table space file)文件结构&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112130153515.png&quot; alt=&quot;image-20211112130153515&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Page3为聚簇索引(主键索引)的root page，Page4为第一个二级索引的root page，如果有多级索引的话以此类推。&lt;/p&gt;
+
+&lt;h3 id=&quot;页的基本结构&quot;&gt;页的基本结构&lt;/h3&gt;
 
 &lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112105252435.png&quot; alt=&quot;image-20211112105252435&quot; /&gt;&lt;/p&gt;
 
@@ -1983,47 +2021,53 @@
   &lt;li&gt;Page Type&lt;/li&gt;
   &lt;li&gt;Space ID&lt;/li&gt;
   &lt;li&gt;指向前一页和后一页的指针，构成一个双向链表（树的同一层中）&lt;/li&gt;
-  &lt;li&gt;最后一次改动页的LSN&lt;/li&gt;
+  &lt;li&gt;最后一次改动页的LSN(Log Sequence Number，日志逻辑序列号)&lt;/li&gt;
   &lt;li&gt;当前系统中（所有space）最大的LSN&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4 id=&quot;表空间space-file文件结构&quot;&gt;表空间(space file)文件结构&lt;/h4&gt;
+&lt;hr /&gt;
 
-&lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112125701387.png&quot; alt=&quot;image-20211112125701387&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
-&lt;h4 id=&quot;系统表空间system-space文件结构&quot;&gt;系统表空间(system space)文件结构&lt;/h4&gt;
-
-&lt;p&gt;系统表空间(system space)的 space ID 为 0 。它采用了一些固定页号的页来存储一些关键信息。结构如下：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112130023998.png&quot; alt=&quot;image-20211112130023998&quot; /&gt;&lt;/p&gt;
-
-&lt;h4 id=&quot;单表空间per-table-space-file文件结构&quot;&gt;单表空间(per-table space file)文件结构&lt;/h4&gt;
-
-&lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112130153515.png&quot; alt=&quot;image-20211112130153515&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;Page3为聚簇索引(主键索引)的root，Page4为第一个二级索引的root，如果有多级索引的话以此类推。&lt;/p&gt;
-
-&lt;h3 id=&quot;innodb索引&quot;&gt;Innodb索引&lt;/h3&gt;
+&lt;h1 id=&quot;innodb索引&quot;&gt;Innodb索引&lt;/h1&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;详见 &lt;a href=&quot;https://blog.jcole.us/2013/01/07/the-physical-structure-of-innodb-index-pages/&quot;&gt;The physical structure of InnoDB index pages&lt;/a&gt;&lt;/p&gt;
 &lt;/blockquote&gt;
 
-&lt;h4 id=&quot;一切皆索引&quot;&gt;一切皆索引&lt;/h4&gt;
+&lt;h3 id=&quot;一切皆索引&quot;&gt;一切皆索引&lt;/h3&gt;
 
 &lt;p&gt;在Innodb中一切皆索引，意思是：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;每张表都有一个主键。如果没有手动指定，会使用第一个 not null 的 unique key。如果仍然没有，会自动分配一个6字节的隐藏 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Row ID&lt;/code&gt;作为主键。&lt;/li&gt;
-  &lt;li&gt;主键索引树(聚簇索引)叶子节点key是主键值，value是是整行数据。&lt;/li&gt;
-  &lt;li&gt;二级索引key是索引列的值，value是对应的主键值。&lt;/li&gt;
-  &lt;li&gt;一张表有几个索引，就有几棵B+树。且至少有一棵主键B+树，数据存储在主键索引树上。查询不走索引其实是遍历主键索引树。&lt;/li&gt;
-  &lt;li&gt;B+树中一个节点为一页。&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;每张表都有一个主键。如果没有手动指定，会使用第一个 not null 的 unique key。如果仍然没有，会自动分配一个6字节的隐藏 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Row ID&lt;/code&gt;作为主键。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;主键索引树(聚簇索引)叶子节点key是主键值，value是是整行数据。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;二级索引key是索引列的值，value是对应的主键值。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;一张表有几个索引，就有几棵B+树。且至少有一棵主键B+树，数据存储在主键索引树上。查询不走索引其实是遍历主键索引树。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;B+树中一个节点为一页。&lt;/p&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4 id=&quot;索引结构&quot;&gt;索引结构&lt;/h4&gt;
+&lt;h3 id=&quot;索引结构&quot;&gt;索引结构&lt;/h3&gt;
 
-&lt;p&gt;因为一个索引就是一棵B+树，B+树中一个节点对应一页，所有索引页具有和上面讲到的页的相同基本结构，都包含一个FIL Header和FIL Trailer，主体部分会有所不同，如下图所示：&lt;/p&gt;
+&lt;p&gt;因为一个索引就是一棵B+树，B+树中一个节点对应一页，所以索引页的基本结构和上面讲到的页的基本结构相同，都包含一个FIL Header和FIL Trailer，不同的是主体部分，如下图所示：&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/blog/img/image-20211112140640173.png&quot; alt=&quot;image-20211112140640173&quot; /&gt;&lt;/p&gt;
 
@@ -2032,8 +2076,8 @@
 &lt;p&gt;User Records 是实际存储数据的地方：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;非叶子节点：存储指向下一层子节点的指针&lt;/li&gt;
-  &lt;li&gt;叶子节点：假设为主键索引树，存储的就是行数据&lt;/li&gt;
+  &lt;li&gt;非叶子节点：除key外，还存储指向下一层子节点的指针&lt;/li&gt;
+  &lt;li&gt;叶子节点：假设为主键索引树，存储的就是整行数据&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;一个page中的所有 User Records 组成了一个单链表，头是一个叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;infimum&lt;/code&gt; 的 system record(存储了当前页中最小的key)，尾是一个叫 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;supremum&lt;/code&gt; 的 system record(存储了当前页中最大的key)。&lt;/p&gt;
@@ -2044,7 +2088,9 @@
 
 &lt;p&gt;可以看到有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Number of Records&lt;/code&gt; 、 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Page Level(叶子节点所在层为第0层，从下往上递增，root节点所在层为最大层)&lt;/code&gt; 等等。&lt;/p&gt;
 
-&lt;h4 id=&quot;二级索引叶子节点value的排序问题&quot;&gt;二级索引叶子节点value的排序问题&lt;/h4&gt;
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;联合主键&quot;&gt;联合主键&lt;/h3&gt;
 
 &lt;p&gt;假设存在以下表记录&lt;/p&gt;
 
@@ -2099,8 +2145,6 @@
 
 &lt;p&gt;存在一个联合主键 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt;，三个索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c(c)&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ca(c,a)&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cb(c,b)&lt;/code&gt;，分析这三个索引是否有冗余？&lt;/p&gt;
 
-&lt;p&gt;普通索引叶子节点存的值为主键，这里的主键为联合主键。&lt;/p&gt;
-
 &lt;p&gt;索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ca&lt;/code&gt; 即先对 c 排序，再对 a 排序，因为key已经包含了a，所以value只需要存储 b，ca相同时，b升序。记录如下：&lt;/p&gt;
 
 &lt;table&gt;
@@ -2145,13 +2189,15 @@
   &lt;/tbody&gt;
 &lt;/table&gt;
 
-&lt;p&gt;再看索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c&lt;/code&gt;。key先对 c 排序，再对 a 排序，再对 b 排序，结果和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ca&lt;/code&gt; 是一样的。所以索引&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ca&lt;/code&gt; 是多余的。&lt;/p&gt;
+&lt;p&gt;再看索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;c&lt;/code&gt;。key先对 c 排序，value 存的是联合主键 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt;，即先对 a 排序，再对 b 排序，结果和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ca&lt;/code&gt; 是一样的。所以索引&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ca&lt;/code&gt; 是多余的。&lt;/p&gt;
 
 &lt;p&gt;索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;cb&lt;/code&gt; 先对 c 排序，再对 b 排序，再对 a 排序，可用于基于c、b 的查询，需要保留。&lt;/p&gt;
 
-&lt;h4 id=&quot;实践一下&quot;&gt;实践一下&lt;/h4&gt;
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
-&lt;p&gt;可以通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_space&lt;/code&gt; 命令直接分析文件，获取文件中存储的page、records等信息。(目前还不支持MySQL8.0)&lt;/p&gt;
+&lt;h3 id=&quot;实践一下&quot;&gt;实践一下&lt;/h3&gt;
+
+&lt;p&gt;可以通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_space&lt;/code&gt; 命令直接分析 ibd 文件，获取文件中存储的page、records等信息。(目前还不支持MySQL8.0)&lt;/p&gt;
 
 &lt;blockquote&gt;
   &lt;p&gt;详见：&lt;/p&gt;
@@ -2175,24 +2221,11 @@
 
 &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
-&lt;h1 id=&quot;选择自增主键还是业务主键&quot;&gt;选择自增主键还是业务主键&lt;/h1&gt;
-
-&lt;p&gt;可从存储空间大小和性能两个方面来考虑：&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;占用空间：业务主键相较于自增主键都较长，由于二级索引树叶子节点存储的是主键值，所以采用业务主键的二级索引相较于自增主键会占用更多的空间。&lt;/li&gt;
-  &lt;li&gt;性能：由于自增主键是有序的，所以在维护索引树时直接追加即可(&lt;strong&gt;叶子节点所在层即第0层的最后一个节点中的最后一个record后&lt;/strong&gt;)，当一页写满会自动开辟一个新的页。而业务主键很难保证有序性，维护索引时很可能会在&lt;strong&gt;中间插入&lt;/strong&gt;，就很有可能引起节点分裂(甚至是父索引节点的分裂)，自然性能会受到影响。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;所以，在大多数情况下，都应优先使用自增主键。&lt;/p&gt;
-
-&lt;p&gt;当然事无绝对，如果只有一个索引，且该业务字段是唯一的，可以将该字段设为主键。因为不存在其他索引，就不用考虑其他索引的叶子节点大小问题。当然，性能上相较于自增主键还是会有一点影响。&lt;/p&gt;
-
-&lt;h3 id=&quot;一些索引设计原则&quot;&gt;一些索引设计原则&lt;/h3&gt;
+&lt;h1 id=&quot;一些索引设计原则&quot;&gt;一些索引设计原则&lt;/h1&gt;
 
 &lt;p&gt;假设存在表 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;u(id,id_card,name,age,gender)&lt;/code&gt;，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id&lt;/code&gt; 是主键，另有一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id_card&lt;/code&gt; 索引&lt;/p&gt;
 
-&lt;h4 id=&quot;覆盖索引&quot;&gt;覆盖索引&lt;/h4&gt;
+&lt;h3 id=&quot;覆盖索引&quot;&gt;覆盖索引&lt;/h3&gt;
 
 &lt;p&gt;即索引key中包含了要查找的字段。&lt;/p&gt;
 
@@ -2208,7 +2241,7 @@
 
 &lt;p&gt;当然，索引是有代价的。因为每新建一个索引就相当于新建一棵索引树，虽然可以提高查询速度，但增删改就需要多维护一棵索引树。所以需要权衡使用，任何索引都是这样，数据量小的话就没有什么必要，没有太大区别。&lt;/p&gt;
 
-&lt;h4 id=&quot;最左匹配原则&quot;&gt;最左匹配原则&lt;/h4&gt;
+&lt;h3 id=&quot;最左匹配原则&quot;&gt;最左匹配原则&lt;/h3&gt;
 
 &lt;p&gt;假设现在又有一个&lt;strong&gt;低频&lt;/strong&gt;需求：根据身份证查询地址，那么有必要再建立一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(id_card,address)&lt;/code&gt;的联合索引吗？&lt;/p&gt;
 
@@ -2220,7 +2253,11 @@
 
 &lt;p&gt;这时考虑的原则就是&lt;strong&gt;空间&lt;/strong&gt;了。如果b字段比a字段大，那么就应该建立一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(b,a)&lt;/code&gt;的联合索引和一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的单独索引。这两个索引可以同时满足 a,b的联合查询和基于a、b各自的查询。&lt;/p&gt;
 
-&lt;p&gt;除此之外，最左匹配原则当遇到范围匹配时就会失效。比如有一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt;的联合索引， &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a=1 and b=2&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b=1 and a=2&lt;/code&gt; 都可以用到索引，顺序无所谓，优化器会调整 where 的顺序。但是当遇到类似 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a &amp;gt;1 and b=2&lt;/code&gt; 时，就只有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 能用到索引，会先快速定位到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&amp;gt;1&lt;/code&gt; 的记录，此时 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 是无序的，只能遍历判断 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 是否满足。&lt;/p&gt;
+&lt;p&gt;除此之外，&lt;strong&gt;最左匹配原则当遇到范围匹配时就会失效&lt;/strong&gt;。比如有一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt;的联合索引， &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a=1 and b=2&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b=1 and a=2&lt;/code&gt; 都可以用到索引，顺序无所谓，优化器会调整 where 条件 and 的顺序。但是当遇到类似 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a &amp;gt;1 and b=2&lt;/code&gt; 时，就只有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 能用到该索引，会先快速定位到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&amp;gt;1&lt;/code&gt; 的记录，此时 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 是无序的 (在 a&amp;gt;1 的整个范围中 b 是无序的)，只能遍历判断 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 是否满足。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;也有些特例，当满足最左匹配原则可以使用联合索引&lt;strong&gt;却需要回表&lt;/strong&gt;时，优化器可能会认为扫描联合索引再加上回表的代价高于直接扫描主键索引树，这时&lt;strong&gt;可能&lt;/strong&gt;(不一定)会选择不走联合索引，而是直接全表扫描。&lt;/p&gt;
+&lt;/blockquote&gt;
 
 &lt;p&gt;示例：&lt;/p&gt;
 
@@ -2234,7 +2271,9 @@
 
     &lt;p&gt;该怎么建立索引？&lt;/p&gt;
 
-    &lt;p&gt;答：第一反应是直接建立 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b,c)&lt;/code&gt; 的联合索引，但是这里要注意&lt;strong&gt;区分度&lt;/strong&gt;，区分度高的放在前面。区分度越高，检索效率越高，因为快速定位更精准。像性别、状态这种区分度很低的字段，放到后面。&lt;/p&gt;
+    &lt;p&gt;答：第一反应是直接建立 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b,c)&lt;/code&gt; 的联合索引，但是这里要注意&lt;strong&gt;区分度&lt;/strong&gt;，区分度高的字段放在联合索引前面 (可从 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show index from a&lt;/code&gt; 中观察  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Cardinality&lt;/code&gt; 得知)。区分度越高，检索效率越高，因为能过滤掉的记录越多。像性别、状态这种区分度很低的字段，放到后面。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;如果 sql 为&lt;/p&gt;
@@ -2248,6 +2287,8 @@
     &lt;p&gt;答：因为是范围查询，如果建立 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt; 的索引，就只有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 能用上索引。&lt;/p&gt;
 
     &lt;p&gt;​	    所以应该建立 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(b,a)&lt;/code&gt; 的索引，优化器会调整条件的顺序，然后&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 就能用上索引，在此基础上，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&amp;gt;1&lt;/code&gt; 也能用上。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;如果 sql 为&lt;/p&gt;
@@ -2258,7 +2299,9 @@
 
     &lt;p&gt;该怎么建立索引？&lt;/p&gt;
 
-    &lt;p&gt;答：首先肯定要以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 开头，所以有两种选择：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(b,a)&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(b,c)&lt;/code&gt;，至于具体选择哪个，就看&lt;strong&gt;区分度&lt;/strong&gt;和&lt;strong&gt;字段长度&lt;/strong&gt;了。&lt;/p&gt;
+    &lt;p&gt;答：首先肯定要以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;b&lt;/code&gt; 开头，所以有两种选择：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(b,a,c)&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(b,c,a)&lt;/code&gt;，至于具体选择哪个，就看&lt;strong&gt;区分度&lt;/strong&gt;和&lt;strong&gt;字段长度&lt;/strong&gt;了。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;如果 sql 为&lt;/p&gt;
@@ -2277,7 +2320,9 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;SELECT&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt; &lt;span class=&quot;nv&quot;&gt;`table`&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;WHERE&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;a&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;ORDER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;BY&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
 
-    &lt;p&gt;​		因为此时是范围查询， a&amp;gt;1 时 b 是无序的，所以没有必要再建立一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt; 的联合索引。&lt;/p&gt;
+    &lt;p&gt;​		因为此时是范围查询， a&amp;gt;1 时 b 是无序的，可以建立一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(a,b)&lt;/code&gt; 的联合索引，但只有 a 能用上这个索引。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;如果 sql 为&lt;/p&gt;
@@ -2291,9 +2336,11 @@
   &lt;/li&gt;
 &lt;/ol&gt;
 
-&lt;h4 id=&quot;索引下推&quot;&gt;索引下推&lt;/h4&gt;
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
-&lt;p&gt;索引下推并不是一个索引设计原则，它是一个索引查找的内部优化。&lt;/p&gt;
+&lt;h3 id=&quot;索引下推&quot;&gt;索引下推&lt;/h3&gt;
+
+&lt;p&gt;严格说索引下推并不是一个索引设计原则，它是一个索引查找的内部优化。&lt;/p&gt;
 
 &lt;p&gt;前提：因为范围查询不能使用联合索引，只能使用最左前缀。&lt;/p&gt;
 
@@ -2303,7 +2350,7 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tuser&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;name&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;张%&apos;&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;and&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;age&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;10&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;and&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;is_male&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;张&lt;/code&gt; 开头的记录有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(张三，10)，(张三，10)，(张三，20)，(张六，30)&lt;/code&gt;，有一个联合索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(name,age)&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;假设以 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;张&lt;/code&gt; 开头的记录有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(张三，10)，(张三，10)，(张三，20)，(张六，30)&lt;/code&gt;，有一个联合索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(name,age)&lt;/code&gt;。&lt;/p&gt;
 
 &lt;p&gt;在 MySQL5.6 之前，存储引擎提供的接口对于这种情况只允许传入&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;最左前缀&lt;/code&gt;一个参数，即只能传入 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;name &lt;/code&gt; 这个字段，所以需要回表4次用于判断 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;age&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;is_male&lt;/code&gt; 是否满足条件。&lt;/p&gt;
 
@@ -2311,7 +2358,9 @@
 
 &lt;p&gt;当 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explain 的 extra&lt;/code&gt; 字段中显示 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Using index condition&lt;/code&gt; 时则表示本次查询使用到了索引下推。&lt;/p&gt;
 
-&lt;h4 id=&quot;不能走索引的反面示例&quot;&gt;不能走索引的反面示例&lt;/h4&gt;
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;一些不能走索引的反面示例&quot;&gt;一些不能走索引的反面示例&lt;/h3&gt;
 
 &lt;p&gt;以下示例用到的表结构如下：&lt;/p&gt;
 
@@ -2440,7 +2489,7 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;select&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tradelog&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;where&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tradeid&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;110717&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
 
-    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explain&lt;/code&gt; 显示走的是全表扫描。原因是因为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tradeid&lt;/code&gt; 是 varchar 类型，参数是 int 类型，明显会需要一个类型转换。&lt;/p&gt;
+    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;explain&lt;/code&gt; 显示走的是全表扫描。原因是因为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tradeid&lt;/code&gt; 是 varchar 类型，值是 int 类型，明显会需要一个类型转换。&lt;/p&gt;
 
     &lt;p&gt;在MySQL中，&lt;strong&gt;当字符串和数字做比较的时候，是由字符串转为数字&lt;/strong&gt;。如果记不住这个规则，可用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select &apos;10&apos; &amp;gt; 9&lt;/code&gt; 验证一下：结果为1，表示字符串转为了数字。&lt;/p&gt;
 
@@ -2516,7 +2565,7 @@
 
     &lt;ol&gt;
       &lt;li&gt;
-        &lt;p&gt;最简单直接的就是把对应 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;utf8&lt;/code&gt; 编码的字段改为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;utf8mb4&lt;/code&gt;，这样从根上避免了字符编码转换：&lt;/p&gt;
+        &lt;p&gt;最简单直接的就是把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;utf8&lt;/code&gt; 编码的字段改为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;utf8mb4&lt;/code&gt;，这样从根上避免了字符编码转换：&lt;/p&gt;
 
         &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;alter&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;table&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;trade_detail&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;modify&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tradeid&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;varchar&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;32&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;CHARACTER&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;SET&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;utf8mb4&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;null&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -2574,7 +2623,22 @@
   &lt;/li&gt;
 &lt;/ol&gt;
 
+&lt;hr /&gt;
+
 &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;选择自增主键还是业务主键&quot;&gt;选择自增主键还是业务主键&lt;/h1&gt;
+
+&lt;p&gt;可从存储空间大小和性能两个方面来考虑：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;存储空间：业务主键相较于自增主键都较长，由于二级索引树叶子节点存储的是主键值，所以采用业务主键的二级索引相较于自增主键会占用更多的空间。&lt;/li&gt;
+  &lt;li&gt;性能：由于自增主键是有序的，所以在维护索引树时直接追加即可(&lt;strong&gt;叶子节点所在层即第0层的最后一个节点中的最后一个record后&lt;/strong&gt;)，当一页写满会自动开辟一个新的页。而业务主键很难保证有序性，维护索引时很可能会在&lt;strong&gt;中间插入&lt;/strong&gt;，就很有可能引起节点分裂(甚至是父索引节点的分裂)，自然性能会受到影响。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;所以，在大多数情况下，都应优先使用自增主键。&lt;/p&gt;
+
+&lt;p&gt;当然事无绝对，如果只有一个索引，且该业务字段是唯一的，可以将该字段设为主键。因为不存在其他索引，就不用考虑其他索引的叶子节点大小问题。当然，性能上相较于自增主键还是会有一点影响。&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -2602,11 +2666,11 @@
   &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;综上所述，如果业务可以接受的话，从性能角度出发，应该选择普通索引。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;综上所述，如果业务可以接受的话，从性能角度出发，应该选择普通索引。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;change-buffer&quot;&gt;change buffer&lt;/h3&gt;
 
-&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; 是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;buffer pool&lt;/code&gt; 的一部分，默认占比为 25(%)，最大占比可设为 50(%)。&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; 是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;buffer pool&lt;/code&gt; 的一部分，默认值是 25(%)，最大值可设为 50(%)。&lt;/p&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variables&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;innodb_change_buffer_max_size&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -2616,15 +2680,7 @@
 
 &lt;h4 id=&quot;作用&quot;&gt;作用&lt;/h4&gt;
 
-&lt;p&gt;&lt;strong&gt;当目标数据页不在内存中时，普通索引更新类操作的提速器。注意：只能作用于普通索引，不能作用于唯一索引&lt;/strong&gt;。&lt;/p&gt;
-
-&lt;p&gt;原理上面已经简单分析过，就是通过&lt;strong&gt;减少磁盘的随机读&lt;/strong&gt;来提升写的性能。&lt;/p&gt;
-
-&lt;p&gt;上面是通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert&lt;/code&gt; 来举例，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delete&lt;/code&gt; 有点点区别。&lt;/p&gt;
-
-&lt;p&gt;如果&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delete&lt;/code&gt;  中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;where&lt;/code&gt; 条件走普通索引的话，由于需要获取受影响行数，所以还是需要先把数据页读到内存中，然后直接更新内存，这里就用不上 change buffer 了。&lt;/p&gt;
-
-&lt;p&gt;如果 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;where&lt;/code&gt; 条件走主键索引或其他普通字段(其实最终也是走主键索引树)，并且需要更新普通索引字段的话，通过主键索引树获取受影响行数，对普通索引的更新就直接写到 change buffer 中了，这种情况是能用 change buffer 来提速的。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;当目标数据页不在内存(buffer pool)中时，普通索引更新类操作的提速器。注意：只能作用于普通索引，不能作用于唯一索引&lt;/strong&gt;。&lt;/p&gt;
 
 &lt;h4 id=&quot;怎么保证数据被正确更新&quot;&gt;怎么保证数据被正确更新？&lt;/h4&gt;
 
@@ -2665,7 +2721,7 @@
 
 &lt;p&gt;所以对于&lt;strong&gt;&lt;u&gt;写多读少&lt;/u&gt;&lt;/strong&gt;类业务，数据页在写完之后马上被访问到的概率很小，也就是说不会马上进行 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;merge&lt;/code&gt;，这种情况下 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; 的效果最好。比如账单类、日志类等。&lt;/p&gt;
 
-&lt;p&gt;相反，如果是写后马上进行查询的业务，由于马上要访问数据页，会立即触发 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;merge&lt;/code&gt;。这种情况不仅不会减少随机IO的次数，反而会增加维护 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; 的代价，反而起到了副作用，这种情况下可以关闭 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; ：&lt;/p&gt;
+&lt;p&gt;相反，如果是写后马上进行查询的业务，由于马上要访问数据页，会立即触发 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;merge&lt;/code&gt;。这种情况不仅不会减少随机IO的次数，反而会增加维护 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; 的代价，起到了副作用，这种情况下可以关闭 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;change buffer&lt;/code&gt; ：&lt;/p&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variables&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;innodb_change_buffering&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -2681,11 +2737,13 @@
 
 &lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
-&lt;h1 id=&quot;给字符串字段创建索引的几种方法&quot;&gt;给字符串字段创建索引的几种方法&lt;/h1&gt;
+&lt;h1 id=&quot;给长字符串字段创建索引的几种方法&quot;&gt;给长字符串字段创建索引的几种方法&lt;/h1&gt;
+
+&lt;p&gt;&lt;strong&gt;出发点是尽量减小索引长度。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;ol&gt;
   &lt;li&gt;
-    &lt;p&gt;直接创建完整索引，这样可能比较占空间&lt;/p&gt;
+    &lt;p&gt;直接创建完整索引，占空间最多&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;创建前缀索引&lt;/p&gt;
@@ -2714,11 +2772,11 @@
 
         &lt;p&gt;​	对于前缀索引，在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 前缀索引树上定位到 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zhangs&lt;/code&gt;，回表判断 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 是否等于 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zhangssxyz@xxx.com&lt;/code&gt;，是的话将记录加入结果集，继续在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 前缀索引树上遍历下一条记录，再回表判断，重复此过程，直到遍历的下一条记录不等于 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;zhangs&lt;/code&gt;。所以前缀索引可能会增加记录的扫描行数。&lt;/p&gt;
 
+        &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
         &lt;p&gt;&lt;strong&gt;如何优化？&lt;/strong&gt;&lt;/p&gt;
 
         &lt;p&gt;关键在于&lt;strong&gt;增加前缀的区分度&lt;/strong&gt;。区分度越高，过滤掉的记录就越多，需要回表的次数就越少。&lt;/p&gt;
-
-        &lt;p&gt;可以通过统计索引上有多少个不同的值来判断要使用多长的前缀。&lt;/p&gt;
 
         &lt;p&gt;先统计索引上有多少个不同的值：&lt;/p&gt;
 
@@ -2743,6 +2801,8 @@
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;        &lt;/div&gt;
 
         &lt;p&gt;数值越大表示对应长度的前缀区分度越高，效果越好。&lt;/p&gt;
+
+        &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
       &lt;/li&gt;
       &lt;li&gt;
         &lt;p&gt;不能使用覆盖索引&lt;/p&gt;
@@ -2755,9 +2815,11 @@
 
         &lt;p&gt;因为只需要查询 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;id,email&lt;/code&gt;，对于完整索引来说，使用覆盖索引即可，不需要再回表；&lt;/p&gt;
 
-        &lt;p&gt;对于前缀索引，则必须要回表判断 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 的值，即便前缀索引包含了全部字段(email(18)，假设&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 有18个字符)，因为系统不确定前缀索引的定义是否截断了完整信息。&lt;/p&gt;
+        &lt;p&gt;而对于前缀索引，则必须要回表判断 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 的值，即便前缀索引包含了全部字段(email(18)，假设&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;email&lt;/code&gt; 有18个字符)也是如此。&lt;/p&gt;
       &lt;/li&gt;
     &lt;/ul&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;倒序存储&lt;/p&gt;
@@ -2774,7 +2836,9 @@
 
     &lt;p&gt;这时为身份证建立前缀索引需要的长度就会短很多，具体多长可通过上面的方法来确定。&lt;/p&gt;
 
-    &lt;p&gt;缺点：&lt;strong&gt;不支持范围查询&lt;/strong&gt;，因为是倒序存储，没办法按顺序遍历。&lt;/p&gt;
+    &lt;p&gt;缺点：&lt;strong&gt;不支持范围查询&lt;/strong&gt;，因为不是有序的，没办法按顺序遍历。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;新增一个 hash 字段&lt;/p&gt;
@@ -2820,9 +2884,19 @@
         <description>&lt;h1 id=&quot;解决的问题&quot;&gt;解决的问题&lt;/h1&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;脏读：读到还没有提交事务的数据&lt;/li&gt;
-  &lt;li&gt;不可重复读：前后读取的记录&lt;strong&gt;内容&lt;/strong&gt;不一致&lt;/li&gt;
-  &lt;li&gt;幻读：使用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next-key lock&lt;/code&gt; 解决，详见 &lt;a href=&quot;https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/&quot;&gt;MySQL学习笔记(八)-MySQL锁&lt;/a&gt; 之 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next-key lock&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;脏读：读到还没有提交事务的数据&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;不可重复读：前后读取的记录&lt;strong&gt;内容&lt;/strong&gt;不一致&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;幻读：同一事务前后两次查询同一范围数据时，后一次查询看到了前一次查询没有看到的行&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;主要针对 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert&lt;/code&gt; 操作， 使用间隙锁解决，详见 &lt;a href=&quot;/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#next-key-lock&quot;&gt;MySQL学习笔记(八)-MySQL锁之 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next-key lock&lt;/code&gt;&lt;/a&gt;&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;hr /&gt;
@@ -2835,7 +2909,7 @@
   &lt;li&gt;读未提交&lt;/li&gt;
   &lt;li&gt;读提交：可解决脏读问题&lt;/li&gt;
   &lt;li&gt;可重复读：可解决不可重复读问题&lt;/li&gt;
-  &lt;li&gt;串行化&lt;/li&gt;
+  &lt;li&gt;串行化：事务都是串行执行，安全度最高，并发度最低&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h3 id=&quot;如何查询隔离级别&quot;&gt;如何查询隔离级别？&lt;/h3&gt;
@@ -2846,7 +2920,7 @@
 
 &lt;p&gt;&lt;img src=&quot;/blog/img/image-20211031200530501.png&quot; alt=&quot;image-20211031200530501&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;默认级别为&lt;u&gt;**可重复读**&lt;/u&gt;。&lt;/p&gt;
+&lt;p&gt;默认级别为&lt;strong&gt;可重复读&lt;/strong&gt;。&lt;/p&gt;
 
 &lt;h3 id=&quot;如何更改隔离级别&quot;&gt;如何更改隔离级别？&lt;/h3&gt;
 
@@ -2869,19 +2943,19 @@
 &lt;p&gt;有两种开启事务的方式：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;begin/start transaction：并不是一个事务的真正起点，执行第一个语句的时候事务才真正开启&lt;/li&gt;
-  &lt;li&gt;start transaction with consistent snapshot：马上开启事务&lt;/li&gt;
+  &lt;li&gt;begin/start transaction：并不是一个事务的真正起点，到执行第一个语句的时候才会创建一致性视图&lt;/li&gt;
+  &lt;li&gt;start transaction with consistent snapshot：马上开启事务并创建一致性视图&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;事务开启时，会创建一个&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;一致性视图&lt;/code&gt;。不必纠结于&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;视图&lt;/code&gt;两个字，可简单理解为这样一个操作：记录下真正开启事务的那一刻，后面会以这个时刻为准来判断一行记录的哪个版本对于当前事务可见。&lt;/p&gt;
+&lt;p&gt;事务开启时，会创建一个&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;一致性视图&lt;/code&gt;。不必纠结于&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;视图&lt;/code&gt;两个字(其实就是个数组)，可简单理解为这样一个操作：记录下真正开启事务的那一刻(创建一致性视图的那一刻)，&lt;strong&gt;后面会以这个时刻为准来判断数据的哪个版本对于当前事务可见&lt;/strong&gt;。&lt;/p&gt;
 
-&lt;p&gt;具体实现上，会在开启事务的那一刻生成一个数组，保存了当前系统正在活跃（启动了还没提交）的事务ID，定义一个低水位：数组里的最小事务ID，高水位：当前系统已经创建过的最大的事务ID+1，这个数组和高低水位即构成了&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;一致性视图&lt;/code&gt;。后续的操作应该可以猜到，就是拿记录的事务ID和这个高低水位比较来判断是否可见。这是具体的代码逻辑，不方便记忆，可简化为下面的可见性规则：&lt;/p&gt;
+&lt;p&gt;具体实现上，会在开启事务的那一刻生成一个数组，保存了当前系统正在活跃（启动了还没提交）的事务ID，定义一个低水位：数组里的最小事务ID，高水位：当前系统已经创建过的最大的事务ID+1，这个数组和高低水位即构成了&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;一致性视图&lt;/code&gt;。后续的操作应该可以猜到，就是拿记录的事务ID和这个高低水位比较来判断是否可见。这是具体的代码逻辑，不方便记忆，可简化为下面的可见性规则(RR级别下)：&lt;/p&gt;
 
 &lt;ol&gt;
   &lt;li&gt;本事务的更新总是可见&lt;/li&gt;
   &lt;li&gt;版本未提交，不可见&lt;/li&gt;
-  &lt;li&gt;版本已提交，但是在视图创建之后提交的，不可见&lt;/li&gt;
-  &lt;li&gt;版本已提交，而且是在视图创建之前提交的，可见&lt;/li&gt;
+  &lt;li&gt;版本已提交，但是在一致性视图创建之后提交的，不可见&lt;/li&gt;
+  &lt;li&gt;版本已提交，而且是在一致性视图创建之前提交的，可见&lt;/li&gt;
 &lt;/ol&gt;
 
 &lt;p&gt;以上就是事务具体是如何实现的&lt;/p&gt;
@@ -3030,7 +3104,7 @@
 
 &lt;p&gt;事务A查询结果：事务B和事务C的更新都尚未提交，不可见，结果是1。&lt;/p&gt;
 
-&lt;p&gt;事务B查询结果：重点来了，由于事务C更新后没有马上提交，所以id=1的写锁一直未释放。而事务B是当前读，必须要读最新版本，若读到的记录最终被回滚了，就产生了脏读，这是不可接受的，所以必须确保当前读读到的数据是最终会被提交的数据。具体实现就是加锁，来确保当前读的数据是最新的且已提交的。所以事务B的更新，要等待事务C提交后才能继续。&lt;/p&gt;
+&lt;p&gt;事务B查询结果：重点来了，由于事务C更新后没有马上提交，所以id=1的写锁一直未释放。而事务B是当前读，必须要读最新版本，若读到的记录最终被回滚了，就产生了脏读，这是不可接受的，&lt;strong&gt;所以必须确保当前读读到的数据是最终会被提交的数据。具体实现就是加锁，来确保当前读的数据是最新的且已提交的&lt;/strong&gt;(从事务的角度来解释行锁)。所以事务B的更新，要等待事务C提交后才能继续。&lt;/p&gt;
 
 &lt;h4 id=&quot;示例二&quot;&gt;示例二&lt;/h4&gt;
 
@@ -3107,11 +3181,13 @@
       &lt;/tbody&gt;
     &lt;/table&gt;
 
+    &lt;p&gt;sessionA 的 update 是当前读，它肯定读到了 sessionB 更新后的最新版本，现在的问题是 sessionA 的这个 update 会不会执行更新？&lt;/p&gt;
+
     &lt;p&gt;根据事务的可见性规则，sessionA的第二个&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 是看不到 sessionB 的更新的，但是它读取到的值却是(1,3)，所以这个版本只能是本事务自己更新的，也就证明了sessionA中的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 是执行了更新操作的。&lt;/p&gt;
 
     &lt;p&gt;到这里可能会觉得这不是多此一举吗？判断一下值是否相等，相等的话就不用更新了。&lt;/p&gt;
 
-    &lt;p&gt;事实上，是执行了判断的，&lt;strong&gt;只是这个判断没有办法判断出是否要执行更新&lt;/strong&gt;。因为和具体的 sql 有关，在这句sql里：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set a=3&lt;/code&gt;，这个赋值操作和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 原本的值没有任何关系，所以虽然 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 是当前读，但判断到和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 没有关系，就不会读出 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的值。既然没有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的值，就没有办法判断是否相等，所以只能老老实实执行一遍更新操作。&lt;/p&gt;
+    &lt;p&gt;事实上，是执行了判断的，&lt;strong&gt;只是这个判断没有办法判断出是否要执行更新&lt;/strong&gt;。因为和具体的 sql 有关，在这句sql里：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set a=3&lt;/code&gt;，这个赋值操作和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 原本的值没有任何关系，所以虽然 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update&lt;/code&gt; 是当前读，但因为和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 没有关系，就不会读出 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的值。既然没有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的值，就没有办法判断是否和原值相等，所以只能老老实实执行一遍更新操作。&lt;/p&gt;
 
     &lt;p&gt;可将sessionA的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update where&lt;/code&gt; 条件加上 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a=3&lt;/code&gt;，&lt;strong&gt;此时因为读出了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt;的值，Innodb判断到值是相同的，就不会执行更新操作&lt;/strong&gt;。因此第二个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 还是读取的一致性视图，返回 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;(1,2)&lt;/code&gt;：&lt;/p&gt;
 
@@ -3144,7 +3220,7 @@
           &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
         &lt;/tr&gt;
         &lt;tr&gt;
-          &lt;td style=&quot;text-align: center&quot;&gt;select * from t where id=1; &lt;br /&gt;&lt;strong&gt;返回(1,3)&lt;/strong&gt;&lt;/td&gt;
+          &lt;td style=&quot;text-align: center&quot;&gt;select * from t where id=1; &lt;br /&gt;&lt;strong&gt;返回(1,2)&lt;/strong&gt;&lt;/td&gt;
           &lt;td style=&quot;text-align: center&quot;&gt; &lt;/td&gt;
         &lt;/tr&gt;
       &lt;/tbody&gt;
@@ -3171,7 +3247,7 @@
     &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
   &lt;li&gt;
-    &lt;p&gt;还会占用锁，可能拖垮整个库。如之前对当前读的讨论，当前读会加锁来保证读取到的数据是最新且已被提交的数据，若长事务一直不提交，会导致锁一直被占用，存在很大隐患。&lt;/p&gt;
+    &lt;p&gt;还会占用锁，可能拖垮整个库。在 RR 级别下，所有锁资源要在事务提交后才释放。&lt;/p&gt;
 
     &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
   &lt;/li&gt;
@@ -3345,17 +3421,25 @@
 
     &lt;p&gt;rows为39940行。这个差距挺大的，那为什么优化器放着 39940行的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 索引不用而要选择 105033行的全表扫描？&lt;/p&gt;
 
-    &lt;p&gt;因为使用索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 需要回表，而走全表扫描是直接扫描主键索引树，不需要回表，优化器”&lt;u&gt;认为&lt;/u&gt;“全表扫描更快。从结果上看，优化器明显选错了，所以优化器也不是百分百可靠的。&lt;/p&gt;
+    &lt;p&gt;因为使用索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 需要回表，而走全表扫描是直接扫描主键索引树，不需要回表，优化器”&lt;u&gt;认为&lt;/u&gt;“全表扫描更快。&lt;strong&gt;从结果上看，优化器明显选错了，所以优化器也不是百分百可靠的&lt;/strong&gt;。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
 
     &lt;p&gt;&lt;strong&gt;到这里又有一个疑问，为什么开启了一个长事务后，删除再插入数据就会导致扫描行数发生变化？&lt;/strong&gt;&lt;/p&gt;
 
     &lt;p&gt;很明显，肯定和这个长事务有关。&lt;/p&gt;
 
-    &lt;p&gt;先简单说一下&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;undo log&lt;/code&gt;，分为两种：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert undo logs&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt;，对应 insert操作和update、delete操作(delete本质上也是update操作，delete时并不是直接物理删除，而是先做一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;deleted&lt;/code&gt; 标记)。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert undo logs&lt;/code&gt; 只用于回滚操作，&lt;strong&gt;并且在事务提交后便可清除&lt;/strong&gt;(事务提交即意味着插入已永久持久化了，不会再有回滚操作，也就不再需要 insert undo logs 了)。而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt; &lt;strong&gt;除了用于回滚操作之外，还用于MVCC，且只有当没有任何事务再需要用它来构造数据的早期版本时，方可删除&lt;/strong&gt;。&lt;/p&gt;
+    &lt;p&gt;先简单说一下&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;undo log&lt;/code&gt;，分为两种：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert undo logs&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt;，对应 insert操作和update、delete操作(delete本质上也是update操作，delete时并不是直接物理删除，而是先做一个 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;deleted&lt;/code&gt; 标记)。&lt;/p&gt;
 
-    &lt;p&gt;上面讲到 delete 时并不是直接物理删除，而是先标记。&lt;strong&gt;只有在对应的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt; 被清除时才会进行真正的物理删除，这个过程也成为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;purge&lt;/code&gt;。&lt;/strong&gt;&lt;/p&gt;
+    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;insert undo logs&lt;/code&gt; 只用于回滚操作，&lt;strong&gt;并且在事务提交后便可清除&lt;/strong&gt;(事务提交即意味着插入已永久持久化了，不会再有回滚操作，也就不再需要 insert undo logs 了)。而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt; &lt;strong&gt;除了用于回滚操作之外，还用于MVCC，且当没有在该事务开启之前开启的其他事务在运行时，方可删除&lt;/strong&gt;。&lt;/p&gt;
 
-    &lt;p&gt;所以在这个案例中，因为先开启了一个长事务 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sessionA&lt;/code&gt;，为了保证事务的可重复读，在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sessionB&lt;/code&gt; 中进行的 delete 和 insert 操作所产生的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;upodate undo logs&lt;/code&gt; 会一直保留直到长事务提交。也就意味着原先的10万行数据并没有被真正删除，而是保留在了索引树上。因此每一行都会有两个版本，即总共会有20万数据，从 ibd 文件大小也能看出，大小变为了原来的两倍。而优化器统计扫描行数时会将标记为删除的版本也统计在内，导致扫描行数增加。&lt;/p&gt;
+    &lt;p&gt;上面讲到 delete 时并不是直接物理删除，而是先标记。&lt;strong&gt;只有在对应的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update undo logs&lt;/code&gt; 被清除时才会进行真正的物理删除，这个过程也称为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;purge&lt;/code&gt;。&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+    &lt;p&gt;所以在这个案例中，因为先开启了一个长事务 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sessionA&lt;/code&gt;，&lt;strong&gt;为了保证事务的可重复读，在 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sessionB&lt;/code&gt; 中进行的 delete 和 insert 操作所产生的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;upodate undo logs&lt;/code&gt; 会一直保留直到长事务提交&lt;/strong&gt;。也就意味着原先的10万行数据并没有被真正删除，而是保留在了索引树上。因此每一行都会有两个版本，即总共会有20万数据，从 ibd 文件大小也能看出，大小变为了原来的两倍。而优化器统计扫描行数时会将标记为删除的版本也统计在内，导致扫描行数增加。&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
 
     &lt;p&gt;那为什么只有索引 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;a&lt;/code&gt; 的扫描行数增加了，主键的扫描行数还是10万行？因为主键的扫描行数是直接按照表的行数来估算的，而表的行数优化器取的是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show table status like &apos;t&apos;&lt;/code&gt; 中 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rows&lt;/code&gt; 的值。索引的统计则是通过对数据页采样统计估算出来的，所以会算上老版本的数据。&lt;/p&gt;
 
@@ -3382,9 +3466,31 @@
 &lt;h3 id=&quot;应用开发端&quot;&gt;应用开发端&lt;/h3&gt;
 
 &lt;ol&gt;
-  &lt;li&gt;确认是否使用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set autocommit = 0 &lt;/code&gt;，代表手动提交事物。可先开启 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt;，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show global variables like &apos;%general_log%&apos;&lt;/code&gt; 查看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt; 是否开启和日志文件路径。然后随便跑一个业务逻辑，在日志中检查是否有  ` set autocommit = 0`。&lt;/li&gt;
-  &lt;li&gt;确认是否有不必要的只读事务。有些框架会不管什么语句都用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;begin/commit&lt;/code&gt; 包起来。或者有些业务并没什么必要，也要把一堆 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 放到事务中。上面提到过，对当前读事务会加锁。所以对于单纯的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 没有必要放到事务中，事务中主要放 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update/insert/delete&lt;/code&gt;，除非是明确需要事务特性的查询，比如明确需要可重复读的查询，才需要放到事务中。&lt;/li&gt;
-  &lt;li&gt;根据对业务的预估，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set max_execution_time&lt;/code&gt; 来设置单个语句的最长执行时间，来避免单个语句意外执行过长时间。&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;确认是否使用了 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set autocommit = 0 &lt;/code&gt;，代表手动提交事物。可先开启 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt;，通过 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;show global variables like &apos;%general_log%&apos;&lt;/code&gt; 查看 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;general_log&lt;/code&gt; 相关设置。然后随便跑一个业务逻辑，在日志中检查是否有 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set autocommit = 0 &lt;/code&gt;；&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;The general query log is a general record of what &lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/mysqld.html&quot;&gt;&lt;strong&gt;mysqld&lt;/strong&gt;&lt;/a&gt; is doing. The server writes information to this log when clients connect or disconnect, and it logs each SQL statement received from clients. &lt;strong&gt;The general query log can be very useful when you suspect an error in a client and want to know exactly what the client sent to &lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/mysqld.html&quot;&gt;mysqld&lt;/a&gt;.&lt;/strong&gt;&lt;/p&gt;
+
+      &lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/query-log.html&quot;&gt;mysql8 doc general_log&lt;/a&gt;&lt;/p&gt;
+    &lt;/blockquote&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;确认是否有不必要的只读事务。有些框架会不管什么语句都用 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;begin/commit&lt;/code&gt; 包起来。或者有些业务并没什么必要，也要把一堆 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 放到事务中。上面提到过，对当前读事务会加锁。所以对于单纯的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;select&lt;/code&gt; 没有必要放到事务中，事务中主要放 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;update/insert/delete&lt;/code&gt;，除非是明确需要事务特性的查询，比如明确需要可重复读的查询，才需要放到事务中；&lt;/p&gt;
+
+    &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;根据对业务的预估，通过 &lt;strong&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;set max_execution_time&lt;/code&gt;&lt;/strong&gt; 来设置单个语句的最长执行时间，来避免单个语句意外执行过长时间。&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;毫秒，0 表示未启用。&lt;/p&gt;
+
+      &lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_max_execution_time&quot;&gt;mysql 8 doc max_execution_time&lt;/a&gt;&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
 &lt;/ol&gt;
 
 &lt;h3 id=&quot;数据库端&quot;&gt;数据库端&lt;/h3&gt;
@@ -3411,7 +3517,7 @@
 
       &lt;ul&gt;
         &lt;li&gt;0：使用系统表空间，即 ibdata1&lt;/li&gt;
-        &lt;li&gt;不为0：使用独立数量的undo表空间，默认为2，即 undo_001、undo_002&lt;/li&gt;
+        &lt;li&gt;不为0：使用独立数量的undo表空间，默认为2，即存在两个独立的回滚表空间： undo_001、undo_002&lt;/li&gt;
       &lt;/ul&gt;
     &lt;/blockquote&gt;
   &lt;/li&gt;
@@ -3432,10 +3538,14 @@
         <title>MySQL学习笔记(五)：MySQL计算QPS和TPS</title>
         <description>&lt;h3 id=&quot;qps&quot;&gt;QPS&lt;/h3&gt;
 
-&lt;p&gt;基于 com_select&lt;/p&gt;
+&lt;p&gt;基于 Com_select&lt;/p&gt;
 
 &lt;blockquote&gt;
-  &lt;p&gt;基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准&lt;/p&gt;
+  &lt;p&gt;基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准。&lt;/p&gt;
+
+  &lt;p&gt;Com_select 用于统计 select 语句的执行次数，类似的还有 Com_delete、Com_update 等。&lt;/p&gt;
+
+  &lt;p&gt;参考：&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html#statvar_Com_xxx&quot;&gt;Com_xxx&lt;/a&gt;&lt;/p&gt;
 &lt;/blockquote&gt;
 
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
@@ -3689,7 +3799,7 @@
 
 &lt;ol&gt;
   &lt;li&gt;如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。&lt;/li&gt;
-  &lt;li&gt;常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用的数据来源通道。&lt;/li&gt;
+  &lt;li&gt;常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用系统数据来源通道。&lt;/li&gt;
 &lt;/ol&gt;
 
 &lt;h3 id=&quot;如何查看&quot;&gt;如何查看？&lt;/h3&gt;
@@ -3743,11 +3853,17 @@
   &lt;li&gt;
     &lt;p&gt;选择哪种格式？&lt;/p&gt;
 
-    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;STATEMENT&lt;/code&gt;直接记录sql，可能会在某些情况下导致执行结果不一致，比如 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delete&lt;/code&gt; 时走的索引不同会导致删除的记录不同；&lt;/p&gt;
-
-    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ROW&lt;/code&gt; 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ROW&lt;/code&gt;；&lt;/p&gt;
-
-    &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MIXED&lt;/code&gt; 需要检查会不会有不在自动切换的条件中，但可能会导致执行结果不一致的特殊情况，自动其实意味着熟悉&lt;/p&gt;
+    &lt;ul&gt;
+      &lt;li&gt;
+        &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;STATEMENT&lt;/code&gt; ：直接记录sql，可能会在某些情况下导致通过日志恢复出来的数据不一致，比如 &lt;a href=&quot;https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#rc-%E5%92%8C-rr-%E5%9C%A8%E9%94%81%E9%97%AE%E9%A2%98%E4%B8%8A%E7%9A%84%E5%8C%BA%E5%88%AB&quot;&gt;RC 和 RR 在锁问题上的区别&lt;/a&gt;、&lt;a href=&quot;/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/#%E7%A4%BA%E4%BE%8B%E4%BA%8C&quot;&gt;更新的值与原来的值相同的情况下，MySQL还会执行更新吗？&lt;/a&gt;、 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delete&lt;/code&gt; 时走的索引不同会导致删除的记录不同、一些函数结果不同等等&lt;/p&gt;
+      &lt;/li&gt;
+      &lt;li&gt;
+        &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ROW&lt;/code&gt;： 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;ROW&lt;/code&gt;&lt;/p&gt;
+      &lt;/li&gt;
+      &lt;li&gt;
+        &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;MIXED&lt;/code&gt;： 需要非常熟悉切换的条件，以确保用日志恢复数据不会有问题&lt;/p&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
   &lt;/li&gt;
   &lt;li&gt;
     &lt;p&gt;切换当前连接 binlog 格式&lt;/p&gt;
@@ -3776,12 +3892,18 @@
 &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;write&lt;/code&gt;  和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fsync&lt;/code&gt; 的时机由参数 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync_binlog&lt;/code&gt;控制，默认值是1，总共有3种设置：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;0：每次事务提交时都只write，不fsync。由于只保存到操作系统缓存，所以如果主机重启会丢失数据&lt;/li&gt;
-  &lt;li&gt;1：每次事务都 fsync&lt;/li&gt;
-  &lt;li&gt;N(N&amp;gt;1)：每次事务提交都write，但只有累计了 N 个事务以后才会 fsync&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;0：每次事务提交时都只write，不fsync。由于只保存到操作系统缓存，依赖操作系统来时不时的fsync，如果主机掉电或崩溃会丢失binlog&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;1：每次事务都 fsync&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;N(N&amp;gt;1)：每次事务提交都write，但只有累计了 N 个事务以后才会 fsync，如果主机掉电或崩溃会丢失最近N个事务的binlog&lt;/p&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;设为N时，如果主机异常重启会丢失最近N个事务的数据，但是可以提升性能，需评估使用。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_sync_binlog&quot;&gt;参考：mysql8 doc sync_binlog&lt;/a&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -3791,7 +3913,7 @@
 
 &lt;p&gt;Innodb 特有的日志，存储的是物理日志，即数据页上的改动。&lt;/p&gt;
 
-&lt;p&gt;数据页：Innodb 从磁盘读取数据的基本单位，即使只取一行记录，也会将改行所在的整个数据页读入内存。数据页的大小可通过以下参数查看，默认为16k&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;数据页&lt;/strong&gt;：Innodb 从磁盘读取数据的基本单位，即使只取一行记录，也会将改行所在的整个数据页读入内存。数据页的大小可通过以下参数查看，默认为16k&lt;/p&gt;
 
 &lt;div class=&quot;language-sql highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;k&quot;&gt;show&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;global&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;variables&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;like&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;&apos;innodb_page_size&apos;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -3805,7 +3927,7 @@
 
 &lt;p&gt;&lt;img src=&quot;/blog/img/16a7950217b3f0f4ed02db5db59562a7.webp&quot; alt=&quot;16a7950217b3f0f4ed02db5db59562a7&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;绿色的部分表示空闲的空间。&lt;/p&gt;
+&lt;p&gt;这个图画的不太好，一开始 checkpoint 和 writepos 都处于同一位置，边写边往后推移。上图可理解为：两者一开始都处于 checkpoint 现在的位置，writepos 写了一圈又转到 checkpoint 后面了。 所以绿色的部分表示空闲的空间，黄色的表示已写的空间。&lt;/p&gt;
 
 &lt;h3 id=&quot;查看-redo-log-相关设置&quot;&gt;查看 redo log 相关设置&lt;/h3&gt;
 
@@ -3832,12 +3954,32 @@
 &lt;p&gt;同样，redo log 也分为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;write&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;fsync&lt;/code&gt;，由参数 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commit&lt;/code&gt;控制，默认值为1：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;0：每次事务提交只把redo log保留在 redo log buffer 中&lt;/li&gt;
-  &lt;li&gt;1：每次事务提交都 fsync 到磁盘（prepare阶段fsync，commit阶段write就行了）&lt;/li&gt;
-  &lt;li&gt;2：每次事务提交都只将redo log 写到 page cache 中&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;0：只把 redo log 写到 redo log buffer 中，后台线程每隔1s会将 buffer 中的内容 write、fsync 到磁盘&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;如果 MySQL 崩溃，会丢失1s的事务数据&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;1：每次事务提交都 fsync 到磁盘&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;最安全，严格保证了事务的持久性，只要事务提交成功，就说明对应的日志已落盘&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;2：每次事务提交都只将redo log 写到 page cache 中，后台线程每隔1s会将 page cache 中的内容 fsync 到磁盘&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;如果主机掉电或异常重启，会丢失1s的事务数据&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;&lt;strong&gt;除此之外，后台还会有一个线程，每隔1秒会将redo log buffer中的内容先 write 到 page cache，再 fsync 到磁盘。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;0 和 2 的区别在于，0是写到了 redo log buffer 中，属于 MySQL 管理的内存。2是写到了 page cache 中，属于操作系统的内存。&lt;/p&gt;
+
+&lt;p&gt;可靠性 1 最高，性能 0和2 最好（2 可靠性要比 0 高，因为主机重启的概率一般比MySQL崩溃的概率低，二者选一的话，建议设置为2）。&lt;/p&gt;
 
 &lt;p&gt;没提交的事务也会被 &lt;strong&gt;&lt;u&gt;被动的&lt;/u&gt;&lt;/strong&gt; 写入磁盘：&lt;/p&gt;
 
@@ -3846,13 +3988,15 @@
   &lt;li&gt;如果有并行事务，假如A执行了一半，已经写了一些redo log 到 buffer中，此时 B 提交，如果 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commit&lt;/code&gt;=1，B要把buffer里日志全部fsync到磁盘，此时会带上A的内容一起fsync&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;再次强调，写完内存和rodo log、binlog就算事务提交成功了。所以结合两阶段提交，&lt;strong&gt;当默认值为1时&lt;/strong&gt;，在redo log的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;prepare&lt;/code&gt; 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;commit&lt;/code&gt;（&lt;strong&gt;但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性&lt;/strong&gt;）&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_flush_log_at_trx_commit&quot;&gt;参考：mysql8 doc innodb_flush_log_at_trx_commit&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;最终数据落盘的过程是&quot;&gt;最终数据落盘的过程是？&lt;/h3&gt;
 
-&lt;p&gt;1、正常运行过程中，MySQL更新完内存后，内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程甚至和redo log 毫无关系。（当然，猜测还会向前推进redo log中 checkpoint的位置）&lt;/p&gt;
+&lt;p&gt;1、正常运行过程中，MySQL更新完内存后便可返回响应。内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程和redo log 毫无关系。当然，此时 redo log 中已经记录了相关数据页的改动。写盘的时候还会向前推进redo log 中 checkpoint 的位置。&lt;/p&gt;
 
-&lt;p&gt;2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将redo log中的数据更新到内存中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。&lt;/p&gt;
+&lt;p&gt;2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将 redo log 中记录的变更应用到内存数据页中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -3864,7 +4008,11 @@
 
 &lt;p&gt;&lt;img src=&quot;/blog/img/两阶段提交.svg&quot; alt=&quot;两阶段提交&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;两阶段提交并不是MySQL特有的，它是一种分布式事务的策略。其本质说来也很通俗，就是一个人的时候好办，多个人的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了才能继续下一步。&lt;/p&gt;
+&lt;p&gt;两阶段提交并不是MySQL特有的，它是一种通用的分布式处理策略。其本质说来也很直白，就是一个人的时候好办，人多的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了再继续下一步。&lt;/p&gt;
+
+&lt;p&gt;这里有个细节，当  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commit=1&lt;/code&gt; 时，在redo log的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;prepare&lt;/code&gt; 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;commit&lt;/code&gt;（&lt;strong&gt;但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性&lt;/strong&gt;）&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
 
 &lt;h3 id=&quot;两阶段提交如何保证-crash-safe&quot;&gt;两阶段提交如何保证 crash-safe？&lt;/h3&gt;
 
@@ -3877,6 +4025,8 @@
 &lt;/ol&gt;
 
 &lt;h4 id=&quot;具体如何实现&quot;&gt;具体如何实现？&lt;/h4&gt;
+
+&lt;p&gt;在崩溃恢复时，检查 redo log 和 binlog 的状态，如果：&lt;/p&gt;
 
 &lt;p&gt;1、redo log 状态为commit，直接提交事务&lt;/p&gt;
 
@@ -3898,9 +4048,7 @@
 
 &lt;h4 id=&quot;为什么要引入两个日志只用binlog-不就行了&quot;&gt;为什么要引入两个日志，只用binlog 不就行了？&lt;/h4&gt;
 
-&lt;p&gt;（现在只能理解到这个程度）&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;binlog不具备 crash-safe 的能力&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;很重要的一点：binlog不具备 crash-safe 的能力。&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;1、binlog 中没有checkpoint，不能区分哪些是已经落盘到磁盘数据文件（即最终存储数据的文件），哪些是需要应用到内存中用于崩溃恢复的&lt;/p&gt;
 
@@ -3925,15 +4073,25 @@
 
 &lt;h3 id=&quot;组提交&quot;&gt;组提交&lt;/h3&gt;
 
-&lt;p&gt;在双1配置下，即&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commit&lt;/code&gt;和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync_binlog&lt;/code&gt; 都为1，也就是默认情况下，redo log 会在 prepare 阶段 fsync。结合两阶段提交，写binlog其实也分为两步：write 和 fsync。MySQL做了一个优化：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;拖时间&lt;/code&gt;。即将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前。这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;写binlog在是实现上其实也分为两步：write 和 fsync&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;这里 MySQL 做了一个优化：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;拖时间&lt;/code&gt;。即&lt;strong&gt;将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。如下图所示，在两阶段提交的图上进一步细化：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/blog/img/5ae7d074c34bc5bd55c82781de670c28.webp&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;与此同时，也给了binlog  组提交的机会，因为binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：&lt;/p&gt;
 
-&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_sync_delay&lt;/code&gt;：表示延迟多少毫秒以后才调用 fsync&lt;/p&gt;
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_sync_delay&lt;/code&gt;：表示延迟多少微秒以后才调用 fsync&lt;/p&gt;
 
 &lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_no_delay_count&lt;/code&gt;：表示积累多少次以后才调用 fsync&lt;/p&gt;
 
-&lt;p&gt;第一个参数为0时，第二个参数无效。&lt;/p&gt;
+&lt;p&gt;两者是或的关系，当第一个参数为0时，表示不延迟，直接fsync，状态为true，则不再考虑第二个参数的设置了。&lt;/p&gt;
+
+&lt;p&gt;组提交与 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync_binlog&lt;/code&gt; 不冲突，可一起使用。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/replication-options-binary-log.html#sysvar_binlog_group_commit_sync_delay&quot;&gt;参考：mysql8 doc binlog_group_commit_sync_delay&lt;/a&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -3943,20 +4101,46 @@
 
 &lt;p&gt;从提高写redo log 和 binlog 的性能入手。&lt;/p&gt;
 
-&lt;p&gt;redo log：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;redo log&lt;/strong&gt;：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;增大redo log buffer 大小&lt;/li&gt;
-  &lt;li&gt;增大redo log file 大小&lt;/li&gt;
-  &lt;li&gt;将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commt&lt;/code&gt; 设为2，表示每次事务提交都只 write 到 page cache，由后台定时线程来fsync。这样做的风险是主机掉电重启后会丢失数据（正常关闭不影响，MySQL在正常关闭前会完成一系列收尾工作）&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;增大redo log buffer 大小&lt;/p&gt;
+
+    &lt;blockquote&gt;
+      &lt;p&gt;尤其对于需要更新很多行的大事务，大的redo log buffer 意味着事务提交前不会由于buffer满了而需要先写到磁盘上&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;增大redo log file 大小和个数&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_flush_log_at_trx_commt&lt;/code&gt; 设为2，表示每次事务提交都只 write 到 page cache，由后台定时线程来fsync。这样做的风险是主机掉电重启后会丢失数据（正常关闭不影响，MySQL在正常关闭前会完成一系列收尾工作）&lt;/p&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;binlog：&lt;/p&gt;
+&lt;p&gt;​		&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/optimizing-innodb-logging.html&quot;&gt;参考：Optimizing InnoDB Redo Logging&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;binlog&lt;/strong&gt;：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync_binlog&lt;/code&gt; 设为大于1的值（通常是100-1000），这样做的风险是主机掉电会丢失binlog日志&lt;/li&gt;
-  &lt;li&gt;调整 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_sync_delay&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_no_delay_count&lt;/code&gt;，提高binlog组提交效率，减少写盘次数。这样做会增加语句的响应时间，但是不会有丢失数据的风险&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;将 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sync_binlog&lt;/code&gt; 设为大于1的值（通常是100-1000），这样做的风险是主机掉电会丢失binlog日志&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;调整 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_sync_delay&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;binlog_group_commit_no_delay_count&lt;/code&gt;，提高binlog组提交效率，减少写盘次数。&lt;u&gt;这样做会增加语句的响应时间，但是不会有丢失数据的风险&lt;/u&gt;&lt;/p&gt;
+  &lt;/li&gt;
 &lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;增大 buffer pool 大小&lt;/strong&gt;：&lt;/p&gt;
+
+&lt;p&gt;buffer pool 是用来缓存表数据的内存，默认值是128M，增大这个值可以显著减少磁盘IO。&lt;/p&gt;
+
+&lt;p&gt;如果是数据库专用服务器，可以把 buffer pool 设为物理内存的 80%。&lt;/p&gt;
+
+&lt;p&gt;当 buffer pool 大小超过1G，建议同时把 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_buffer_pool_instances&lt;/code&gt; 设为大于1的值。相当于把 buffer pool 划分为了多个区域，可提高并发度。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_buffer_pool_size&quot;&gt;参考：mysql8 doc innodb_buffer_pool_size&lt;/a&gt;&lt;/p&gt;
 
 &lt;hr /&gt;
 
@@ -3972,7 +4156,7 @@
 
 &lt;ol&gt;
   &lt;li&gt;当需要读入新的内存页时，如果系统内存不足，就需要淘汰旧的数据页。如果淘汰的是脏页，就需要把脏页刷到磁盘。当一次淘汰的脏页太多时，就会明显影响性能。&lt;/li&gt;
-  &lt;li&gt;redo log 写满了。此时需要把redo log的 checkpoint 往前推进，并把 write pos 到新的 checkpoint 之间对应的脏页刷到磁盘。&lt;strong&gt;这种情况是很严重的，此时MySQL将不再接受更新，所有更新都会堵住。&lt;/strong&gt;&lt;/li&gt;
+  &lt;li&gt;redo log 写满了。此时需要把 checkpoint 到 write pos 之间的redo log对应的脏页刷到磁盘，并把 checkpoint 往前推进。&lt;strong&gt;这种情况是很严重的，此时MySQL将不再接受更新，所有更新都会堵住。&lt;/strong&gt;&lt;/li&gt;
   &lt;li&gt;后台任务 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;purge&lt;/code&gt; 会在系统空闲时刷脏页。&lt;/li&gt;
   &lt;li&gt;MySQL正常关闭时。&lt;/li&gt;
 &lt;/ol&gt;
@@ -3983,7 +4167,7 @@
 
 &lt;p&gt;对于情况二，调整 redo log 的大小即可，默认值明显太小，上文有讲过。&lt;/p&gt;
 
-&lt;p&gt;对于情况一，需要先了解下Innodb刷脏页的控制策略和相关参数。&lt;/p&gt;
+&lt;p&gt;对于情况一，除了上面提到过的 buffer pool，还需要先了解下Innodb刷脏页的控制策略和相关参数。&lt;/p&gt;
 
 &lt;p&gt;这里主要的参数是 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;innodb_io_capacity&lt;/code&gt;，从名字就可以看出是控制 IO 能力的，官方描述如下：&lt;/p&gt;
 
@@ -4022,11 +4206,12 @@
 6
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;n&quot;&gt;F1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_max_dirty_pages_pct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;then&lt;/span&gt;
-      &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
-  &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_max_dirty_pages_pct&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_max_dirty_pages_pct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;then&lt;/span&gt;
+   &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;M&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;innodb_max_dirty_pages_pct&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;      &lt;/div&gt;
+
     &lt;/blockquote&gt;
   &lt;/li&gt;
   &lt;li&gt;

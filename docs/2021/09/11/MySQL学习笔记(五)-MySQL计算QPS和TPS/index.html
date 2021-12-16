@@ -277,10 +277,14 @@
 
 				<h3 id="qps">QPS</h3>
 
-<p>基于 com_select</p>
+<p>基于 Com_select</p>
 
 <blockquote>
-  <p>基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准</p>
+  <p>基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准。</p>
+
+  <p>Com_select 用于统计 select 语句的执行次数，类似的还有 Com_delete、Com_update 等。</p>
+
+  <p>参考：<a href="https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html#statvar_Com_xxx">Com_xxx</a></p>
 </blockquote>
 
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1

@@ -12,9 +12,13 @@ tags:
 
 ### QPS
 
-基于 com_select
+基于 Com_select
 
-> 基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准
+> 基于questions的会统计show命令，mysql设置环境变量的时候也会增加，不太准。
+>
+> Com_select 用于统计 select 语句的执行次数，类似的还有 Com_delete、Com_update 等。
+>
+> 参考：[Com_xxx](https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html#statvar_Com_xxx)
 
 ```bash
 #!/usr/bin/env bash

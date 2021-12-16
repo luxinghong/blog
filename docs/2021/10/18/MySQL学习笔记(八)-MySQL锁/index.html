@@ -318,9 +318,9 @@
 
 <p>不加锁，<strong>会导致备份出来的库不是同一个逻辑时间点的</strong>，数据从业务逻辑上看是不一致的。</p>
 
-<p>比如在备份过程中先备份了A表，然后执行了一个业务操作，再备份B表，这个业务操作会同时更新A表和B表。那么这个时候备份出来的数据A表还是老版本，而B表已经被更新了，这个备份就是有问题的，是逻辑不一致的。</p>
+<p>比如在备份过程中先备份了A表，然后执行了一个业务操作，这个业务操作会同时更新A表和B表，再备份B表。那么这个时候备份出来的数据A表还是老版本，而B表已经被更新了，这个备份就是有问题的，是逻辑不一致的。</p>
 
-<p><u>为了既不影响业务，也要保证备份视图的逻辑一致性</u>，推荐采用另一种全库备份的方法：<strong><code class="language-plaintext highlighter-rouge">mysqldump -single-transaction</code></strong>。导数据之前会启动一个事务，来确保拿到一致性视图。而且由于 MVCC 的支持，在此期间是可以正常更新的。</p>
+<p><u>为了既不影响业务，也要保证备份视图的逻辑一致性</u>，<strong>推荐采用另一种全库备份的方法</strong>：<strong><code class="language-plaintext highlighter-rouge">mysqldump -single-transaction</code></strong>。导数据之前会启动一个事务，来确保拿到一致性视图。而且由于 MVCC 的支持，在此期间是可以正常更新的。</p>
 
 <p>当然显而易见，这种方法只适用于支持事务的存储引擎，所以这也是为什么推荐使用 Innodb 而不是 MyISAM 的一个原因。</p>
 
@@ -330,7 +330,7 @@
 
 <h1 id="表级锁">表级锁</h1>
 
-<p><strong>server层实现，分两种：表锁和元数据锁(MDL)。</strong></p>
+<p><strong>server层实现，分两种：元数据锁(MDL)和表锁。</strong></p>
 
 <h3 id="表锁">表锁</h3>
 
@@ -355,8 +355,10 @@
 <ul>
   <li>任何线程都不能写 t1 ，包括本线程</li>
   <li>只有本线程能读写 t2</li>
-  <li><strong>本线程甚至不能访问除 t1、t2 之外的任何表</strong>，这点很奇怪，不懂为什么这么设计</li>
+  <li><strong>本线程甚至不能访问除 t1、t2 之外的任何表</strong>，这点很奇怪，不懂为什么这么设计，访问其他表时会报错 <code class="language-plaintext highlighter-rouge">Table 'xxx' was not locked with LOCK TABLES</code></li>
 </ul>
+
+<p><br /></p>
 
 <h3 id="元数据锁">元数据锁</h3>
 
@@ -444,6 +446,10 @@
 </pre></td></tr></tbody></table></code></pre></div></div>
 
 <p>MySQL可以通过调整 <strong><code class="language-plaintext highlighter-rouge">lock_wait_timeout</code></strong> 值来控制这个超时时间，默认值是 31536000s，即1年，显然这个时间太长了。</p>
+
+<blockquote>
+  <p>获取元数据锁的超时时间，注意与 <code class="language-plaintext highlighter-rouge">innodb_lock_wait_timeout</code> 区分开来</p>
+</blockquote>
 
 <hr />
 
