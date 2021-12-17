@@ -24,9 +24,9 @@ tags:
 
 当 `explain` 中的 `Extra` 字段显示 `Using filesort`，表示该查询需要排序。
 
-MySQL 会为每个线程分配一块内存用于排序，称为 **`sort_buffer`**。对应的参数为 `sort_buffer_size` ，顾名思义为 `sort_buffer` 的大小。默认值为256k，最小可设为32k。
+> **注：只是表示需要排序，这里不区分是在内存还是磁盘，别被 `filesort` 误导**。根据数据量和 `sort_buffer` 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。
 
-**注：只是表示需要排序，这里不区分是在内存还是磁盘，别被 `filesort` 误导**。根据数据量和 `sort_buffer` 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。
+MySQL 会为每个线程分配一块内存用于排序，称为 **`sort_buffer`**。对应的参数为 `sort_buffer_size` ，顾名思义为 `sort_buffer` 的大小。默认值为256k，最小可设为32k。
 
 ------
 
@@ -239,6 +239,8 @@ select id,name from t where city = B order by name limit 10100;
 
 # 随机排序
 
+### order by rand()
+
 随机排序在现实中的应用场景还是比较多的，可能会首先想到使用`order by rand()` 。
 
 比如：
@@ -251,7 +253,7 @@ select * from words order by rand() limit 3;
 
 
 
-虽然用法简单明了，但它的执行效率怎样(对于数据量不是特别大的表，其实也完全够用了)，做个实验。
+虽然用法简单明了，但它的执行效率怎样(<u>对于数据量不是特别大的表，其实也完全够用了</u>)，做个实验。
 
 先构造一张 `words` 表和实验数据：
 
@@ -279,7 +281,7 @@ call idata();
 
 `explain` 下看看：
 
-![image-20211206121345480](/home/head/.config/Typora/typora-user-images/image-20211206121345480.png)
+![image-20211206121345480](/blog/img/image-20211206121345480.png)
 
 `Extra` 显示 `Using temporary; Using filesort` ，表示需要临时表，需要排序。
 
@@ -304,7 +306,7 @@ set optimizer_trace='enabled=on';
 select * from words order by rand() limit 3;select * from information_schema.OPTIMIZER_TRACE\G
 ```
 
-![image-20211206130948945](/home/head/.config/Typora/typora-user-images/image-20211206130948945.png)
+![image-20211206130948945](/blog/img/image-20211206130948945.png)
 
 可看到该排序使用了全字段排序，且没有使用到磁盘临时文件。`sort_buffer` 中同时最多有4行数据存在，每一行长度为 $8+279=287$。为什么只有4行？难道不应该是对10000行数据排序吗？
 
@@ -320,9 +322,11 @@ select * from words order by rand() limit 3;select * from information_schema.OPT
 > 4. 插入0.8，比0.5大，无需交换，堆不变，此时堆为 [0.5,0.4,0.3]；
 > 5. 遍历结束，top3小即为 [0.5,0.4,0.3]，且0.5为第3小的元素。
 
+<br/><br/>
 
 
-### 随机排序方法
+
+### 自己实现随机排序
 
 #### 方法一
 

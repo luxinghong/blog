@@ -285,9 +285,11 @@
 
 <p>当 <code class="language-plaintext highlighter-rouge">explain</code> 中的 <code class="language-plaintext highlighter-rouge">Extra</code> 字段显示 <code class="language-plaintext highlighter-rouge">Using filesort</code>，表示该查询需要排序。</p>
 
-<p>MySQL 会为每个线程分配一块内存用于排序，称为 <strong><code class="language-plaintext highlighter-rouge">sort_buffer</code></strong>。对应的参数为 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> ，顾名思义为 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 的大小。默认值为256k，最小可设为32k。</p>
+<blockquote>
+  <p><strong>注：只是表示需要排序，这里不区分是在内存还是磁盘，别被 <code class="language-plaintext highlighter-rouge">filesort</code> 误导</strong>。根据数据量和 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。</p>
+</blockquote>
 
-<p><strong>注：只是表示需要排序，这里不区分是在内存还是磁盘，别被 <code class="language-plaintext highlighter-rouge">filesort</code> 误导</strong>。根据数据量和 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 大小，可能是内存排序，也可能是外部排序(需要借助磁盘临时文件辅助排序)。</p>
+<p>MySQL 会为每个线程分配一块内存用于排序，称为 <strong><code class="language-plaintext highlighter-rouge">sort_buffer</code></strong>。对应的参数为 <code class="language-plaintext highlighter-rouge">sort_buffer_size</code> ，顾名思义为 <code class="language-plaintext highlighter-rouge">sort_buffer</code> 的大小。默认值为256k，最小可设为32k。</p>
 
 <hr />
 
@@ -513,6 +515,8 @@
 
 <h1 id="随机排序">随机排序</h1>
 
+<h3 id="order-by-rand">order by rand()</h3>
+
 <p>随机排序在现实中的应用场景还是比较多的，可能会首先想到使用<code class="language-plaintext highlighter-rouge">order by rand()</code> 。</p>
 
 <p>比如：</p>
@@ -523,7 +527,7 @@
 
 <p>表示从单词表中随机抽取3个单词。</p>
 
-<p>虽然用法简单明了，但它的执行效率怎样(对于数据量不是特别大的表，其实也完全够用了)，做个实验。</p>
+<p>虽然用法简单明了，但它的执行效率怎样(<u>对于数据量不是特别大的表，其实也完全够用了</u>)，做个实验。</p>
 
 <p>先构造一张 <code class="language-plaintext highlighter-rouge">words</code> 表和实验数据：</p>
 
@@ -569,7 +573,7 @@
 
 <p><code class="language-plaintext highlighter-rouge">explain</code> 下看看：</p>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211206121345480.png" alt="image-20211206121345480" /></p>
+<p><img src="/blog/img/image-20211206121345480.png" alt="image-20211206121345480" /></p>
 
 <p><code class="language-plaintext highlighter-rouge">Extra</code> 显示 <code class="language-plaintext highlighter-rouge">Using temporary; Using filesort</code> ，表示需要临时表，需要排序。</p>
 
@@ -599,7 +603,7 @@
 <span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">words</span> <span class="k">order</span> <span class="k">by</span> <span class="n">rand</span><span class="p">()</span> <span class="k">limit</span> <span class="mi">3</span><span class="p">;</span><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">information_schema</span><span class="p">.</span><span class="n">OPTIMIZER_TRACE</span><span class="err">\</span><span class="k">G</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p><img src="/home/head/.config/Typora/typora-user-images/image-20211206130948945.png" alt="image-20211206130948945" /></p>
+<p><img src="/blog/img/image-20211206130948945.png" alt="image-20211206130948945" /></p>
 
 <p>可看到该排序使用了全字段排序，且没有使用到磁盘临时文件。<code class="language-plaintext highlighter-rouge">sort_buffer</code> 中同时最多有4行数据存在，每一行长度为 $8+279=287$。为什么只有4行？难道不应该是对10000行数据排序吗？</p>
 
@@ -619,7 +623,9 @@
   </ol>
 </blockquote>
 
-<h3 id="随机排序方法">随机排序方法</h3>
+<p><br /><br /></p>
+
+<h3 id="自己实现随机排序">自己实现随机排序</h3>
 
 <h4 id="方法一">方法一</h4>
 
