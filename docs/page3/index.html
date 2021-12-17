@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="陆星宏的博客 | What a Life">
+    
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="「Live for yourself」">
+    
+    <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
+    <meta property="og:url" content="http://localhost:4000/page3/">
+    <meta property="og:site_name" content="陆星宏的博客 | What a Life">
+    
+    <title>陆星宏的博客 | What a Life</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/blog/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/blog/img/favicon.ico">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/blog/page3/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/blog/css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Mathjax Support -->
+   <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        inlineMath: [['$','$']]
+        }
+    });
+   </script>
+    <script type="text/javascript" async
+       src="https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <!--<script src="//cdn.bootcdn.net/ajax/libs/eruda/2.3.3/eruda.js"></script>-->
+    <!--<script>eruda.init();</script>-->
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/blog/">What a Life</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/blog/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Page Header -->
+
+
+
+
+
+
+
+<header class="intro-header" style="background-image: url('/blog/img/niuniu.jpg')">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        
+        <div class="site-heading">
+        
+          <h1>What a Life</h1>
+          <span class="subheading" style="font-family:emoji">「Live for yourself」</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+
+
+<!-- Main Content -->
+<div class="container">
+	<div class="row">
+        
+
+<!-- USE SIDEBAR -->
+    <!-- PostList Container -->
+    		<div class="
+                col-lg-8 col-lg-offset-1
+                col-md-8 col-md-offset-1
+                col-sm-12
+                col-xs-12
+                postlist-container
+            ">
+    			
+<div class="post-preview">
+    <a href="/blog/2020/11/08/Java-%E5%A6%82%E4%BD%95%E6%AD%A3%E7%A1%AE%E5%9C%B0%E8%BE%93%E5%87%BA%E6%97%A5%E5%BF%97/">
+        <h2 class="post-title">
+            Java 如何正确地输出日志
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                
+  转自：
+
+  作者：蒋老湿
+链接：https://juejin.cn/post/6844903678290165773
+
+
+什么是日志
+
+简单的说，日志就是记录程序的运行轨迹，方便查找关键信息，也方便快速定位解决问题。
+
+我们 Java 程序员在开发项目时都是依赖 Eclipse/ Idea 等开发工具的 Debug 调试功能来跟踪解决 Bug，在开发环境可以这么做，但项目发布到了测试...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        November 8, 2020
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/blog/2020/11/03/Java%E6%B3%9B%E5%9E%8B/">
+        <h2 class="post-title">
+            Java泛型
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                
+  转自：
+
+  作者： frank909
+
+  https://blog.csdn.net/briblue/article/details/76736356
+
+
+泛型，一个孤独的守门者。
+
+大家可能会有疑问，我为什么叫做泛型是一个守门者。这其实是我个人的看法而已，我的意思是说泛型没有其看起来那么深不可测，它并不神秘与神奇。泛型是 Java 中一个很小巧的概念，但同时也是一个很容易让人迷惑...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        November 3, 2020
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/blog/2020/07/20/dockerfile%E6%89%93%E6%88%90docker%E4%B8%8A%E4%BC%A0%E5%88%B0linux%E5%90%8E%E8%BF%90%E8%A1%8C%E6%8A%A5sh%E8%84%9A%E6%9C%AC%E6%89%BE%E4%B8%8D%E5%88%B0%E7%9A%84%E9%94%99%E8%AF%AF/">
+        <h2 class="post-title">
+            dockerfile打成docker上传到linux后运行报sh脚本找不到的错误
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                之前遇到一个奇葩错误， 本地dockerfile打成docker上传到linux后(使用的是docker-maven-plugin)，docker run imageID 一直报 ./run.sh not found  的错误。
+
+dockerfile如下：
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+FROM openjdk:8-jdk-alpine
+RUN sed...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        July 20, 2020
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/blog/2020/04/24/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%89/">
+        <h2 class="post-title">
+            shiro源码分析三
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                这一篇主要通过2个流程，一个登录流程和一个登陆成功后的访问流程来看下 subject 的创建过程。因为subject 是 shiro 的核心，搞懂了它的创建过程，基本就搞懂了 shiro 的核心逻辑。(这一部分代码是基于传统表单验证的，不是基于JWT的)
+
+
+  
+    登录流程
+
+    从前两篇得知，每次请求 shiro 都会创建一个 subject。我们直接从 shiroFilter...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        April 24, 2020
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/blog/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%BA%8C/">
+        <h2 class="post-title">
+            shiro源码分析二
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                现在有个问题，当token认证通过以后，subject.isAuthenticated() = true 并且 subject.principal() 不为null，这一步操作是在哪里做的？
+
+回到源代码 JWTFilter 中，当我们带token访问时进行到这一步
+
+
+
+跟进去
+
+
+
+它就是把token取出来，构造出JWToken，然后调用subject.login(token) 方法进行...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        April 23, 2020
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/blog/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%80/">
+        <h2 class="post-title">
+            shiro源码分析一
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                shiro本质上是基于一系列filter的，根据不同的路径进入不同的filter，进行不同的逻辑处理，并决定是否要继续执行下一个filter。
+
+因此我们就可以控制整个应用程序的流转。（默认的在 DefaultFilter 中共12个）
+
+下面简单理一下shiro的执行逻辑：
+
+
+  
+    因为shiro是基于filter的，我们先理一下它的filter的类结构。
+
+    在Shiro...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        April 23, 2020
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/blog/2020/04/02/log4j2%E6%89%93%E5%8D%B0%E5%BD%A9%E8%89%B2%E6%97%A5%E5%BF%97/">
+        <h2 class="post-title">
+            log4j2打印彩色日志
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                先贴一份简单的log4j2配置：
+
+
+
+使用 %highlight{} 即可打印出彩色日志，但是自log4j 2.10版本以后该功能默认是关闭的，所以要给它打开。
+
+在 VM options 中添加 -Dlog4j.skipJansi = false即可。
+
+详见官方文档
+
+
+
+具体使用方法和默认值在 https://logging.apache.org/log4j/2.x/manual/l...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        April 2, 2020
+    </p>
+</div>
+<hr>
+
+
+<!-- Pager -->
+
+<ul class="pager">
+    
+    <li class="previous">
+        <a href="/blog/page2">&larr; Newer Posts</a>
+    </li>
+    
+    
+</ul>
+
+
+    		</div>
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-3 col-lg-offset-0
+                col-md-3 col-md-offset-0
+                col-sm-12
+                col-xs-12
+                sidebar-container
+            ">
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+    <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0025" 
+                    href="/blog/archive/?tag=log"
+                    title="log"
+                    rel="2">log</a>
+        
+                <a data-sort="0016" 
+                    href="/blog/archive/?tag=mysql"
+                    title="mysql"
+                    rel="11">mysql</a>
+        
+                <a data-sort="0024" 
+                    href="/blog/archive/?tag=shiro"
+                    title="shiro"
+                    rel="3">shiro</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
+                    title="事务"
+                    rel="1">事务</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
+                    title="数据类型"
+                    rel="1">数据类型</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%B3%9B%E5%9E%8B"
+                    title="泛型"
+                    rel="1">泛型</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
+                    title="浮点数"
+                    rel="1">浮点数</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
+                    title="索引"
+                    rel="1">索引</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"
+                    title="设计模式"
+                    rel="1">设计模式</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E9%94%81"
+                    title="锁"
+                    rel="1">锁</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=DDD"
+                    title="DDD"
+                    rel="1">DDD</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Git"
+                    title="Git"
+                    rel="1">Git</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=JPA"
+                    title="JPA"
+                    rel="1">JPA</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Manjaro"
+                    title="Manjaro"
+                    rel="1">Manjaro</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Spring"
+                    title="Spring"
+                    rel="1">Spring</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=binlog"
+                    title="binlog"
+                    rel="1">binlog</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=docker"
+                    title="docker"
+                    rel="1">docker</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=redo"
+                    title="redo"
+                    rel="1">redo</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=restful"
+                    title="restful"
+                    rel="1">restful</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=springboot"
+                    title="springboot"
+                    rel="1">springboot</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=starter"
+                    title="starter"
+                    rel="1">starter</a>
+    </div>
+</section>
+
+
+                <!-- Short About -->
+                <section class="visible-md visible-lg">
+  <hr>
+  <h5><a href="/blog/about/">ABOUT ME</a></h5>
+  <div class="short-about">
+    
+    <img src="/blog/img/微信图片_20211213132145.jpg" />
+    
+    
+    <p>一个Java程序员.<br/>有只猫,名叫妞妞.<br/>编码之外:打篮球,吃饭,睡觉.<br/>寻求一份长期稳定的远程后端开发工作.<br/>452228391@qq.com</p>
+    
+    <!-- SNS Link -->
+    
+
+
+<ul class="list-inline">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+  </div>
+</section>
+
+                <!-- Friends Blog -->
+                <!--
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+</ul>
+-->
+    		</div>
+        
+	</div>
+</div>
+
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; What a Life 2021
+                    <br>
+                    模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/blog/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/blog/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/blog/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/blog/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/blog/js/snackbar.js "></script>
+<script src="/blog/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/blog/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/blog/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        // templateMiddleware: function (prop, value, template) {
+        //     if (prop === 'subtitle' || prop === 'title') {
+        //         if (value.indexOf("code")) {
+        //             return htmlDecode(value);
+        //         } else {
+        //             return value;
+        //         }
+        //     }
+        // }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+
+<!-- Image to hack wechat -->
+<img src="/blog/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

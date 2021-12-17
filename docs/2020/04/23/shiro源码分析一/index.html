@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="shiro源码分析一 - 陆星宏的博客 | What a Life">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="shiro本质上是基于一系列filter的，根据不同的路径进入不同的filter，进行不同的逻辑处理，并决定是否要继续执行下一个filter。
+">
+    
+    <meta property="article:published_time" content="2020-04-23T00:00:00Z">
+    
+    
+    <meta property="article:author" content="">
+    
+    
+    <meta property="article:tag" content="shiro">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
+    <meta property="og:url" content="http://localhost:4000/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%80/">
+    <meta property="og:site_name" content="陆星宏的博客 | What a Life">
+    
+    <title>shiro源码分析一 - 陆星宏的博客 | What a Life</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/blog/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/blog/img/favicon.ico">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/blog/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%80/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/blog/css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Mathjax Support -->
+   <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        inlineMath: [['$','$']]
+        }
+    });
+   </script>
+    <script type="text/javascript" async
+       src="https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <!--<script src="//cdn.bootcdn.net/ajax/libs/eruda/2.3.3/eruda.js"></script>-->
+    <!--<script>eruda.init();</script>-->
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top invert">
+    
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/blog/">What a Life</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/blog/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/blog/img/niuniu.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/blog/img/niuniu.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+<header class="intro-header style-text" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/blog/archive/?tag=shiro" title="shiro">shiro</a>
+                        
+                    </div>
+                    <h1>shiro源码分析一</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">April 23, 2020</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<p>shiro本质上是基于一系列filter的，根据不同的路径进入不同的filter，进行不同的逻辑处理，并决定是否要继续执行下一个filter。</p>
+
+<p>因此我们就可以控制整个应用程序的流转。（默认的在 DefaultFilter 中共12个）</p>
+
+<p>下面简单理一下shiro的执行逻辑：</p>
+
+<ol>
+  <li>
+    <p>因为shiro是基于filter的，我们先理一下它的filter的类结构。</p>
+
+    <p>在ShiroConfig中都会配置 ShiroFilterFactoryBean ，它是一个工厂bean，返回 的是SpringShiroFilter 。filter中最重要的自然是 doFilter() 方法，在 SpringShiroFilter 中查找这个方法，最终定位到 OncePerRequestFilter 。这个类我们可以把它当作整个shiro处理流程的基类。</p>
+  </li>
+  <li>
+    <p>我们先不加入自定义filter，用它自带的authc filter 来跟一下源码</p>
+  </li>
+</ol>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>    <span class="nc">Map</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">&gt;</span> <span class="n">map</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">LinkedHashMap</span><span class="o">&lt;&gt;();</span>
+    <span class="n">map</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="s">"/**"</span><span class="o">,</span> <span class="s">"authc"</span><span class="o">);</span>
+    <span class="n">factory</span><span class="o">.</span><span class="na">setFilterChainDefinitionMap</span><span class="o">(</span><span class="n">map</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>再定义一个简单的api</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="rouge-code"><pre><span class="nd">@GetMapping</span><span class="o">(</span><span class="s">"/article"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="nc">InvokeResult</span><span class="o">&lt;</span><span class="nc">String</span><span class="o">&gt;</span> <span class="nf">article</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nc">Subject</span> <span class="n">subject</span> <span class="o">=</span> <span class="nc">SecurityUtils</span><span class="o">.</span><span class="na">getSubject</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">subject</span><span class="o">.</span><span class="na">isAuthenticated</span><span class="o">())</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="nc">InvokeResult</span><span class="o">.</span><span class="na">success</span><span class="o">(</span><span class="s">"You are already logged in"</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="nc">InvokeResult</span><span class="o">.</span><span class="na">success</span><span class="o">(</span><span class="s">"You are guest"</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>接下来访问/article，自然进入到了之前说过的 OncePerRequestFilter 中的 doFilter() 方法</p>
+
+<p><img src="/blog/img/2020042310085137.png" alt="" /></p>
+
+<p>可以看到当前的对象是 ShiroFilterFactoryBean 中的 SpringShiroFilter。</p>
+
+<p>接着往下走，到了 doFilterInternal() 方法</p>
+
+<p><img src="/blog/img/20200423101041231.png" alt="" /></p>
+
+<p>step into ,继续，进入到了 AbstractShiroFilter 中的 doFilterInternal() 。<strong>OncePerRequestFilter</strong> 有2个子类，一个是 <strong>AbstractShiroFilter</strong>，一个是 <strong>AdviceFilter</strong>。记住这个继承结构，很重要。</p>
+
+<p><img src="/blog/img/20200423101322859.png" alt="" /></p>
+
+<p>简单来说 AbstractShiroFilter 用于执行初始化、配置、构造subject等事情，AdviceFilter 通过 preHandle()、postHandle() 方法执行真正的filter逻辑，并决定要不要继续执行下一个filter。</p>
+
+<p>继续往下走：</p>
+
+<p><img src="/blog/img/20200423104833698.png" alt="" /></p>
+
+<p>可以看到先创建了一个subject，这个subject将会贯穿这个request的整个生命周期，每次请求进来shiro都会创建一个subject，具体创建过程后面再讲。</p>
+
+<p>接下来执行过滤链，也就是 executeChain() 方法。</p>
+
+<p>step into：</p>
+
+<p><img src="/blog/img/20200423105052834.png" alt="" /></p>
+
+<p>第一步先获取过滤链，我们先看一下获取到的是什么东西</p>
+
+<p><img src="/blog/img/20200423105209373.png" alt="" /></p>
+
+<p>获取到的是一个 ProxiedFilterChain，从名字可以看出来它是一个代理过滤链。它代理的是什么呢？从它的成员属性来看，代理的是原来的过滤链(orig)，再加上了一个filterList，这个filterList中看到了我们熟悉的 authc 字眼。所以这一块的作用就是将请求从容器中的 filter 代理到了 shiro 中的filter，接下来就可以执行我们的认证、授权逻辑了。</p>
+
+<ol>
+  <li>接着上一步，执行到了authc过滤器，也就是 FormAuthenticationFilter ，FormAuthenticationFilter 继承于 OncePerRequestFilter 下的 AdviceFilter，回想一下上面讲的继承结构，是不是感觉很清晰了。</li>
+</ol>
+
+<p>同样，执行 FormAuthenticationFilter 中的 doFilter() 方法，由于它本身没有定义，所以我们又回到了 OncePerRequestFilter 中的 doFilter() ，然后又到了 doFilterInternal()</p>
+
+<p><img src="/blog/img/20200423110346938.png" alt="" /></p>
+
+<p>step into，由于这次是 FormAuthenticationFilter，所以这次的 doFilterInternal 进入到了 AdviceFilter中，<strong>记住这个类的继承结构，很重要</strong>。</p>
+
+<p><img src="/blog/img/20200423110546761.png" alt="" /></p>
+
+<p>接着往下走，可以看到有preHandle、postHandle、continueChain方法，所以可以大概猜测到它的作用是执行一些业务逻辑来决定要不要继续执行filter过滤链。举个例子，反应到前台就是当没有认证时就不继续执行过滤链，跳转到登录页。</p>
+
+<p><img src="/blog/img/20200423110858937.png" alt="" /></p>
+
+<p>接着往下走，我们step into preHandle() 方法</p>
+
+<p>进入到了 PathMatchingFilter 类中的 preHandle，PathMatchingFilter 是AdviceFilter 的直接子类。可以看一下 FormAuthenticationFilter 的 类图：</p>
+
+<p><img src="/blog/img/20200423111252864.png" alt="" /></p>
+
+<p>PathMatchingFilter 顾名思义，就是根据当前请求的路径来判断是否要执行这个filter。如果没有匹配到，返回true，继续执行下一个filter。这里由于我们之前定义了 /**=authc，即所有路径都要过authc，所以这里匹配上了。</p>
+
+<p><img src="/blog/img/20200423111819463.png" alt="" /></p>
+
+<p>进入到了 isFilterChainContinued() 方法</p>
+
+<p><img src="/blog/img/20200423112003543.png" alt="" /></p>
+
+<p>到了 onPreHandle() 方法，这个方法在 AccessControlFilter 中实现，多回看上面的 FormAuthenticationFilter 类图。</p>
+
+<p><img src="/blog/img/20200423112256767.png" alt="" /></p>
+
+<p>可以看到它的执行逻辑是先执行 isAccessAllowed()，为true，直接返回，说明该请求可以被放行，然后继续执行下一个filter。如果为false，则执行后面的onAccessDenied() 方法。</p>
+
+<p>接着step into isAccessAllowed()，到了 AuthenticatingFilter 中的 isAccessAllowed()，随时回看类结构图。</p>
+
+<p><img src="/blog/img/20200423113958117.png" alt="" /></p>
+
+<p>它的执行逻辑是先执行父类的isAccessAllowed()，如果为false，再判断是否是登录请求，isPermissive() 是否满足。</p>
+
+<p>我们来看父类的isAccessAllowed()，也就是 AuthenticationFilter ，</p>
+
+<p><img src="/blog/img/20200423114453349.png" alt="" /></p>
+
+<p>可以看到它的逻辑就是判断subject有没有被认证，subject的principal是否存在。subject来自于之前 AbstractShiroFilter 中创建的，不记得的回看上面。很明显，这里没有认证，返回false。所以我们进入到了 onAccessDenied()。</p>
+
+<p>onAccessDenied() 在 FormAuthenticationFilter 中被重写了：</p>
+
+<p><img src="/blog/img/20200423114827809.png" alt="" /></p>
+
+<p>它的逻辑是先判断是不是登录请求，如果不是则保存当前请求(用于登陆成功后的跳转)然后跳转到登陆地址；如果是登录请求并且是post方法，则执行executeLogin() 方法，如果不是post方法，直接返回true，这时用户看到的是登陆页面(登陆地址+get请求嘛)。整个流程差不多就是这样子。</p>
+
+<ol>
+  <li>
+    <p>接下来我们加入jwt</p>
+
+    <p>首先创建一个JWTFilter，继承自 BasicHttpAuthenticationFilter 。看一下类结构图。</p>
+  </li>
+</ol>
+
+<p><img src="/blog/img/20200423115634425.png" alt="" /></p>
+
+<p>根据上面的流程，我们只要重写 isAccessAllowed() 方法控制是否允许通过，重写 onAccessDenied() 方法 控制不允许通过后的逻辑即可。先上代码：</p>
+
+<p><img src="/blog/img/20200423115930234.png" alt="" /></p>
+
+<p>这里  isAccessAllowed() 直接返回false，以执行 onAccessDenied() 方法。在 onAccessDenied() 中，先判断是否是登录尝试，即请求头中是否带 Authorization 头</p>
+
+<p><img src="/blog/img/20200423120059490.png" alt="" /></p>
+
+<p>如果请求头中是否带 Authorization 头，执行 executeLogin() 方法，会在自定义的Realm中对token进行校验。</p>
+
+<p>校验通过，返回true，接口得以正常访问。</p>
+
+<p>校验不通过，捕获抛出的异常，通过  sendResponse(response, e.getMessage()) 发送到客户端。</p>
+
+<p><img src="/blog/img/20200423120401341.png" alt="" /></p>
+
+<p>如果不是登录请求，即请求头中没有带 Authorization 头，直接返回 false，并  sendResponse(response, “请携带token访问！”)。</p>
+
+<p>因为在前后端分离中，每次请求都必须带上token，每次请求都必须对token进行校验，就相当于每次请求都要进行一次登录操作，这样理解就可以了。</p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/blog/2020/04/02/log4j2%E6%89%93%E5%8D%B0%E5%BD%A9%E8%89%B2%E6%97%A5%E5%BF%97/" data-toggle="tooltip" data-placement="top" title="log4j2打印彩色日志">
+                        Previous<br>
+                        <span>log4j2打印彩色日志</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/blog/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%BA%8C/" data-toggle="tooltip" data-placement="top" title="shiro源码分析二">
+                        Next<br>
+                        <span>shiro源码分析二</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0025" 
+                    href="/blog/archive/?tag=log"
+                    title="log"
+                    rel="2">log</a>
+        
+                <a data-sort="0016" 
+                    href="/blog/archive/?tag=mysql"
+                    title="mysql"
+                    rel="11">mysql</a>
+        
+                <a data-sort="0024" 
+                    href="/blog/archive/?tag=shiro"
+                    title="shiro"
+                    rel="3">shiro</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
+                    title="事务"
+                    rel="1">事务</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
+                    title="数据类型"
+                    rel="1">数据类型</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%B3%9B%E5%9E%8B"
+                    title="泛型"
+                    rel="1">泛型</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
+                    title="浮点数"
+                    rel="1">浮点数</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
+                    title="索引"
+                    rel="1">索引</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"
+                    title="设计模式"
+                    rel="1">设计模式</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E9%94%81"
+                    title="锁"
+                    rel="1">锁</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=DDD"
+                    title="DDD"
+                    rel="1">DDD</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Git"
+                    title="Git"
+                    rel="1">Git</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=JPA"
+                    title="JPA"
+                    rel="1">JPA</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Manjaro"
+                    title="Manjaro"
+                    rel="1">Manjaro</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Spring"
+                    title="Spring"
+                    rel="1">Spring</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=binlog"
+                    title="binlog"
+                    rel="1">binlog</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=docker"
+                    title="docker"
+                    rel="1">docker</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=redo"
+                    title="redo"
+                    rel="1">redo</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=restful"
+                    title="restful"
+                    rel="1">restful</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=springboot"
+                    title="springboot"
+                    rel="1">springboot</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=starter"
+                    title="starter"
+                    rel="1">starter</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                <!--
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+</ul>
+-->
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; What a Life 2021
+                    <br>
+                    模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/blog/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/blog/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/blog/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/blog/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/blog/js/snackbar.js "></script>
+<script src="/blog/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/blog/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/blog/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        // templateMiddleware: function (prop, value, template) {
+        //     if (prop === 'subtitle' || prop === 'title') {
+        //         if (value.indexOf("code")) {
+        //             return htmlDecode(value);
+        //         } else {
+        //             return value;
+        //         }
+        //     }
+        // }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+
+<!-- Image to hack wechat -->
+<img src="/blog/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

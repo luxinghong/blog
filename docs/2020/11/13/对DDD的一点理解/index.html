@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="对DDD的一点理解 - 陆星宏的博客 | What a Life">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="DDD分层架构是什么？
+">
+    
+    <meta property="article:published_time" content="2020-11-13T00:00:00Z">
+    
+    
+    <meta property="article:author" content="">
+    
+    
+    <meta property="article:tag" content="DDD">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
+    <meta property="og:url" content="http://localhost:4000/2020/11/13/%E5%AF%B9DDD%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/">
+    <meta property="og:site_name" content="陆星宏的博客 | What a Life">
+    
+    <title>对DDD的一点理解 - 陆星宏的博客 | What a Life</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/blog/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/blog/img/favicon.ico">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/blog/2020/11/13/%E5%AF%B9DDD%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/blog/css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Mathjax Support -->
+   <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        inlineMath: [['$','$']]
+        }
+    });
+   </script>
+    <script type="text/javascript" async
+       src="https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <!--<script src="//cdn.bootcdn.net/ajax/libs/eruda/2.3.3/eruda.js"></script>-->
+    <!--<script>eruda.init();</script>-->
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top invert">
+    
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/blog/">What a Life</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/blog/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/blog/img/niuniu.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/blog/img/niuniu.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+<header class="intro-header style-text" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/blog/archive/?tag=DDD" title="DDD">DDD</a>
+                        
+                    </div>
+                    <h1>对DDD的一点理解</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">November 13, 2020</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="ddd分层架构是什么">DDD分层架构是什么？</h1>
+
+<p>4层架构：由下往上，基础层 -&gt; 领域层 -&gt; 应用层 -&gt; 用户接口层</p>
+
+<hr />
+
+<p><br /><br /></p>
+
+<h1 id="领域层和应用层的区别是什么">领域层和应用层的区别是什么？</h1>
+
+<p>从底往上逐层讲。</p>
+
+<p>单个实体自身的方法就是实体本身的业务行为。多个实体可组成更复杂的业务动作，这个是领域服务，实体的方法和领域服务共同构成领域模型的基础业务能力，这个能力是原子的基础的，不太考虑外界的用户行为和流程。</p>
+
+<p>而应用服务是对这些基础的能力进行组合和编排，它组合和编排的服务可以是跨聚合的领域服务，主要体现组合后的业务能力，更面向前端的用户操作，属于比较粗粒度的服务，通过编排可以更灵活应对外部需求变化。</p>
+
+<hr />
+
+<p><br /><br /></p>
+
+<h1 id="中台业务建模过程">中台业务建模过程？</h1>
+
+<ol>
+  <li>按照业务流程（通常适用于核心域）或者功能属性、集合（通常适用于通用域或支撑域），将业务域细分为多个中台，再根据功能属性或重要性归类到核心中台或通用中台。核心中台设计时要考虑核心竞争力，通用中台要站在企业高度考虑共享和复用能力。</li>
+  <li>选取中台，根据用例、业务场景或用户旅程完成事件风暴，找出实体、聚合和限界上下文。依次进行领域分解，建立领域模型。由于不同中台独立建模，某些领域对象或功能可能会重复出现在其它领域模型中，也有可能本该是同一个聚合的领域对象或功能，却分散在其它的中台里，这样会导致领域模型不完整或者业务不内聚。这里先不要着急，这一步我们只需要初步确定主领域模型就可以了，在第三步中我们还会提炼并重组这些领域对象。</li>
+  <li>以主领域模型为基础，扫描其它中台领域模型，检查并确定是否存在重复或者需要重组的领域对象、功能，提炼并重构主领域模型，完成最终的领域模型设计。</li>
+  <li>选择其它主领域模型重复第三步，直到所有主领域模型完成比对和重构。</li>
+  <li>基于领域模型完成微服务设计，完成系统落地。</li>
+</ol>
+
+<p>划分核心中台要看你的企业核心竞争力是否在这个领域。</p>
+
+<p>以保险举例：</p>
+
+<p><img src="/blog/img/4a111cfaf493a8b540d35837aecd44f8.png" alt="" /></p>
+
+<hr />
+
+<p><br /><br /></p>
+
+<h1 id="怎么抉择一个实体是不是聚合根">怎么抉择一个实体是不是聚合根？</h1>
+
+<p>判断一个实体是否是聚合根，你可以结合以下内容进行分析：</p>
+
+<ul>
+  <li>是否有独立的生命周期？</li>
+  <li>是否有全局唯一 ID ？</li>
+  <li>是否可以创建或修改其他对象？</li>
+  <li>是否有专门的模块来管理这个实体等？</li>
+</ul>
+
+<p>聚合根管理了聚合内所有实体和值对象的生命周期，我们通过聚合根就可以获取到聚合内所有实体和值对象等领域对象。一般来说，如果聚合根被删除了，那么被它引用的实体和值对象也就不会存在了。</p>
+
+<hr />
+
+<p><br /><br /></p>
+
+<h1 id="操作数据库应该放到哪里聚合根中应该包括哪些业务行为">操作数据库应该放到哪里？聚合根中应该包括哪些业务行为？</h1>
+
+<p>在聚合内部操作数据库都是通过调用仓储接口来实现的。</p>
+
+<p>由于一个聚合内需要按照统一的业务规则来完成实体的数据变更，也就是说不可以随意修改某一个实体的数据表。为了统一这些数据更新的操作，会统一由聚合根来管理，所以操作数据库的方法一般都是放在聚合根的方法中。对于聚合内跨多个实体的业务逻辑，这部分功能可以由聚合根的方法来实现，也可以通过聚合内的领域服务来实现。</p>
+
+<p>但为了避免聚合根的业务逻辑过于复杂，避免聚合根类代码量过于庞大，我个人建议聚合根除了承担它的聚合管理职能外，只作为实体实现与聚合根自身行为相关的业务逻辑，而将跨多个实体的复杂领域逻辑统一放在领域服务中实现。因此在完成业务逻辑后，在操作数据库时可以通过聚合根方法或领域服务来完成，切勿在某个实体的方法中不受控制的去修改数据库中实体的数据。</p>
+
+<hr />
+
+<p><br /><br /></p>
+
+<h1 id="在设计过程中对于一些复杂的流程细节没考虑到位或者忽略了某个细节流程而导致在程序落地过程中发现原有的建模不够严谨对于这种场景有什么补救措施吗或者如何避免这一问题的发生">在设计过程中，对于一些复杂的流程细节没考虑到位，或者忽略了某个细节流程，而导致在程序落地过程中，发现原有的建模不够严谨，对于这种场景，有什么补救措施吗，或者如何避免这一问题的发生？</h1>
+
+<p>这个可能需要分一下几类情况来处理：</p>
+
+<ol>
+  <li>如果是聚合内实体的业务逻辑没考虑到，只需要修改对应实体内的属性或者方法即可。</li>
+  <li>如何是聚合内实体之间的关系没考虑到，调整或新增领域服务，或者聚合根的方法即可。</li>
+  <li>如果是在同一个限界上下文内的聚合之间的关系没考虑到，在应用层的应用服务中调整或新增即可。</li>
+  <li>如果是聚合划分到了错误的限界上下文内，整体将聚合内所有对象和代码调整到合适的限界上下文即可，并重新建立新的限界上下文内聚合之间的关系。</li>
+</ol>
+
+<hr />
+
+<p><br /><br /></p>
+
+<h1 id="ddd从设计到落地的大概流程">DDD从设计到落地的大概流程？</h1>
+
+<p>先进行战略设计，再进行战术设计。</p>
+
+<p>战略设计采用的方法是事件风暴，包括产品愿景、场景分析、领域建模、微服务拆分。</p>
+
+<p>领域建模又分为3步：</p>
+
+<ol>
+  <li>根据场景分析，分析并找出发起或产生这些命令或领域事件的实体和值对象，将与实体或值对象有关的命令和事件聚集到实体；</li>
+  <li>找出聚合根，根据实体、值对象与聚合根的依赖关系，建立聚合；</li>
+  <li>
+    <p>根据业务及语义边界等因素，定义限界上下文。</p>
+
+    <p>微服务拆分：理论上一个限界上下文就可以设计为一个微服务，但还需要综合考虑多种外部因素，比如：职责单一性、敏态与稳态业务分离、非功能性需求（如弹性伸缩、版本发布频率和安全等要求）、软件包大小、团队沟通效率和技术异构等非业务要素。</p>
+  </li>
+</ol>
+
+<p>战术设计包括：</p>
+
+<ol>
+  <li>根据命令设计应用服务，确定应用服务的功能，服务集合，组合和编排方式。服务集合中的服务包括领域服务或其它微服务的应用服务；</li>
+  <li>根据应用服务功能要求设计领域服务，定义领域服务。这里需要注意：应用服务可能是由多个聚合的领域服务组合而成的；</li>
+  <li>根据领域服务的功能，确定领域服务内的实体以及功能。设计实体基本属性和方法。</li>
+</ol>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/blog/2020/11/10/%E5%AF%B9Java%E5%9B%9E%E8%B0%83%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/" data-toggle="tooltip" data-placement="top" title="对Java回调的一点理解">
+                        Previous<br>
+                        <span>对Java回调的一点理解</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/blog/2020/11/19/JPA-%E5%8D%95%E8%A1%A8%E5%8F%8C%E5%90%91%E8%87%AA%E5%85%B3%E8%81%94-%E8%BD%ACdto-jackson%E5%BA%8F%E5%88%97%E5%8C%96%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8%E9%97%AE%E9%A2%98/" data-toggle="tooltip" data-placement="top" title="JPA 单表双向自关联、转dto、jackson序列化循环引用问题">
+                        Next<br>
+                        <span>JPA 单表双向自关联、转dto、jackson序列化循环引用问题</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0025" 
+                    href="/blog/archive/?tag=log"
+                    title="log"
+                    rel="2">log</a>
+        
+                <a data-sort="0016" 
+                    href="/blog/archive/?tag=mysql"
+                    title="mysql"
+                    rel="11">mysql</a>
+        
+                <a data-sort="0024" 
+                    href="/blog/archive/?tag=shiro"
+                    title="shiro"
+                    rel="3">shiro</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
+                    title="事务"
+                    rel="1">事务</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
+                    title="数据类型"
+                    rel="1">数据类型</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%B3%9B%E5%9E%8B"
+                    title="泛型"
+                    rel="1">泛型</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
+                    title="浮点数"
+                    rel="1">浮点数</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
+                    title="索引"
+                    rel="1">索引</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"
+                    title="设计模式"
+                    rel="1">设计模式</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=%E9%94%81"
+                    title="锁"
+                    rel="1">锁</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=DDD"
+                    title="DDD"
+                    rel="1">DDD</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Git"
+                    title="Git"
+                    rel="1">Git</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=JPA"
+                    title="JPA"
+                    rel="1">JPA</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Manjaro"
+                    title="Manjaro"
+                    rel="1">Manjaro</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=Spring"
+                    title="Spring"
+                    rel="1">Spring</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=binlog"
+                    title="binlog"
+                    rel="1">binlog</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=docker"
+                    title="docker"
+                    rel="1">docker</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=redo"
+                    title="redo"
+                    rel="1">redo</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=restful"
+                    title="restful"
+                    rel="1">restful</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=springboot"
+                    title="springboot"
+                    rel="1">springboot</a>
+        
+                <a data-sort="0026" 
+                    href="/blog/archive/?tag=starter"
+                    title="starter"
+                    rel="1">starter</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                <!--
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+</ul>
+-->
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; What a Life 2021
+                    <br>
+                    模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/blog/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/blog/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/blog/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/blog/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/blog/js/snackbar.js "></script>
+<script src="/blog/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/blog/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/blog/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        // templateMiddleware: function (prop, value, template) {
+        //     if (prop === 'subtitle' || prop === 'title') {
+        //         if (value.indexOf("code")) {
+        //             return htmlDecode(value);
+        //         } else {
+        //             return value;
+        //         }
+        //     }
+        // }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+
+<!-- Image to hack wechat -->
+<img src="/blog/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
