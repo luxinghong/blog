@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="这是一个Java程序员的博客 | Java Blog">
+    <meta name="keywords"  content="陆星宏, 陆星宏的博客, What a Life, 博客, 个人网站, 互联网, Web, Java, Coding, Programing">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="SpringMVC参数映射原理 - 陆星宏的博客 | What a Life">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="方法参数带 @RequestBody 注解
+">
+    
+    <meta property="article:published_time" content="2019-08-01T00:00:00Z">
+    
+    
+    <meta property="article:author" content="">
+    
+    
+    <meta property="article:tag" content="Spring">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
+    <meta property="og:url" content="http://localhost:4000/2019/08/01/SpringMVC%E5%8F%82%E6%95%B0%E6%98%A0%E5%B0%84%E5%8E%9F%E7%90%86/">
+    <meta property="og:site_name" content="陆星宏的博客 | What a Life">
+    
+    <title>SpringMVC参数映射原理 - 陆星宏的博客 | What a Life</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/blog/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/blog/img/favicon.ico">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/blog/2019/08/01/SpringMVC%E5%8F%82%E6%95%B0%E6%98%A0%E5%B0%84%E5%8E%9F%E7%90%86/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/blog/css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Mathjax Support -->
+   <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        tex2jax: {
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        inlineMath: [['$','$']]
+        }
+    });
+   </script>
+    <script type="text/javascript" async
+       src="https://cdn.jsdelivr.net/npm/mathjax@2.7.8/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+    <!--<script src="//cdn.bootcdn.net/ajax/libs/eruda/2.3.3/eruda.js"></script>-->
+    <!--<script>eruda.init();</script>-->
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top invert">
+    
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/blog/">What a Life</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/blog/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/blog/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/blog/img/niuniu.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/blog/img/niuniu.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+<header class="intro-header style-text" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/blog/archive/?tag=Spring" title="Spring">Spring</a>
+                        
+                    </div>
+                    <h1>SpringMVC参数映射原理</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">August 1, 2019</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="方法参数带-requestbody-注解">方法参数带 @RequestBody 注解</h1>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre> <span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">"/testRb"</span><span class="o">)</span>
+     <span class="kd">public</span> <span class="nc">Person</span> <span class="nf">testRb</span><span class="o">(</span><span class="nd">@RequestBody</span> <span class="nc">Person</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+         <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+     <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>贴上 @RequestBody 的说明：</p>
+
+<blockquote>
+  <p>Annotation indicating a method parameter should be bound to the body of the web request. The body of the request is passed through an HttpMessageConverter to resolve the method argument depending on the content type of the request. Optionally, automatic validation can be applied by annotating the argument with @Valid.
+Supported for annotated handler methods.</p>
+</blockquote>
+
+<p>翻译一下：</p>
+
+<ol>
+  <li>
+    <p>该注解指示方法参数应通过请求的body来绑定；</p>
+  </li>
+  <li>根据请求头的 content-type 选择对应的 HttpMessageConverter 对body中的内容进行转换；</li>
+  <li>可以通过 @Valid 注解对方法参数进行自动验证.</li>
+</ol>
+
+<p>这就很明显指出了几个重点，请求应该带body，content-type很重要。<strong>所以只要保证带有body体并且content-type能找到对应的HttpMessageConverter就能解析成功。</strong></p>
+
+<p>接下来做几个测试。</p>
+
+<h3 id="get-请求方式传递的值放到请求参数上">GET 请求方式，传递的值放到请求参数上</h3>
+
+<p><img src="/blog/img/20190801170027731.png" alt="" /></p>
+
+<p>结果是：提示缺少body体</p>
+
+<p><img src="/blog/img/20190801170104457.png" alt="" /></p>
+
+<p>原因： 很明显，请求中没有带body体</p>
+
+<h3 id="get方式请求中带body体">GET方式，请求中带body体</h3>
+
+<p>结果： 请求没有body体</p>
+
+<p><img src="/blog/img/20190801170633565.png" alt="" /></p>
+
+<p>原因： 我们已经带了body，为什么还报错？上面说过还有一个重要的因素：content-type。在这种方式下的content-type是multipart/form-data 。 而这个content-type并没有对应的 HttpMessageConverter，所有没有进行body解析，依然认为body体是空的。至于什么是multipart/form-data，可参考 <a href="https://www.cnblogs.com/tylerdonet/p/5722858.html">multipart/form-data</a> 。</p>
+
+<p>默认的HttpMessageConverter 有 10 个 ，每个converter都有自己支持的MediaType 。</p>
+
+<p><img src="/blog/img/20190801171744977.png" alt="" /></p>
+
+<p><img src="/blog/img/20190801171319787.png" alt="" /></p>
+
+<p>同理，content-type 为 application/x-www-form-urlencoded 时跟上面结果是一样的。</p>
+
+<h3 id="get方式content-type-改为-applicationjson-结果正确">GET方式，content-type 改为 application/json ，结果正确</h3>
+
+<p><img src="/blog/img/20190801172556267.png" alt="" /></p>
+
+<p>原因：因为application/json 的 content-type 对应到了 MappingJackson2HttpMessageConverter ，该converter将body中的内容转为了对应的实体对象。注：这有一个误区，get不能带body？上述证明，get是可以带body的，而且http规范中也没有规定get不可以带body，只是通常不这么做而已。</p>
+
+<h3 id="上述方式改为post过程是一致的只是报错信息变了">上述方式改为POST，过程是一致的，只是报错信息变了</h3>
+
+<p><img src="/blog/img/20190801183257294.png" alt="" /></p>
+
+<p>先看一段代码：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre>	<span class="k">if</span> <span class="o">(</span><span class="n">body</span> <span class="o">==</span> <span class="no">NO_VALUE</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">httpMethod</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">!</span><span class="no">SUPPORTED_METHODS</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">httpMethod</span><span class="o">)</span> <span class="o">||</span>
+				<span class="o">(</span><span class="n">noContentType</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">message</span><span class="o">.</span><span class="na">hasBody</span><span class="o">()))</span> <span class="o">{</span>
+			<span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+		<span class="o">}</span>
+		<span class="k">throw</span> <span class="k">new</span> <span class="nf">HttpMediaTypeNotSupportedException</span><span class="o">(</span><span class="n">contentType</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">allSupportedMediaTypes</span><span class="o">);</span>
+	<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>在没有解析到body时走的都是这个逻辑，因为 SUPPORTED_METHODS 只包含 POST、PUT、PATCH，所以GET是return null，POST是抛出异常。</p>
+
+<h3 id="requestbody是如何被解析的">@RequestBody是如何被解析的。</h3>
+
+<p>其实我们可以猜想一下，尤其是对于Spring这么优秀的框架，命名一定即规范又易懂。既然是解析方法参数，那么这种类大体应该叫MethodArgumentsResolver之类的，然后全局搜索一下，发现果然有这么个接口  HandlerMethodArgumentResolver ，再看下它的实现类，我们发现了 RequestResponseBodyMethodProcessor  。里面有几个方法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre><span class="nd">@Override</span>
+	<span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">supportsParameter</span><span class="o">(</span><span class="nc">MethodParameter</span> <span class="n">parameter</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="n">parameter</span><span class="o">.</span><span class="na">hasParameterAnnotation</span><span class="o">(</span><span class="nc">RequestBody</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+	<span class="o">}</span>
+	
+<span class="nd">@Override</span>
+<span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">supportsReturnType</span><span class="o">(</span><span class="nc">MethodParameter</span> <span class="n">returnType</span><span class="o">)</span> <span class="o">{</span>
+	<span class="k">return</span> <span class="o">(</span><span class="nc">AnnotatedElementUtils</span><span class="o">.</span><span class="na">hasAnnotation</span><span class="o">(</span><span class="n">returnType</span><span class="o">.</span><span class="na">getContainingClass</span><span class="o">(),</span> <span class="nc">ResponseBody</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">||</span>
+			<span class="n">returnType</span><span class="o">.</span><span class="na">hasMethodAnnotation</span><span class="o">(</span><span class="nc">ResponseBody</span><span class="o">.</span><span class="na">class</span><span class="o">));</span>
+	<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>一目了然，我们看到了 RequestBody 、ResponseBody 两个类，不就是参数上用的注解么。所以这个类表明它是用来处理带 @RequestBody 注解 和 @ResponseBody 的方法的。具体的解析逻辑在这个类的 resolveArgument 方法中。</p>
+
+<p>**上述原理对应源码流程是：<code class="language-plaintext highlighter-rouge">RequestResponseBodyMethodProcessor.resolveArgument() </code>  -&gt;  ` readWithMessageConverters() `   -&gt;  ` (父类)AbstractMessageConverterMethodArgumentResolver.readWithMessageConverters()` ** . 可自行查阅。</p>
+
+<h1 id="参数中直接放实体对象">参数中直接放实体对象</h1>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="nd">@RequestMapping</span><span class="o">(</span><span class="s">"/testRb"</span><span class="o">)</span>
+    <span class="kd">public</span> <span class="nc">Person</span> <span class="nf">testRb</span><span class="o">(</span><span class="nc">Person</span> <span class="n">p</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">p</span><span class="o">;</span>
+    <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>先说一下测试结论，测试过程就不再截图。</p>
+
+<p>这种方式不会报错，只是Person p会接收不到值，它的属性全部为null。</p>
+
+<p>能正常接收到的方式有：</p>
+
+<ol>
+  <li>
+    <p>GET +  查询参数</p>
+  </li>
+  <li>GET + body + ContentType(multipart/form-data)</li>
+  <li>POST + body + ContentType(multipart/form-data)</li>
+  <li>POST + body + ContentType(application/x-www-form-urlencoded)</li>
+</ol>
+
+<p>其他都不行，包括 POST + body + ContentType(application/json)。</p>
+
+<p>这一部分还想多说一点，干脆连springMVC整个的请求流程也简单说一下好了。</p>
+
+<p>先贴一个完整的调用栈，从中我们可以看到很多有意思的信息：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+</pre></td><td class="rouge-code"><pre><span class="mi">54</span>   <span class="nl">testRb:</span><span class="mi">24</span><span class="o">,</span> <span class="nc">DemoSpringApplication</span> <span class="o">(</span><span class="n">io</span><span class="o">.</span><span class="na">lxh</span><span class="o">.</span><span class="na">demo</span><span class="o">)</span>
+<span class="mi">53</span>   <span class="nl">invoke:</span><span class="o">-</span><span class="mi">1</span><span class="o">,</span> <span class="nc">GeneratedMethodAccessor32</span> <span class="o">(</span><span class="n">sun</span><span class="o">.</span><span class="na">reflect</span><span class="o">)</span>
+<span class="mi">52</span>   <span class="nl">invoke:</span><span class="mi">43</span><span class="o">,</span> <span class="nc">DelegatingMethodAccessorImpl</span> <span class="o">(</span><span class="n">sun</span><span class="o">.</span><span class="na">reflect</span><span class="o">)</span>
+<span class="mi">51</span>   <span class="nl">invoke:</span><span class="mi">498</span><span class="o">,</span> <span class="nc">Method</span> <span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">.</span><span class="na">reflect</span><span class="o">)</span>
+<span class="mi">50</span>   <span class="nl">doInvoke:</span><span class="mi">189</span><span class="o">,</span> <span class="nc">InvocableHandlerMethod</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">support</span><span class="o">)</span>
+<span class="mi">49</span>   <span class="nl">invokeForRequest:</span><span class="mi">138</span><span class="o">,</span> <span class="nc">InvocableHandlerMethod</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">support</span><span class="o">)</span>
+<span class="mi">48</span>   <span class="nl">invokeAndHandle:</span><span class="mi">102</span><span class="o">,</span> <span class="nc">ServletInvocableHandlerMethod</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">.</span><span class="na">mvc</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">annotation</span><span class="o">)</span>
+<span class="mi">47</span>   <span class="nl">invokeHandlerMethod:</span><span class="mi">892</span><span class="o">,</span> <span class="nc">RequestMappingHandlerAdapter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">.</span><span class="na">mvc</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">annotation</span><span class="o">)</span>
+<span class="mi">46</span>   <span class="nl">handleInternal:</span><span class="mi">797</span><span class="o">,</span> <span class="nc">RequestMappingHandlerAdapter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">.</span><span class="na">mvc</span><span class="o">.</span><span class="na">method</span><span class="o">.</span><span class="na">annotation</span><span class="o">)</span>
+<span class="mi">45</span>   <span class="nl">handle:</span><span class="mi">87</span><span class="o">,</span> <span class="nc">AbstractHandlerMethodAdapter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">.</span><span class="na">mvc</span><span class="o">.</span><span class="na">method</span><span class="o">)</span>
+<span class="mi">44</span>   <span class="nl">doDispatch:</span><span class="mi">1038</span><span class="o">,</span> <span class="nc">DispatcherServlet</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">)</span>
+<span class="mi">43</span>   <span class="nl">doService:</span><span class="mi">942</span><span class="o">,</span> <span class="nc">DispatcherServlet</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">)</span>
+<span class="mi">42</span>   <span class="nl">processRequest:</span><span class="mi">1005</span><span class="o">,</span> <span class="nc">FrameworkServlet</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">)</span>
+<span class="mi">41</span>   <span class="nl">doGet:</span><span class="mi">897</span><span class="o">,</span> <span class="nc">FrameworkServlet</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">)</span>
+<span class="mi">40</span>   <span class="nl">service:</span><span class="mi">634</span><span class="o">,</span> <span class="nc">HttpServlet</span> <span class="o">(</span><span class="n">javax</span><span class="o">.</span><span class="na">servlet</span><span class="o">.</span><span class="na">http</span><span class="o">)</span>
+<span class="mi">39</span>   <span class="nl">service:</span><span class="mi">882</span><span class="o">,</span> <span class="nc">FrameworkServlet</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">servlet</span><span class="o">)</span>
+<span class="mi">38</span>   <span class="nl">service:</span><span class="mi">741</span><span class="o">,</span> <span class="nc">HttpServlet</span> <span class="o">(</span><span class="n">javax</span><span class="o">.</span><span class="na">servlet</span><span class="o">.</span><span class="na">http</span><span class="o">)</span>
+<span class="mi">37</span>   <span class="nl">internalDoFilter:</span><span class="mi">231</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">36</span>   <span class="nl">doFilter:</span><span class="mi">166</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">35</span>   <span class="nl">doFilter:</span><span class="mi">53</span><span class="o">,</span> <span class="nc">WsFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">tomcat</span><span class="o">.</span><span class="na">websocket</span><span class="o">.</span><span class="na">server</span><span class="o">)</span>
+<span class="mi">34</span>   <span class="nl">internalDoFilter:</span><span class="mi">193</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">33</span>   <span class="nl">doFilter:</span><span class="mi">166</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">32</span>   <span class="nl">doFilterInternal:</span><span class="mi">99</span><span class="o">,</span> <span class="nc">RequestContextFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">31</span>   <span class="nl">doFilter:</span><span class="mi">107</span><span class="o">,</span> <span class="nc">OncePerRequestFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">30</span>   <span class="nl">internalDoFilter:</span><span class="mi">193</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">29</span>   <span class="nl">doFilter:</span><span class="mi">166</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">28</span>   <span class="nl">doFilterInternal:</span><span class="mi">92</span><span class="o">,</span> <span class="nc">FormContentFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">27</span>   <span class="nl">doFilter:</span><span class="mi">107</span><span class="o">,</span> <span class="nc">OncePerRequestFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">26</span>   <span class="nl">internalDoFilter:</span><span class="mi">193</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">25</span>   <span class="nl">doFilter:</span><span class="mi">166</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">24</span>   <span class="nl">doFilterInternal:</span><span class="mi">93</span><span class="o">,</span> <span class="nc">HiddenHttpMethodFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">23</span>   <span class="nl">doFilter:</span><span class="mi">107</span><span class="o">,</span> <span class="nc">OncePerRequestFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">22</span>   <span class="nl">internalDoFilter:</span><span class="mi">193</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">21</span>   <span class="nl">doFilter:</span><span class="mi">166</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">20</span>   <span class="nl">doFilterInternal:</span><span class="mi">200</span><span class="o">,</span> <span class="nc">CharacterEncodingFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">19</span>   <span class="nl">doFilter:</span><span class="mi">107</span><span class="o">,</span> <span class="nc">OncePerRequestFilter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">springframework</span><span class="o">.</span><span class="na">web</span><span class="o">.</span><span class="na">filter</span><span class="o">)</span>
+<span class="mi">18</span>   <span class="nl">internalDoFilter:</span><span class="mi">193</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">17</span>   <span class="nl">doFilter:</span><span class="mi">166</span><span class="o">,</span> <span class="nc">ApplicationFilterChain</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">16</span>   <span class="nl">invoke:</span><span class="mi">200</span><span class="o">,</span> <span class="nc">StandardWrapperValve</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">15</span>   <span class="nl">invoke:</span><span class="mi">96</span><span class="o">,</span> <span class="nc">StandardContextValve</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">14</span>   <span class="nl">invoke:</span><span class="mi">490</span><span class="o">,</span> <span class="nc">AuthenticatorBase</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">authenticator</span><span class="o">)</span>
+<span class="mi">13</span>   <span class="nl">invoke:</span><span class="mi">139</span><span class="o">,</span> <span class="nc">StandardHostValve</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">12</span>   <span class="nl">invoke:</span><span class="mi">92</span><span class="o">,</span> <span class="nc">ErrorReportValve</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">valves</span><span class="o">)</span>
+<span class="mi">11</span>   <span class="nl">invoke:</span><span class="mi">74</span><span class="o">,</span> <span class="nc">StandardEngineValve</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">core</span><span class="o">)</span>
+<span class="mi">10</span>   <span class="nl">service:</span><span class="mi">343</span><span class="o">,</span> <span class="nc">CoyoteAdapter</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">catalina</span><span class="o">.</span><span class="na">connector</span><span class="o">)</span>
+<span class="mi">9</span>   <span class="nl">service:</span><span class="mi">408</span><span class="o">,</span> <span class="nc">Http11Processor</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">coyote</span><span class="o">.</span><span class="na">http11</span><span class="o">)</span>
+<span class="mi">8</span>   <span class="nl">process:</span><span class="mi">66</span><span class="o">,</span> <span class="nc">AbstractProcessorLight</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">coyote</span><span class="o">)</span>
+<span class="mi">7</span>   <span class="nl">process:</span><span class="mi">834</span><span class="o">,</span> <span class="nc">AbstractProtocol</span><span class="n">$ConnectionHandler</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">coyote</span><span class="o">)</span>
+<span class="mi">6</span>   <span class="nl">doRun:</span><span class="mi">1415</span><span class="o">,</span> <span class="nc">NioEndpoint</span><span class="n">$SocketProcessor</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">tomcat</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">net</span><span class="o">)</span>
+<span class="mi">5</span>   <span class="nl">run:</span><span class="mi">49</span><span class="o">,</span> <span class="nc">SocketProcessorBase</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">tomcat</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">net</span><span class="o">)</span>
+<span class="mi">4</span>   <span class="nl">runWorker:</span><span class="mi">1149</span><span class="o">,</span> <span class="nc">ThreadPoolExecutor</span> <span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">)</span>
+<span class="mi">3</span>   <span class="nl">run:</span><span class="mi">624</span><span class="o">,</span> <span class="nc">ThreadPoolExecutor</span><span class="n">$Worker</span> <span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">concurrent</span><span class="o">)</span>
+<span class="mi">2</span>   <span class="nl">run:</span><span class="mi">61</span><span class="o">,</span> <span class="nc">TaskThread</span><span class="n">$WrappingRunnable</span> <span class="o">(</span><span class="n">org</span><span class="o">.</span><span class="na">apache</span><span class="o">.</span><span class="na">tomcat</span><span class="o">.</span><span class="na">util</span><span class="o">.</span><span class="na">threads</span><span class="o">)</span>
+<span class="mi">1</span>   <span class="nl">run:</span><span class="mi">748</span><span class="o">,</span> <span class="nc">Thread</span> <span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="na">lang</span><span class="o">)</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>简单分析一下，这里面的流程分2个部分，一部分是tomcat的：org.apache.catalina；一部分是spring的：org.springframework。</p>
+
+<p>相信大家都知道，所有的web流程都是基于filter 和 servlet 的。</p>
+
+<p>可以看到tomcat的 ApplicationFilterChain 扮演了过滤链的角色，由它来决定filter链的执行。当所有filter执行完毕后开始执行servlet，也就是spring的 FrameworkServlet （39行）。然后到了大家众所周知的 DispatcherServlet （44行）执行 doDispatch 方法</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="c1">// Actually invoke the handler.</span>
+<span class="n">mv</span> <span class="o">=</span> <span class="n">ha</span><span class="o">.</span><span class="na">handle</span><span class="o">(</span><span class="n">processedRequest</span><span class="o">,</span> <span class="n">response</span><span class="o">,</span> <span class="n">mappedHandler</span><span class="o">.</span><span class="na">getHandler</span><span class="o">());</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>从这开始真正的调用handler来处理请求。mv就是ModelAndView。这里先讲2个概念，Handler和HandlerAdapter。</p>
+
+<p>Handler 类型 是一个Object ，就是这么简单粗暴，它是为了保证扩展性，顾名思义它就是一个处理者的抽象，用来处理各种请求。HandlerAdapter 用来判断当前请求应该选哪一个Handler。众所周知的 RequestMappingHandlerAdapter 对应的 Handler 是 HandlerMethod。HandlerMethod 顾名思义就是对应一个方法的处理者。</p>
+
+<p>回到调用栈上就是第47行，RequestMappingHandlerAdapter.invokeHandlerMethod()，开始调用对应的HandlerMethod，也就是 ServletInvocableHandlerMethod (48行)，接着到了父类 InvocableHandlerMethod 调用 invokeForRequest() 开始真正处理请求。（讲了这么多终于到正题了）</p>
+
+<p>invokeForRequest的源码：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="rouge-code"><pre><span class="kd">public</span> <span class="nc">Object</span> <span class="nf">invokeForRequest</span><span class="o">(</span><span class="nc">NativeWebRequest</span> <span class="n">request</span><span class="o">,</span> <span class="nd">@Nullable</span> <span class="nc">ModelAndViewContainer</span> <span class="n">mavContainer</span><span class="o">,</span>
+			<span class="nc">Object</span><span class="o">...</span> <span class="n">providedArgs</span><span class="o">)</span> <span class="kd">throws</span> <span class="nc">Exception</span> <span class="o">{</span>
+ 
+		<span class="nc">Object</span><span class="o">[]</span> <span class="n">args</span> <span class="o">=</span> <span class="n">getMethodArgumentValues</span><span class="o">(</span><span class="n">request</span><span class="o">,</span> <span class="n">mavContainer</span><span class="o">,</span> <span class="n">providedArgs</span><span class="o">);</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">logger</span><span class="o">.</span><span class="na">isTraceEnabled</span><span class="o">())</span> <span class="o">{</span>
+			<span class="n">logger</span><span class="o">.</span><span class="na">trace</span><span class="o">(</span><span class="s">"Arguments: "</span> <span class="o">+</span> <span class="nc">Arrays</span><span class="o">.</span><span class="na">toString</span><span class="o">(</span><span class="n">args</span><span class="o">));</span>
+		<span class="o">}</span>
+		<span class="k">return</span> <span class="nf">doInvoke</span><span class="o">(</span><span class="n">args</span><span class="o">);</span>
+	<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+<p>我们终于找到了解析方法参数的入口，<strong>getMethodArgumentValues</strong></p>
+
+<p>里面的逻辑就大同小异了，找一个MethodArgumentsResolver 进行参数的解析。这里找到的是 ServletModelAttributeMethodProcessor ，我们再看一下它支持的参数类型</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre><span class="nd">@Override</span>
+	<span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">supportsParameter</span><span class="o">(</span><span class="nc">MethodParameter</span> <span class="n">parameter</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">return</span> <span class="o">(</span><span class="n">parameter</span><span class="o">.</span><span class="na">hasParameterAnnotation</span><span class="o">(</span><span class="nc">ModelAttribute</span><span class="o">.</span><span class="na">class</span><span class="o">)</span> <span class="o">||</span>
+				<span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">annotationNotRequired</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nc">BeanUtils</span><span class="o">.</span><span class="na">isSimpleProperty</span><span class="o">(</span><span class="n">parameter</span><span class="o">.</span><span class="na">getParameterType</span><span class="o">())));</span>
+	<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>意思是要么是带 <code class="language-plaintext highlighter-rouge">@ModelAttribute</code>  注解的 或者 不是简单类型的，比如String、Date或者Class对象、int类型等。</p>
+
+<p>接着看它的 resolveArgument 方法。首先它创建了一个WebDataBinder （Special DataBinder for data binding from web request parameters to JavaBean objects. ）即从request参数到JavaBean的绑定器。接下来的流程就很简单了，拿到请求参数反射调用对应字段的set方法完成对象构造。所以这种方式总是会返回一个对象的，只是对象里有没有值而已。</p>
+
+<p>下面对这部分开始测试的几种情况做下说明：</p>
+
+<ol>
+  <li>
+    <p>GET +  查询参数</p>
+
+    <blockquote>
+      <p>对应的是RequestParamMethodArgumentResolver。本质就是Request.getParamValue(name)。所以直接取查询参数即可。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p>ContentType(multipart/form-data)</p>
+
+    <blockquote>
+      <p>对于这种ContentType类型，tomcat直接取的是请求体中的内容，所以GET、POST方式都有效。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p>POST + body + ContentType(application/x-www-form-urlencoded)</p>
+
+    <blockquote>
+      <p>tomcat只支持这种类型的POST方式。GET方式返回null。</p>
+    </blockquote>
+  </li>
+  <li>
+    <p>没有提供对json类型的解析</p>
+  </li>
+</ol>
+
+<h1 id="直接传简单类型的参数如stringdate等">直接传简单类型的参数，如String、Date等</h1>
+
+<p>String类型的直接传就好了，这里主要说下Date类型。有以下方式可以完成日期字符串参数到Date类型的转换。</p>
+
+<ul>
+  <li>@InitBinder</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre>  <span class="nd">@InitBinder</span>
+      <span class="kd">public</span> <span class="kt">void</span> <span class="nf">registerCustomDateEditor</span><span class="o">(</span><span class="nc">WebDataBinder</span> <span class="n">binder</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">binder</span><span class="o">.</span><span class="na">registerCustomEditor</span><span class="o">(</span><span class="nc">Date</span><span class="o">.</span><span class="na">class</span><span class="o">,</span><span class="k">new</span> <span class="nc">CustomDateEditor</span><span class="o">(</span><span class="k">new</span> <span class="nc">SimpleDateFormat</span><span class="o">(</span><span class="s">"yyyy-MM-dd"</span><span class="o">),</span><span class="kc">false</span><span class="o">));</span>
+      <span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">CustomDateEditor</code>  是spring 提供的一个DateEditor。</p>
+
+<ul>
+  <li>
+    <p>ConversionService</p>
+  </li>
+  <li>
+    <p>万能解决方案，使用时间戳Timestamp</p>
+  </li>
+</ul>
+
+<p>​</p>
+
+<h1 id="总结">总结</h1>
+
+<p>@RequestBody 是取请求体中的内容</p>
+
+<p>@RequestParam 或者 不带任何注解是直接取请求参数中的内容</p>
+
+<p>解析方法参数的接口是 MethodArgumentResolver，参数类型转换用的是MessageConverter 和 WebDataBinder 。</p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/blog/2019/07/24/mysql-%E5%88%86%E7%BB%84%E5%90%8E%E5%B0%86%E6%9F%90%E5%88%97%E7%9A%84%E5%80%BC%E5%90%88%E5%B9%B6%E6%88%90%E4%B8%80%E8%A1%8C/" data-toggle="tooltip" data-placement="top" title="mysql 分组后将某列的值合并成一行">
+                        Previous<br>
+                        <span>mysql 分组后将某列的值合并成一行</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/blog/2019/09/15/%E7%BD%91%E9%A1%B5%E5%B8%83%E5%B1%80%E6%A0%B7%E5%BC%8F%E5%B0%8F%E6%80%BB%E7%BB%93/" data-toggle="tooltip" data-placement="top" title="网页布局样式小总结">
+                        Next<br>
+                        <span>网页布局样式小总结</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=jmeter"
+                    title="jmeter"
+                    rel="1">jmeter</a>
+        
+                <a data-sort="0031" 
+                    href="/blog/archive/?tag=mysql"
+                    title="mysql"
+                    rel="14">mysql</a>
+        
+                <a data-sort="0042" 
+                    href="/blog/archive/?tag=css"
+                    title="css"
+                    rel="3">css</a>
+        
+                <a data-sort="0042" 
+                    href="/blog/archive/?tag=shiro"
+                    title="shiro"
+                    rel="3">shiro</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=Spring"
+                    title="Spring"
+                    rel="2">Spring</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=java"
+                    title="java"
+                    rel="2">java</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=log"
+                    title="log"
+                    rel="2">log</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=nginx"
+                    title="nginx"
+                    rel="2">nginx</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=python"
+                    title="python"
+                    rel="2">python</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=springboot"
+                    title="springboot"
+                    rel="2">springboot</a>
+        
+                <a data-sort="0043" 
+                    href="/blog/archive/?tag=sql"
+                    title="sql"
+                    rel="2">sql</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
+                    title="事务"
+                    rel="1">事务</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
+                    title="数据类型"
+                    rel="1">数据类型</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E6%AD%A3%E5%88%99"
+                    title="正则"
+                    rel="1">正则</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E6%B3%9B%E5%9E%8B"
+                    title="泛型"
+                    rel="1">泛型</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E6%B5%8B%E8%AF%95"
+                    title="测试"
+                    rel="1">测试</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
+                    title="浮点数"
+                    rel="1">浮点数</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
+                    title="索引"
+                    rel="1">索引</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"
+                    title="设计模式"
+                    rel="1">设计模式</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=%E9%94%81"
+                    title="锁"
+                    rel="1">锁</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=DDD"
+                    title="DDD"
+                    rel="1">DDD</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=Git"
+                    title="Git"
+                    rel="1">Git</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=JPA"
+                    title="JPA"
+                    rel="1">JPA</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=Manjaro"
+                    title="Manjaro"
+                    rel="1">Manjaro</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=Swagger"
+                    title="Swagger"
+                    rel="1">Swagger</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=binlog"
+                    title="binlog"
+                    rel="1">binlog</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=docker"
+                    title="docker"
+                    rel="1">docker</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=graphql"
+                    title="graphql"
+                    rel="1">graphql</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=nodejs"
+                    title="nodejs"
+                    rel="1">nodejs</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=redis"
+                    title="redis"
+                    rel="1">redis</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=redo"
+                    title="redo"
+                    rel="1">redo</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=restful"
+                    title="restful"
+                    rel="1">restful</a>
+        
+                <a data-sort="0044" 
+                    href="/blog/archive/?tag=starter"
+                    title="starter"
+                    rel="1">starter</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                <!--
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+</ul>
+-->
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; What a Life 2021
+                    <br>
+                    模板来自 <a href="https://github.com/Huxpro/huxpro.github.io">huxpro.github.io</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/blog/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/blog/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/blog/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/blog/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/blog/js/snackbar.js "></script>
+<script src="/blog/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = 'UA-49627206-1';
+    var _gaDomain = 'huangxuan.me';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/blog/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/blog/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        // templateMiddleware: function (prop, value, template) {
+        //     if (prop === 'subtitle' || prop === 'title') {
+        //         if (value.indexOf("code")) {
+        //             return htmlDecode(value);
+        //         } else {
+        //             return value;
+        //         }
+        //     }
+        // }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+
+<!-- Image to hack wechat -->
+<img src="/blog/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
