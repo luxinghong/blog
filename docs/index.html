@@ -326,7 +326,7 @@
 <div class="post-preview">
     <a href="/blog/2021/12/30/Mybatis-plus-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90%E4%B8%80-@Mapper%E6%8E%A5%E5%8F%A3%E5%BA%95%E5%B1%82%E5%8E%9F%E7%90%86/">
         <h2 class="post-title">
-            Mybatis-plus 源码解析一：@Mapper接口底层原理
+            Mybatis-plus 源码解析一：@MapperScan、@Mapper、基础增删改查
         </h2>
         
         <h3 class="post-subtitle">
@@ -335,19 +335,15 @@
         
         <div class="post-content-preview">
             
-                通常我们都是这样使用的：
+                @MapperScan
 
-1
-2
-3
-@Mapper
-public interface PersonMapper extends BaseMapper&lt;Person&gt; {
-}
+使用场景：打在配置类或启动类上，从指定路径或当前包所在路径开始，扫描mapper接口，动态生成bean注册到容器中。
 
+MapperScannerRegistrar
 
-然后在代码中直接注入 personMapper 就可以使用了，这篇文章就来解析下这背后做了什么。
+@MapperScan 包含了一个元注解 @Import(MapperScannerRegistrar.class)。
 
-首先，毫无疑问从 MybatisPlusAutoConfiguration 看起，里面有一个 Map...
+@Import 可以和 ImportBeanDefinitionRegistr...
             
         </div>
     </a>

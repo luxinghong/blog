@@ -54,3 +54,5 @@ Jackson 反序列化逻辑是这样的：首先为目标类型（即 @RequestBod
 可以查看 `SNAKE_CASE` 对应的实现 `SnakeCaseStrategy`，它对上述三个方法都做了重写，全部将 defaultName 转为了小写下划线的格式。所以它的效果是反序列化和序列化都使用下换线的json格式。
 
 最后，在要应用此命名转换策略的POJO类上加上注解 `@JsonNaming(CustomPropertyNamingStrategy.class)` 即可，它会覆盖全局的命名策略，优先级更高。
+
+> 注意：如果有内部类，应该在每个内部类上都加上注解。
