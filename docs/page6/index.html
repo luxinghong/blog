@@ -11,26 +11,16 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="shiro源码分析二 - 陆星宏的博客 | What a Life">
+    <meta property="og:title" content="陆星宏的博客 | What a Life">
     
-    <meta property="og:type" content="article">
-    <meta property="og:description" content="现在有个问题，当token认证通过以后，subject.isAuthenticated() = true 并且 subject.principal() 不为null，这一步操作是在哪里做的？
-">
-    
-    <meta property="article:published_time" content="2020-04-23T00:00:00Z">
-    
-    
-    <meta property="article:author" content="">
-    
-    
-    <meta property="article:tag" content="shiro">
-    
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="「Live for yourself」">
     
     <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
-    <meta property="og:url" content="http://localhost:4000/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%BA%8C/">
+    <meta property="og:url" content="http://localhost:4000/page6/">
     <meta property="og:site_name" content="陆星宏的博客 | What a Life">
     
-    <title>shiro源码分析二 - 陆星宏的博客 | What a Life</title>
+    <title>陆星宏的博客 | What a Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -39,7 +29,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%BA%8C/">
+    <link rel="canonical" href="http://localhost:4000/blog/page6/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -84,8 +74,8 @@
 
     <!-- Navigation -->
 
-<nav class="navbar navbar-default navbar-custom navbar-fixed-top invert">
-    
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
         <div class="container-fluid">
             <!-- Brand and toggle get grouped for better mobile display -->
             <div class="navbar-header page-scroll">
@@ -222,148 +212,106 @@
   </div>
 </div>
 
-    <!-- Image to hack wechat -->
-<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
-<!-- <img src="/blog/img/niuniu.jpg" width="0" height="0"> -->
-
-<!-- Post Header -->
+    <!-- Page Header -->
 
 
 
-<style type="text/css">
-    header.intro-header{
-        position: relative;
-        background-image: url('/blog/img/niuniu.jpg');
-        background: ;
-    }
 
-    
-</style>
 
-<header class="intro-header style-text" >
 
-    <div class="header-mask"></div>
-    
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-                <div class="post-heading">
-                    <div class="tags">
-                        
-                        <a class="tag" href="/blog/archive/?tag=shiro" title="shiro">shiro</a>
-                        
-                    </div>
-                    <h1>shiro源码分析二</h1>
-                    
-                    <h2 class="subheading"></h2>
-                    <span class="meta">April 23, 2020</span>
-                </div>
-            </div>
+
+<header class="intro-header" style="background-image: url('/blog/img/niuniu.jpg')">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        
+        <div class="site-heading">
+        
+          <h1>What a Life</h1>
+          <span class="subheading" style="font-family:emoji">「Live for yourself」</span>
         </div>
+      </div>
     </div>
+  </div>
 </header>
 
 
 
-
-
-
-
-<!-- Post Content -->
-<article>
-    <div class="container">
-        <div class="row">
-
-    <!-- Post Container -->
-            <div class="
-                col-lg-8 col-lg-offset-2
-                col-md-10 col-md-offset-1
-                post-container">
-
-                <!-- Multi-Lingual -->
-                
-
-				<p>现在有个问题，当token认证通过以后，subject.isAuthenticated() = true 并且 subject.principal() 不为null，这一步操作是在哪里做的？</p>
-
-<p>回到源代码 JWTFilter 中，当我们带token访问时进行到这一步</p>
-
-<p><img src="/blog/img/20200423143513918.png" alt="" /></p>
-
-<p>跟进去</p>
-
-<p><img src="/blog/img/20200423143548839.png" alt="" /></p>
-
-<p>它就是把token取出来，构造出JWToken，然后调用subject.login(token) 方法进行登录。此时我们拿到的subject 是在 AbstractShiroFilter 中构造出来的subject，它的 isAuthenticated 为 false，principal 为null。</p>
-
-<p>跟进去</p>
-
-<p><img src="/blog/img/20200423143936290.png" alt="" /></p>
-
-<p>到了 DelegatingSubject 的 login() 方法。</p>
-
-<p>此方法会先调用 securityManager 的 login() 方法进行登录，大概逻辑是调用我们自定义的 realm 中的 doGetAuthenticationInfo() 方法拿到AuthenticationInfo，与传进来的token中进行比较，相同则说明登录成功，其实也就是密码比对过程。</p>
-
-<p>若登录过程没有抛出任何异常，则代码继续往下执行，会看到上图中第三个红框部分。把当前对象也就是subject的pricipals 和 authenticated 进行了设值。</p>
-
-<p><strong>至此，在该请求流程后面的任意时刻调用 subject.isAuthenticated() 都为true，subject.principals() 都不为null，即代表当前subject 已认证通过！</strong></p>
-
-
-                <hr style="visibility: hidden;">
-                <ul class="pager">
-                    
-                    <li class="previous">
-                        <a href="/blog/2020/04/23/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%80/" data-toggle="tooltip" data-placement="top" title="shiro源码分析一">
-                        Previous<br>
-                        <span>shiro源码分析一</span>
-                        </a>
-                    </li>
-                    
-                    
-                    <li class="next">
-                        <a href="/blog/2020/04/24/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%89/" data-toggle="tooltip" data-placement="top" title="shiro源码分析三">
-                        Next<br>
-                        <span>shiro源码分析三</span>
-                        </a>
-                    </li>
-                    
-                </ul>
-                <hr style="visibility: hidden;">
-
-                
-
-                
-            </div>  
-
-    <!-- Side Catalog Container -->
-        
-            <div class="
-                col-lg-2 col-lg-offset-0
-                visible-lg-block
-                sidebar-container
-                catalog-container">
-                <div class="side-catalog">
-                    <hr class="hidden-sm hidden-xs">
-                    <h5>
-                        <a class="catalog-toggle" href="#">CATALOG</a>
-                    </h5>
-                    <ul class="catalog-body"></ul>
-                </div>
-            </div>
+<!-- Main Content -->
+<div class="container">
+	<div class="row">
         
 
+<!-- USE SIDEBAR -->
+    <!-- PostList Container -->
+    		<div class="
+                col-lg-8 col-lg-offset-1
+                col-md-8 col-md-offset-1
+                col-sm-12
+                col-xs-12
+                postlist-container
+            ">
+    			
+<div class="post-preview">
+    <a href="/blog/2019/01/16/JMeter%E4%B8%ADcookie%E6%9C%AA%E9%9A%8F%E8%AF%B7%E6%B1%82%E4%B8%80%E8%B5%B7%E5%8F%91%E9%80%81/">
+        <h2 class="post-title">
+            JMeter中cookie未随请求一起发送
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                
+
+可看到 Cookie Policy那里有很多种策略可选，默认是standard，我这里换成了netscape才生效，反正发现不起作用时各种换着试一试。
+
+下面是各种策略的说明：
+
+
+  
+    Compatibility
+
+    
+      这种兼容性设计要求是适应尽可能多的不同的服务器，尽管不是完全按照标准来实现的。如果你遇到了解析Cookies的问题，你就可能要用到这一个规范。...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        January 16, 2019
+    </p>
+</div>
+<hr>
+
+
+<!-- Pager -->
+
+<ul class="pager">
+    
+    <li class="previous">
+        <a href="/blog/page5">&larr; Newer Posts</a>
+    </li>
+    
+    
+</ul>
+
+
+    		</div>
     <!-- Sidebar Container -->
             <div class="
-                col-lg-8 col-lg-offset-2
-                col-md-10 col-md-offset-1
-                sidebar-container">
-
+                col-lg-3 col-lg-offset-0
+                col-md-3 col-md-offset-0
+                col-sm-12
+                col-xs-12
+                sidebar-container
+            ">
                 <!-- Featured Tags -->
                 
 
 
 <section>
-    
-        <hr class="hidden-sm hidden-xs">
     
     <h5><a href="/blog/archive/">FEATURED TAGS</a></h5>
     <div class="tags">
@@ -556,6 +504,35 @@
 </section>
 
 
+                <!-- Short About -->
+                <section class="visible-md visible-lg">
+  <hr>
+  <h5><a href="/blog/about/">ABOUT ME</a></h5>
+  <div class="short-about">
+    
+    <img src="/blog/img/微信图片_20211213132145.jpg" />
+    
+    
+    <p>一个Java程序员.<br/>有只猫,名叫妞妞.<br/>编码之外:打篮球,吃饭,睡觉.<br/>寻求一份长期稳定的远程后端开发工作.<br/>452228391@qq.com</p>
+    
+    <!-- SNS Link -->
+    
+
+
+<ul class="list-inline">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+  </div>
+</section>
+
                 <!-- Friends Blog -->
                 <!--
 <hr>
@@ -564,54 +541,11 @@
   
 </ul>
 -->
-            </div>
-        </div>
-    </div>
-</article>
+    		</div>
+        
+	</div>
+</div>
 
-<!-- add support for mathjax by voleking-->
-
-
-
-
-
-
-
-
-
-<!-- async load function -->
-<script>
-    function async(u, c) {
-      var d = document, t = 'script',
-          o = d.createElement(t),
-          s = d.getElementsByTagName(t)[0];
-      o.src = u;
-      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
-      s.parentNode.insertBefore(o, s);
-    }
-</script>
-<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
-<script>
-    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
-        anchors.options = {
-          visible: 'hover',
-          placement: 'right',
-          // icon: '#'
-        };
-        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
-    })
-</script>
-<style>
-    /* place left on bigger screen */
-    @media all and (min-width: 800px) {
-        .anchorjs-link{
-            position: absolute;
-            left: -0.75em;
-            font-size: 1.1em;
-            margin-top : -0.1em;
-        }
-    }
-</style>
 
 
 
