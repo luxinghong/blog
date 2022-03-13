@@ -11,26 +11,26 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="对DDD的一点理解 - 陆星宏的博客 | What a Life">
+    <meta property="og:title" content="MySQL学习笔记(十二)：join - 陆星宏的博客 | What a Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="DDD分层架构是什么？
+    <meta property="og:description" content="先说个结论，join的优化思路都是尽量让被驱动表上join的字段用上索引。
 ">
     
-    <meta property="article:published_time" content="2020-11-13T00:00:00Z">
+    <meta property="article:published_time" content="2022-03-14T00:00:00Z">
     
     
     <meta property="article:author" content="">
     
     
-    <meta property="article:tag" content="DDD">
+    <meta property="article:tag" content="mysql">
     
     
     <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
-    <meta property="og:url" content="http://localhost:4000/2020/11/13/%E5%AF%B9DDD%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/">
+    <meta property="og:url" content="http://localhost:4000/2022/03/14/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81%E4%BA%8C)-join/">
     <meta property="og:site_name" content="陆星宏的博客 | What a Life">
     
-    <title>对DDD的一点理解 - 陆星宏的博客 | What a Life</title>
+    <title>MySQL学习笔记(十二)：join - 陆星宏的博客 | What a Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -39,7 +39,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2020/11/13/%E5%AF%B9DDD%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/">
+    <link rel="canonical" href="http://localhost:4000/blog/2022/03/14/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%8D%81%E4%BA%8C)-join/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -250,13 +250,13 @@
                 <div class="post-heading">
                     <div class="tags">
                         
-                        <a class="tag" href="/blog/archive/?tag=DDD" title="DDD">DDD</a>
+                        <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
                         
                     </div>
-                    <h1>对DDD的一点理解</h1>
+                    <h1>MySQL学习笔记(十二)：join</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">November 13, 2020</span>
+                    <span class="meta">March 14, 2022</span>
                 </div>
             </div>
         </div>
@@ -283,114 +283,204 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="ddd分层架构是什么">DDD分层架构是什么？</h1>
+				<p><strong>先说个结论，join的优化思路都是尽量让被驱动表上join的字段用上索引。</strong></p>
 
-<p>4层架构：由下往上，基础层 -&gt; 领域层 -&gt; 应用层 -&gt; 用户接口层</p>
+<p>所以，分析join也从被驱动表上join字段有没有索引两种情况来分析。</p>
 
-<hr />
+<h1 id="可以使用被驱动表的索引">可以使用被驱动表的索引</h1>
 
-<p><br /><br /></p>
+<h3 id="nlj-nested-loop-join">NLJ-Nested Loop Join</h3>
 
-<h1 id="领域层和应用层的区别是什么">领域层和应用层的区别是什么？</h1>
+<p>这是一种最自然的算法，假设由我们来实现join首先也会想到这种方法。</p>
 
-<p>从底往上逐层讲。</p>
+<p>以 <code class="language-plaintext highlighter-rouge">select * from t1 join t2 on t1.a=t2.a</code> 为例，<code class="language-plaintext highlighter-rouge">t2.a</code> 上有索引。</p>
 
-<p>单个实体自身的方法就是实体本身的业务行为。多个实体可组成更复杂的业务动作，这个是领域服务，实体的方法和领域服务共同构成领域模型的基础业务能力，这个能力是原子的基础的，不太考虑外界的用户行为和流程。</p>
-
-<p>而应用服务是对这些基础的能力进行组合和编排，它组合和编排的服务可以是跨聚合的领域服务，主要体现组合后的业务能力，更面向前端的用户操作，属于比较粗粒度的服务，通过编排可以更灵活应对外部需求变化。</p>
-
-<hr />
-
-<p><br /><br /></p>
-
-<h1 id="中台业务建模过程">中台业务建模过程？</h1>
+<p>步骤如下：</p>
 
 <ol>
-  <li>按照业务流程（通常适用于核心域）或者功能属性、集合（通常适用于通用域或支撑域），将业务域细分为多个中台，再根据功能属性或重要性归类到核心中台或通用中台。核心中台设计时要考虑核心竞争力，通用中台要站在企业高度考虑共享和复用能力。</li>
-  <li>选取中台，根据用例、业务场景或用户旅程完成事件风暴，找出实体、聚合和限界上下文。依次进行领域分解，建立领域模型。由于不同中台独立建模，某些领域对象或功能可能会重复出现在其它领域模型中，也有可能本该是同一个聚合的领域对象或功能，却分散在其它的中台里，这样会导致领域模型不完整或者业务不内聚。这里先不要着急，这一步我们只需要初步确定主领域模型就可以了，在第三步中我们还会提炼并重组这些领域对象。</li>
-  <li>以主领域模型为基础，扫描其它中台领域模型，检查并确定是否存在重复或者需要重组的领域对象、功能，提炼并重构主领域模型，完成最终的领域模型设计。</li>
-  <li>选择其它主领域模型重复第三步，直到所有主领域模型完成比对和重构。</li>
-  <li>基于领域模型完成微服务设计，完成系统落地。</li>
+  <li>从t1表中取出一行R；</li>
+  <li>从R中取出a字段，到t2表中查找；</li>
+  <li>从t2中取出匹配的行，和R组成一行，作为结果集的一部分；</li>
+  <li>重复1-3步骤，直至t1表遍历结束。</li>
 </ol>
 
-<p>划分核心中台要看你的企业核心竞争力是否在这个领域。</p>
+<p>所以它就是2个for循环，外层循环嵌套内存循环，这也是  <code class="language-plaintext highlighter-rouge">Nested Loop Join</code> 名称的由来。</p>
 
-<p>以保险举例：</p>
+<p>由于 t2.a 上有索引，在内存循环查找的时候，走的是索引树，快速定位，无需全表扫描，所以这种方式是很快的。</p>
 
-<p><img src="/blog/img/4a111cfaf493a8b540d35837aecd44f8.png" alt="" /></p>
+<p>如果一条join语句执行计划的 extra 字段什么都没写，就表示使用了 NLJ 算法。</p>
 
-<hr />
+<h1 id="被驱动表上没有索引">被驱动表上没有索引</h1>
 
-<p><br /><br /></p>
+<p>如果被驱动表上没有索引，按照 NLJ 算法，会导致内存循环被驱动表上做全表扫描，效率会很低。</p>
 
-<h1 id="怎么抉择一个实体是不是聚合根">怎么抉择一个实体是不是聚合根？</h1>
+<p>MySQL作了一种改进，称为 BNL 算法。</p>
 
-<p>判断一个实体是否是聚合根，你可以结合以下内容进行分析：</p>
+<h3 id="bnl-block-nested-loop">BNL-Block Nested Loop</h3>
 
-<ul>
-  <li>是否有独立的生命周期？</li>
-  <li>是否有全局唯一 ID ？</li>
-  <li>是否可以创建或修改其他对象？</li>
-  <li>是否有专门的模块来管理这个实体等？</li>
-</ul>
+<p>既然问题出在内存循环被驱动表上做全表扫描，那么就从这个问题入手，避免在被驱动表上做全表扫描。</p>
 
-<p>聚合根管理了聚合内所有实体和值对象的生命周期，我们通过聚合根就可以获取到聚合内所有实体和值对象等领域对象。一般来说，如果聚合根被删除了，那么被它引用的实体和值对象也就不会存在了。</p>
+<p>如何做？</p>
 
-<hr />
+<p>MySQL会为每个连接分配一个内存区域：<code class="language-plaintext highlighter-rouge">join_buffer</code>，大小由 <code class="language-plaintext highlighter-rouge">join_buffer_size</code> 控制，默认值为256k。</p>
 
-<p><br /><br /></p>
-
-<h1 id="操作数据库应该放到哪里聚合根中应该包括哪些业务行为">操作数据库应该放到哪里？聚合根中应该包括哪些业务行为？</h1>
-
-<p>在聚合内部操作数据库都是通过调用仓储接口来实现的。</p>
-
-<p>由于一个聚合内需要按照统一的业务规则来完成实体的数据变更，也就是说不可以随意修改某一个实体的数据表。为了统一这些数据更新的操作，会统一由聚合根来管理，所以操作数据库的方法一般都是放在聚合根的方法中。对于聚合内跨多个实体的业务逻辑，这部分功能可以由聚合根的方法来实现，也可以通过聚合内的领域服务来实现。</p>
-
-<p>但为了避免聚合根的业务逻辑过于复杂，避免聚合根类代码量过于庞大，我个人建议聚合根除了承担它的聚合管理职能外，只作为实体实现与聚合根自身行为相关的业务逻辑，而将跨多个实体的复杂领域逻辑统一放在领域服务中实现。因此在完成业务逻辑后，在操作数据库时可以通过聚合根方法或领域服务来完成，切勿在某个实体的方法中不受控制的去修改数据库中实体的数据。</p>
-
-<hr />
-
-<p><br /><br /></p>
-
-<h1 id="在设计过程中对于一些复杂的流程细节没考虑到位或者忽略了某个细节流程而导致在程序落地过程中发现原有的建模不够严谨对于这种场景有什么补救措施吗或者如何避免这一问题的发生">在设计过程中，对于一些复杂的流程细节没考虑到位，或者忽略了某个细节流程，而导致在程序落地过程中，发现原有的建模不够严谨，对于这种场景，有什么补救措施吗，或者如何避免这一问题的发生？</h1>
-
-<p>这个可能需要分一下几类情况来处理：</p>
+<p>步骤如下：</p>
 
 <ol>
-  <li>如果是聚合内实体的业务逻辑没考虑到，只需要修改对应实体内的属性或者方法即可。</li>
-  <li>如何是聚合内实体之间的关系没考虑到，调整或新增领域服务，或者聚合根的方法即可。</li>
-  <li>如果是在同一个限界上下文内的聚合之间的关系没考虑到，在应用层的应用服务中调整或新增即可。</li>
-  <li>如果是聚合划分到了错误的限界上下文内，整体将聚合内所有对象和代码调整到合适的限界上下文即可，并重新建立新的限界上下文内聚合之间的关系。</li>
-</ol>
-
-<hr />
-
-<p><br /><br /></p>
-
-<h1 id="ddd从设计到落地的大概流程">DDD从设计到落地的大概流程？</h1>
-
-<p>先进行战略设计，再进行战术设计。</p>
-
-<p>战略设计采用的方法是事件风暴，包括产品愿景、场景分析、领域建模、微服务拆分。</p>
-
-<p>领域建模又分为3步：</p>
-
-<ol>
-  <li>根据场景分析，分析并找出发起或产生这些命令或领域事件的实体和值对象，将与实体或值对象有关的命令和事件聚集到实体；</li>
-  <li>找出聚合根，根据实体、值对象与聚合根的依赖关系，建立聚合；</li>
   <li>
-    <p>根据业务及语义边界等因素，定义限界上下文。</p>
+    <p>将t1表读入join_buffer ；</p>
 
-    <p>微服务拆分：理论上一个限界上下文就可以设计为一个微服务，但还需要综合考虑多种外部因素，比如：职责单一性、敏态与稳态业务分离、非功能性需求（如弹性伸缩、版本发布频率和安全等要求）、软件包大小、团队沟通效率和技术异构等非业务要素。</p>
+    <blockquote>
+      <p>注意：只会读入结果集中需要的字段，比如  <code class="language-plaintext highlighter-rouge">select *</code>  会读入t1表所有字段；而 <code class="language-plaintext highlighter-rouge">select t1.a,t1.b,t2.* from t1 join t2 on t1.a=t2.a</code>  只会读入 t1 表的 a、b 字段</p>
+    </blockquote>
+  </li>
+  <li>
+    <p>从 t2 表中取出每一行R，到 join_buffer 中去查找，满足条件的和R组成一行，作为结果集的一部分返回。</p>
   </li>
 </ol>
 
-<p>战术设计包括：</p>
+<p><strong>这个算法的重点就在于对于被驱动表只需要扫描一次，然后所有的查找、匹配工作都在内存(join_buffer)中完成，速度很快。</strong></p>
+
+<p>其实有点反转的意思，被驱动表转为了驱动表。</p>
+
+<p>那这个 Block 是什么意思？</p>
+
+<p>理想情况下 join_buffer 能够全部读入 t1 表的数据自然是最好，如果不能完全装入，则需要分块读入，这就是 Block 的含义。</p>
+
+<p>显而易见，这和 <code class="language-plaintext highlighter-rouge">join_buffer_size</code> 息息相关。</p>
+
+<p>如果需要分块读入，假设需要分3次读入，执行步骤就变成了执行3次上面的1、2步骤，这时需要扫描3次被驱动表。</p>
+
+<p>所以增大 <code class="language-plaintext highlighter-rouge">join_buffer_size</code> 也是优化 join 的一个常用手段。</p>
+
+<h1 id="如何选择驱动表">如何选择驱动表</h1>
+
+<ul>
+  <li>
+    <p>假设驱动表行数N，被驱动表行数是M。</p>
+
+    <p>对于 NLJ ，时间复杂度近似 $N + N<em>2</em>log_2M$</p>
+
+    <blockquote>
+      <p>驱动表需要扫描N行</p>
+
+      <p>执行N次被驱动表查找、匹配</p>
+
+      <p>在被驱动表上定位的时间复杂度为 $log_2M$</p>
+
+      <p>需要回表，$*2$</p>
+    </blockquote>
+
+    <p>可看到N相对M的影响更大。</p>
+  </li>
+  <li>
+    <p>对于 BNL，很明显，能一次性把驱动表的数据都装入 join_buffer，效率是最高的。</p>
+
+    <blockquote>
+      <p>需要注意一点，BNL中小表的选择应该是以实际使用数据量大小为准。</p>
+
+      <p>比如这2个sql：</p>
+
+      <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t1</span> <span class="n">straight_join</span> <span class="n">t2</span> <span class="k">on</span> <span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">b</span><span class="o">=</span><span class="n">t2</span><span class="p">.</span><span class="n">b</span><span class="p">)</span> <span class="k">where</span> <span class="n">t2</span><span class="p">.</span><span class="n">id</span><span class="o">&lt;=</span><span class="mi">50</span><span class="p">;</span>
+<span class="k">select</span> <span class="o">*</span> <span class="k">from</span> <span class="n">t2</span> <span class="n">straight_join</span> <span class="n">t1</span> <span class="k">on</span> <span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">b</span><span class="o">=</span><span class="n">t2</span><span class="p">.</span><span class="n">b</span><span class="p">)</span> <span class="k">where</span> <span class="n">t2</span><span class="p">.</span><span class="n">id</span><span class="o">&lt;=</span><span class="mi">50</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>      </div>
+
+      <p>应以 t2 作为主表，因为 t2 有过滤条件，只会将50行放入 join_buffer。选择 t1 的话，需要将 t1 表所有数据放入 join_buffer。</p>
+
+      <p>又比如</p>
+
+      <div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="k">select</span> <span class="n">t1</span><span class="p">.</span><span class="n">b</span><span class="p">,</span><span class="n">t2</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span>  <span class="n">t1</span>  <span class="n">straight_join</span> <span class="n">t2</span> <span class="k">on</span> <span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">b</span><span class="o">=</span><span class="n">t2</span><span class="p">.</span><span class="n">b</span><span class="p">)</span> <span class="k">where</span> <span class="n">t2</span><span class="p">.</span><span class="n">id</span><span class="o">&lt;=</span><span class="mi">100</span><span class="p">;</span>
+<span class="k">select</span> <span class="n">t1</span><span class="p">.</span><span class="n">b</span><span class="p">,</span><span class="n">t2</span><span class="p">.</span><span class="o">*</span> <span class="k">from</span>  <span class="n">t2</span>  <span class="n">straight_join</span> <span class="n">t1</span> <span class="k">on</span> <span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">b</span><span class="o">=</span><span class="n">t2</span><span class="p">.</span><span class="n">b</span><span class="p">)</span> <span class="k">where</span> <span class="n">t2</span><span class="p">.</span><span class="n">id</span><span class="o">&lt;=</span><span class="mi">100</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div>      </div>
+
+      <p>因为 t1 只需要查询 b 字段，以 t1 为主表只需将字段b放入 join_buffer。</p>
+
+      <p>如果以 t2 作为主表，需要将 t2.id&lt;=100 的数据读入 join_buffer。</p>
+
+      <p>这时就需要比较两者数据量大小，选择较小一方作为主表。</p>
+    </blockquote>
+  </li>
+</ul>
+
+<p><strong>综上所述，总是应该选择小表作为驱动表。</strong></p>
+
+<h1 id="进一步优化">进一步优化</h1>
+
+<h3 id="对-nlj-的优化">对 NLJ 的优化</h3>
+
+<p>先介绍下 MRR ：MySQL 针对回表所做的一种优化算法。</p>
+
+<p><strong>假设回表查到的记录都不在 buffer_pool 中 (如果数据页都在内存中，直接快速定位，那就没什么影响)，需要读盘，但是回表的 id 对应的记录所在的数据页并不一定是连续的，这就意味着需要随机读盘。</strong></p>
+
+<p>众所周知，随机读盘是最耗时的操作。对此，MySQL提出了一种回表优化算法：</p>
+
+<h4 id="mrr-multi-range-read">MRR-Multi Range Read</h4>
 
 <ol>
-  <li>根据命令设计应用服务，确定应用服务的功能，服务集合，组合和编排方式。服务集合中的服务包括领域服务或其它微服务的应用服务；</li>
-  <li>根据应用服务功能要求设计领域服务，定义领域服务。这里需要注意：应用服务可能是由多个聚合的领域服务组合而成的；</li>
-  <li>根据领域服务的功能，确定领域服务内的实体以及功能。设计实体基本属性和方法。</li>
+  <li>
+    <p>针对该情况，会将需要回表的id放到 read_rnd_buffer 中</p>
+  </li>
+  <li>
+    <p>然后在 read_rnd_buffer (大小由参数 read_rnd_buffer_size 控制) 中对 id 进行递增排序，再到主键索引树上查找。</p>
+
+    <p>此时，id 是连续的，即便需要读盘，也是顺序读盘，这就大大提高了效率。</p>
+
+    <p>而且，还能利用到CPU的空间局部性原理：CPU 在读取数据时，会将附近区域的一段数据一并读入。这是基于一个理论：如果使用了某个位置的数据，在不久的将来该位置附近的数据大概率也会被使用到。因此，一并读入以提高效率。</p>
+  </li>
+</ol>
+
+<blockquote>
+  <p>默认情况下，该优化没开启。</p>
+
+  <p>开启方法：<code class="language-plaintext highlighter-rouge">set optimizer_switch='mrr=on,mrr_cost_based=off'</code> 。</p>
+
+  <p>可看到这是在优化器中的设置。在 explain 中的 extra 字段显示 <code class="language-plaintext highlighter-rouge">Using MRR</code> 即表示使用了 MRR 优化算法。</p>
+</blockquote>
+
+<h4 id="bka-batched-key-access">BKA-Batched Key Access</h4>
+
+<p>BKA 其实就是 MRR 在 NLJ 算法上的应用。</p>
+
+<p>还是以上文 NLJ 中示例说明，它的逻辑是用 t1.a 去匹配 t2.a，匹配到以后，<strong>需要回表</strong>，得到 t2 完整的一行记录再与 t1 的记录组成最终结果集中的一行记录。</p>
+
+<p>BKA 利用 MRR ，将回表中的随机读盘优化为顺序读盘。</p>
+
+<p>具体步骤和 MRR 是一致的，区别是这里用的不是 read_rnd_buffer，而是 join_buffer (没错，NLJ 也可以用上 join_buffer)。</p>
+
+<p>由于默认 MRR 没有开启，所以 BKA 也需要手动开启，开启方法：</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="k">set</span> <span class="n">optimizer_switch</span><span class="o">=</span><span class="s1">'mrr=on,mrr_cost_based=off,batched_key_access=on'</span><span class="p">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="对-bnl-的优化">对 BNL 的优化</h3>
+
+<p>最直接的方法就是给被驱动表 join 字段加上索引，让 BNL 转 BKA 算法即可。</p>
+
+<p>那如果出于种种原因，不能加索引，咋办？</p>
+
+<ol>
+  <li>
+    <p>基于上文 BNL 那一节的描述，没办法用索引，只能减少被驱动表的全表扫描次数。即增大 join_buffer_size，可以一次性装入驱动表，尽量只全表扫描1次被驱动表；</p>
+  </li>
+  <li>
+    <p>还有一种曲线救国的方法，既然不能在原表上加索引，那就创建一张临时表，插入被驱动表的数据，在临时表上加索引，然后再和这张临时表join，让它使用 BKA 算法；</p>
+  </li>
+  <li>
+    <p>MySQL8 支持了 hash join。何为 hash join？</p>
+
+    <p>原先存在 join_buffer 中的结构是无序数组，所以 BNL 算法需要遍历比较。假设被驱动表有100万行记录，就需要进行 100万次对主驱动表的遍历比较。hash join 将 join_buffer 中的数据结构改为了哈希表，这样就无需进行100万次对主驱动表的遍历比较，而是100万次哈希查找，哈希查找的时间复杂度是 O(1)，效率大大提高了。</p>
+
+    <blockquote>
+      <p>MySQL5 并不支持 hash join，但是可以在应用端使用代码模拟。</p>
+
+      <p>用一个哈希结构存储主驱动表，遍历被驱动表，然后在哈希表中根据join字段进行哈希查找，最后组装结果返回即可。</p>
+    </blockquote>
+  </li>
 </ol>
 
 
@@ -398,19 +488,12 @@
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/blog/2020/11/10/%E5%AF%B9Java%E5%9B%9E%E8%B0%83%E7%9A%84%E4%B8%80%E7%82%B9%E7%90%86%E8%A7%A3/" data-toggle="tooltip" data-placement="top" title="对Java回调的一点理解">
+                        <a href="/blog/2022/03/14/(%E8%BD%AC%E8%BD%BD)%E5%85%A8%E7%BD%91%E6%9C%80%E5%85%A8-MySQL-EXPLAIN-%E5%AE%8C%E5%85%A8%E8%A7%A3%E8%AF%BB/" data-toggle="tooltip" data-placement="top" title="(转载)全网最全 | MySQL EXPLAIN 完全解读">
                         Previous<br>
-                        <span>对Java回调的一点理解</span>
+                        <span>(转载)全网最全 | MySQL EXPLAIN 完全解读</span>
                         </a>
                     </li>
                     
-                    
-                    <li class="next">
-                        <a href="/blog/2020/11/19/JPA-%E5%8D%95%E8%A1%A8%E5%8F%8C%E5%90%91%E8%87%AA%E5%85%B3%E8%81%94-%E8%BD%ACdto-jackson%E5%BA%8F%E5%88%97%E5%8C%96%E5%BE%AA%E7%8E%AF%E5%BC%95%E7%94%A8%E9%97%AE%E9%A2%98/" data-toggle="tooltip" data-placement="top" title="JPA 单表双向自关联、转dto、jackson序列化循环引用问题">
-                        Next<br>
-                        <span>JPA 单表双向自关联、转dto、jackson序列化循环引用问题</span>
-                        </a>
-                    </li>
                     
                 </ul>
                 <hr style="visibility: hidden;">
