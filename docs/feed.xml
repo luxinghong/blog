@@ -5,8 +5,8 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sat, 26 Mar 2022 13:20:08 +0800</pubDate>
-    <lastBuildDate>Sat, 26 Mar 2022 13:20:08 +0800</lastBuildDate>
+    <pubDate>Sat, 26 Mar 2022 13:27:03 +0800</pubDate>
+    <lastBuildDate>Sat, 26 Mar 2022 13:27:03 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
     
       <item>
@@ -91,6 +91,20 @@
     &lt;p&gt;或者使用WeakHashMap。&lt;/p&gt;
   &lt;/li&gt;
 &lt;/ol&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;br /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;如何定位解决内存泄露&quot;&gt;如何定位解决内存泄露？&lt;/h1&gt;
+
+&lt;p&gt;严重的内存泄漏往往伴随着&lt;strong&gt;频繁的full gc、cpu使用率飙升、长时间运行后性能下降、outofmemory错误&lt;/strong&gt;等情况，可以从这几个方面去定位问题。&lt;/p&gt;
+
+&lt;p&gt;通过各种工具，包括jdk自带的jstat或其他第三方监测工具如arthas，或者是通过分析dump日志（jvisualVM、JProfiler、MAT、GCViewer等），监测gc日志，如果出现频繁的full gc，而young gc反而较少，则很有可能出现内存泄漏。&lt;/p&gt;
+
+&lt;p&gt;接下来使用jmap查看每个类的对象数量及占用内存大小，找到占用空间最大、数量最多的对象，可以多监测几次，看其是否呈上升趋势。再结合对cpu使用率高的线程、出现oom错误的线程做线程堆栈分析，基本上就可以定位到代码层面了，然后就是具体的代码逻辑分析了，查找引起内存泄露的原因（参考上一节）。&lt;/p&gt;
 </description>
         <pubDate>Sat, 26 Mar 2022 00:00:00 +0800</pubDate>
         <link>http://localhost:4000/blog/2022/03/26/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F/</link>
