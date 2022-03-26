@@ -1,6 +1,15 @@
 [
 
 {
+"title"    : "强软弱虚引用",
+"category" : "",
+"tags"     : "jvm",
+"url"      : "/blog/2022/03/26/%E5%BC%BA%E8%BD%AF%E5%BC%B1%E8%99%9A%E5%BC%95%E7%94%A8/",
+"date"     : "2022-03-26 00:00:00 +0800",
+"content"  : "作用以代码的方法控制对象的生命周期。以下四种引用类型对象生命周期由长至短。强引用new的方式默认就是强引用。只要强引用存在，即使OOM，也不会被gc回收。只有当显式置为null，切断了引用与对象的联系，才会被回收。所以经常会在一些地方看到 xxx = null的写法，就是提醒jvm该对象已经不需要了，可以进行回收。软引用gc后如果内存空间还不够用，便会回收只有软引用指向的对象。  注意：并不是gc了就一定会回收软引用指向的对象，而是gc以后，如果内存空间还不够用才会回收，有一个缓冲期用法：1234567891011// -Xms5m -Xmx5m 指定堆空间只有5MSoftReferencelt;Objectgt; softReference = new SoftReferencelt;gt;(new Object());System.out.println(softReference.get()); // java.lang.Object3b81a1bcSystem.gc(); // 手动触发一次gcSystem.out.println(softReference.get()); //java.lang.Object3b81a1bc，可以看到没有被回收try     byte[] bytes = new byte[5 * 1024 * 1024]; // 申请一个5M的字节数组，达到最大堆空间，会触发gc finally     System.out.println(softReference.get());// null，被回收了使用场景：经常被用在内存敏感的场景，比如缓存。内存够用，就用缓存加速。内存不够用了，清除缓存保证程序正常运行。弱引用只要gc，就会回收只有弱引用指向的对象。示例：1234WeakReferencelt;Objectgt; softReference = new WeakReferencelt;gt;(new Object());System.out.println(softReference.get());// java.lang.Object3b81a1bcSystem.gc();System.out.println(softReference.get());// null，被回收了使用场景：ThreadLocal、WeakHashMap虚引用意义：提供一个钩子，在对象被回收后会被放入一个队列，便可以执行一些后续的自定义操作。其实 SoftReference、WeakReference 同样提供了一个队列，提供了同样的功能，区别在于 phantomReference.get() 永远是 null。也就是它的关注点不在于对象本身，而仅仅在于对象被回收后的自定义操作。注意：虚引用并不是gc了就会被回收，当堆内存不够时才会被回收，如上所述，它的关注点不在于对象或者对象生命周期本身，而是对象被回收后的自定义操作。示例：123456789101112// -Xms5m -Xmx5m 指定堆空间只有5MReferenceQueuelt;Objectgt; queue = new ReferenceQueuelt;gt;();PhantomReferencelt;Objectgt; phantomReference = new PhantomReferencelt;gt;(new Object(), queue);System.out.println(phantomReference.get()); // nullSystem.out.println(queue.poll());// nulltry     byte[] bytes = new byte[5 * 1024 * 1024]; finally     System.out.println(phantomReference.get());// null    System.out.println(queue.poll());// java.lang.ref.PhantomReference5f2050f6使用场景：NIO的堆外内存管理就用到了虚引用（没有深入研究过）"
+} ,
+
+{
 "title"    : "内存泄漏",
 "category" : "",
 "tags"     : "jvm",

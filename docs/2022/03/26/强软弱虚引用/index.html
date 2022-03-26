@@ -11,26 +11,26 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="dockerfile打成docker上传到linux后运行报sh脚本找不到的错误 - 陆星宏的博客 | What a Life">
+    <meta property="og:title" content="强软弱虚引用 - 陆星宏的博客 | What a Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="之前遇到一个奇葩错误， 本地dockerfile打成docker上传到linux后(使用的是docker-maven-plugin)，docker run imageID 一直报 ./run.sh not found  的错误。
+    <meta property="og:description" content="作用
 ">
     
-    <meta property="article:published_time" content="2020-07-20T00:00:00Z">
+    <meta property="article:published_time" content="2022-03-26T00:00:00Z">
     
     
     <meta property="article:author" content="">
     
     
-    <meta property="article:tag" content="docker">
+    <meta property="article:tag" content="jvm">
     
     
     <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
-    <meta property="og:url" content="http://localhost:4000/2020/07/20/dockerfile%E6%89%93%E6%88%90docker%E4%B8%8A%E4%BC%A0%E5%88%B0linux%E5%90%8E%E8%BF%90%E8%A1%8C%E6%8A%A5sh%E8%84%9A%E6%9C%AC%E6%89%BE%E4%B8%8D%E5%88%B0%E7%9A%84%E9%94%99%E8%AF%AF/">
+    <meta property="og:url" content="http://localhost:4000/2022/03/26/%E5%BC%BA%E8%BD%AF%E5%BC%B1%E8%99%9A%E5%BC%95%E7%94%A8/">
     <meta property="og:site_name" content="陆星宏的博客 | What a Life">
     
-    <title>dockerfile打成docker上传到linux后运行报sh脚本找不到的错误 - 陆星宏的博客 | What a Life</title>
+    <title>强软弱虚引用 - 陆星宏的博客 | What a Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -39,7 +39,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2020/07/20/dockerfile%E6%89%93%E6%88%90docker%E4%B8%8A%E4%BC%A0%E5%88%B0linux%E5%90%8E%E8%BF%90%E8%A1%8C%E6%8A%A5sh%E8%84%9A%E6%9C%AC%E6%89%BE%E4%B8%8D%E5%88%B0%E7%9A%84%E9%94%99%E8%AF%AF/">
+    <link rel="canonical" href="http://localhost:4000/blog/2022/03/26/%E5%BC%BA%E8%BD%AF%E5%BC%B1%E8%99%9A%E5%BC%95%E7%94%A8/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -250,13 +250,13 @@
                 <div class="post-heading">
                     <div class="tags">
                         
-                        <a class="tag" href="/blog/archive/?tag=docker" title="docker">docker</a>
+                        <a class="tag" href="/blog/archive/?tag=jvm" title="jvm">jvm</a>
                         
                     </div>
-                    <h1>dockerfile打成docker上传到linux后运行报sh脚本找不到的错误</h1>
+                    <h1>强软弱虚引用</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">July 20, 2020</span>
+                    <span class="meta">March 26, 2022</span>
                 </div>
             </div>
         </div>
@@ -283,11 +283,93 @@
                 <!-- Multi-Lingual -->
                 
 
-				<p>之前遇到一个奇葩错误， 本地dockerfile打成docker上传到linux后(使用的是docker-maven-plugin)，docker run imageID 一直报 <code class="language-plaintext highlighter-rouge">./run.sh not found </code> 的错误。</p>
+				<h1 id="作用">作用</h1>
 
-<p>dockerfile如下：</p>
+<p><strong>以代码的方法控制对象的生命周期。</strong></p>
 
-<div class="language-dockerfile highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+<p>以下四种引用类型对象生命周期由长至短。</p>
+
+<p><br /><br /></p>
+
+<h1 id="强引用">强引用</h1>
+
+<p>new的方式默认就是强引用。</p>
+
+<p><strong>只要强引用存在，即使OOM，也不会被gc回收</strong>。</p>
+
+<p>只有当显式置为null，切断了引用与对象的联系，才会被回收。所以经常会在一些地方看到 <code class="language-plaintext highlighter-rouge">xxx = null</code>的写法，就是提醒jvm该对象已经不需要了，可以进行回收。</p>
+
+<p><br /><br /><br /></p>
+
+<h1 id="软引用">软引用</h1>
+
+<p><strong>gc后如果内存空间还不够用，便会回收只有软引用指向的对象。</strong></p>
+
+<blockquote>
+  <p>注意：并不是gc了就一定会回收软引用指向的对象，而是gc以后，如果内存空间还不够用才会回收，有一个缓冲期</p>
+</blockquote>
+
+<p>用法：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class="rouge-code"><pre><span class="c1">// -Xms5m -Xmx5m 指定堆空间只有5M</span>
+
+<span class="nc">SoftReference</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;</span> <span class="n">softReference</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">SoftReference</span><span class="o">&lt;&gt;(</span><span class="k">new</span> <span class="nc">Object</span><span class="o">());</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">softReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span> <span class="c1">// java.lang.Object@3b81a1bc</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">gc</span><span class="o">();</span> <span class="c1">// 手动触发一次gc</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">softReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span> <span class="c1">//java.lang.Object@3b81a1bc，可以看到没有被回收</span>
+<span class="k">try</span> <span class="o">{</span>
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">5</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">];</span> <span class="c1">// 申请一个5M的字节数组，达到最大堆空间，会触发gc</span>
+<span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">softReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span><span class="c1">// null，被回收了</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>使用场景：经常被用在内存敏感的场景，比如缓存。内存够用，就用缓存加速。内存不够用了，清除缓存保证程序正常运行。</p>
+
+<p><br /><br /><br /></p>
+
+<h1 id="弱引用">弱引用</h1>
+
+<p><strong>只要gc，就会回收只有弱引用指向的对象。</strong></p>
+
+<p>示例：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class="rouge-code"><pre><span class="nc">WeakReference</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;</span> <span class="n">softReference</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">WeakReference</span><span class="o">&lt;&gt;(</span><span class="k">new</span> <span class="nc">Object</span><span class="o">());</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">softReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span><span class="c1">// java.lang.Object@3b81a1bc</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">gc</span><span class="o">();</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">softReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span><span class="c1">// null，被回收了</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>使用场景：ThreadLocal、WeakHashMap</p>
+
+<p><br /><br /><br /></p>
+
+<h1 id="虚引用">虚引用</h1>
+
+<p><strong>意义：提供一个钩子，在对象被回收后会被放入一个队列，便可以执行一些后续的自定义操作。</strong></p>
+
+<p>其实 <code class="language-plaintext highlighter-rouge">SoftReference、WeakReference</code> 同样提供了一个队列，提供了同样的功能，区别在于 <code class="language-plaintext highlighter-rouge">phantomReference.get()</code> 永远是 <code class="language-plaintext highlighter-rouge">null</code>。<strong>也就是它的关注点不在于对象本身，而仅仅在于对象被回收后的自定义操作</strong>。</p>
+
+<p>注意：虚引用并不是gc了就会被回收，当堆内存不够时才会被回收，如上所述，它的关注点不在于对象或者对象生命周期本身，而是对象被回收后的自定义操作。</p>
+
+<p>示例：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
 3
 4
@@ -299,52 +381,33 @@
 10
 11
 12
-13
-14
-</pre></td><td class="rouge-code"><pre><span class="k">FROM</span><span class="s"> openjdk:8-jdk-alpine</span>
-<span class="k">RUN </span><span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'s/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g'</span> /etc/apk/repositories
-<span class="k">RUN </span>apk update <span class="o">&amp;&amp;</span> apk upgrade <span class="o">&amp;&amp;</span> apk add netcat-openbsd
-<span class="k">RUN </span><span class="nb">echo</span> <span class="nv">$JAVA_HOME</span>
-<span class="k">RUN </span><span class="nb">cd</span> /tmp/ <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    wget <span class="s2">"http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip"</span> <span class="nt">--header</span> <span class="s1">'Cookie: oraclelicense=accept-securebackup-cookie'</span> <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    unzip jce_policy-8.zip <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    <span class="nb">rm </span>jce_policy-8.zip <span class="o">&amp;&amp;</span> <span class="se">\
-</span>    <span class="nb">yes</span> |cp <span class="nt">-v</span> /tmp/UnlimitedJCEPolicyJDK8/<span class="k">*</span>.jar /usr/lib/jvm/java-1.8-openjdk/jre/lib/security/
-<span class="k">ADD</span><span class="s">  @project.build.finalName@.jar /usr/local/configserver/</span>
-<span class="k">ADD</span><span class="s"> run.sh run.sh</span>
-<span class="k">RUN </span><span class="nb">chmod</span> +x run.sh
-<span class="k">CMD</span><span class="s"> cd /</span>
-<span class="k">CMD</span><span class="s"> ./run.sh</span>
+</pre></td><td class="rouge-code"><pre><span class="c1">// -Xms5m -Xmx5m 指定堆空间只有5M</span>
+
+<span class="nc">ReferenceQueue</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;</span> <span class="n">queue</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ReferenceQueue</span><span class="o">&lt;&gt;();</span>
+<span class="nc">PhantomReference</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">&gt;</span> <span class="n">phantomReference</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">PhantomReference</span><span class="o">&lt;&gt;(</span><span class="k">new</span> <span class="nc">Object</span><span class="o">(),</span> <span class="n">queue</span><span class="o">);</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">phantomReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span> <span class="c1">// null</span>
+<span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">queue</span><span class="o">.</span><span class="na">poll</span><span class="o">());</span><span class="c1">// null</span>
+<span class="k">try</span> <span class="o">{</span>
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">byte</span><span class="o">[</span><span class="mi">5</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">];</span>
+<span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">phantomReference</span><span class="o">.</span><span class="na">get</span><span class="o">());</span><span class="c1">// null</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="n">queue</span><span class="o">.</span><span class="na">poll</span><span class="o">());</span><span class="c1">// java.lang.ref.PhantomReference@5f2050f6</span>
+<span class="o">}</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>run.sh明明存在，为什么一直not found。</p>
-
-<p>经过一番google，在stackoverflow上找到答案。文件的换行问题！！！</p>
-
-<p>windows上使用的是CRLF(\r\n，回车换行)，linux上使用的是LF(\n，换行)！！！</p>
-
-<p>修改方法：</p>
-
-<p><img src="/blog/img/20200720093335139.png" alt="" /></p>
+<p>使用场景：NIO的堆外内存管理就用到了虚引用（没有深入研究过）</p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/blog/2020/04/24/shiro%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E4%B8%89/" data-toggle="tooltip" data-placement="top" title="shiro源码分析三">
+                        <a href="/blog/2022/03/26/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F/" data-toggle="tooltip" data-placement="top" title="内存泄漏">
                         Previous<br>
-                        <span>shiro源码分析三</span>
+                        <span>内存泄漏</span>
                         </a>
                     </li>
                     
-                    
-                    <li class="next">
-                        <a href="/blog/2020/11/03/Java%E6%B3%9B%E5%9E%8B/" data-toggle="tooltip" data-placement="top" title="Java泛型">
-                        Next<br>
-                        <span>Java泛型</span>
-                        </a>
-                    </li>
                     
                 </ul>
                 <hr style="visibility: hidden;">
