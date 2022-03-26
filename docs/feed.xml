@@ -5,9 +5,101 @@
     <description>这是一个Java程序员的博客 | Java Blog</description>
     <link>http://localhost:4000/blog/</link>
     <atom:link href="http://localhost:4000/blog/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Tue, 15 Mar 2022 00:39:40 +0800</pubDate>
-    <lastBuildDate>Tue, 15 Mar 2022 00:39:40 +0800</lastBuildDate>
+    <pubDate>Sat, 26 Mar 2022 13:20:08 +0800</pubDate>
+    <lastBuildDate>Sat, 26 Mar 2022 13:20:08 +0800</lastBuildDate>
     <generator>Jekyll v4.2.1</generator>
+    
+      <item>
+        <title>内存泄漏</title>
+        <description>&lt;h1 id=&quot;内存泄漏的原因&quot;&gt;内存泄漏的原因&lt;/h1&gt;
+
+&lt;p&gt;一般有以下几种：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;static字段，尤其是static的集合类型&lt;/p&gt;
+
+    &lt;p&gt;static字段的生命周期和jvm的生命周期一样长，随着类的加载被加载，存放于方法区内，只要类没有被卸载，就不会被gc回收。&lt;/p&gt;
+
+    &lt;p&gt;所以对于static字段的使用应该最小化，尤其是大容量的集合类型，对于不需要全生命周期的对象使用完毕以后应该及时清理或移除。&lt;/p&gt;
+
+    &lt;hr /&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;未关闭的连接，如数据库连接对象（connection、statement、resultset等）、IO流、socket等
+连接也是要占用内存的，使用完忘了关闭的话，日积月累也会造成内存泄漏。&lt;/p&gt;
+
+    &lt;hr /&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;key没有正确实现hashcode和equals方法&lt;/p&gt;
+
+    &lt;p&gt;当用在hashmap或hashset里，key没有正确实现hashcode和equals方法，本应只有一个entry，结果却存入多个entry，这部分entry没有办法通过key get到，自然也没办法删除。&lt;/p&gt;
+
+    &lt;p&gt;只要map没被回收，它们就不会被回收，久而久之也可能造成内存泄漏。&lt;/p&gt;
+
+    &lt;p&gt;例子：如果一个被用作key的类没有自定义hashcode和equals方法,属性完全相同的两个对象会被认为是not equals（object的equals方法比较的是对象的地址），每次put都会生成一个新的entry，get的时候也是使用当前对象的地址去get，其他的entry就变成了孤儿对象。&lt;/p&gt;
+
+    &lt;p&gt;ps：常使用String作为key，一是因为String是不可变类，二是内容相同即equal且hashcode不变。&lt;/p&gt;
+
+    &lt;hr /&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;ThreadLocal&lt;/p&gt;
+
+    &lt;hr /&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;变量作用域大于其使用范围&lt;/p&gt;
+
+    &lt;p&gt;如下所示：&lt;/p&gt;
+
+    &lt;div class=&quot;language-java highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;UsingRandom&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;private&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;String&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;msg&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;kd&quot;&gt;public&lt;/span&gt; &lt;span class=&quot;kt&quot;&gt;void&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;receiveMsg&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;
+        &lt;span class=&quot;c1&quot;&gt;// 从网络中接收数据保存在msg中&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;readFromNet&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt; 
+        &lt;span class=&quot;c1&quot;&gt;// 把msg保存到数据库中&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;saveDB&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;();&lt;/span&gt; 
+    &lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;    &lt;/div&gt;
+
+    &lt;p&gt;saveDB后msg就没用了，但是由于和对象生命周期一样，还不能回收。
+正确做法是msg应该定义成局部变量。&lt;/p&gt;
+
+    &lt;hr /&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;缓存&lt;/p&gt;
+
+    &lt;p&gt;有时候为了加速计算，会缓存一些对象。一直需要用的或者有可能未来会用到的的缓存可以保留。&lt;/p&gt;
+
+    &lt;p&gt;但短生命周期的缓存积累比较多而又忘记清理的话，就可能发生内存泄漏。本质上还是长生命周期对象持有短生命周期对象（缓存中的对象）。&lt;/p&gt;
+
+    &lt;p&gt;解决办法是正确定义作用域，如上一点所述。&lt;/p&gt;
+
+    &lt;p&gt;或者使用WeakHashMap。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        <pubDate>Sat, 26 Mar 2022 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/blog/2022/03/26/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F/</link>
+        <guid isPermaLink="true">http://localhost:4000/blog/2022/03/26/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F/</guid>
+        
+        <category>jvm</category>
+        
+        
+      </item>
     
       <item>
         <title>ConcurrentHashMap</title>
@@ -3237,134 +3329,6 @@ Message: /* select#1 */ select `test`.`t1`.`a` AS `a`,
         <guid isPermaLink="true">http://localhost:4000/blog/2021/12/21/ThreadLocal/</guid>
         
         <category>多线程</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Redis学习笔记之缓存雪崩、击穿、穿透</title>
-        <description>&lt;h1 id=&quot;缓存雪崩&quot;&gt;缓存雪崩&lt;/h1&gt;
-
-&lt;p&gt;表现为&lt;strong&gt;由于大量的应用请求无法在缓存中处理，导致数据库压力骤增&lt;/strong&gt;。&lt;/p&gt;
-
-&lt;p&gt;造成缓存雪崩的原因主要有两个：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;大量缓存同时过期&lt;/p&gt;
-
-    &lt;ul&gt;
-      &lt;li&gt;
-        &lt;p&gt;尽量避免为大批量缓存数据设置相同的过期时间，如确有这个需求，可为每个过期时间增加一点随机值(比如随机增加1~3分钟)&lt;/p&gt;
-      &lt;/li&gt;
-      &lt;li&gt;
-        &lt;p&gt;如果已经发生了，可考虑服务降级&lt;/p&gt;
-
-        &lt;blockquote&gt;
-          &lt;p&gt;服务降级指负载过大时，为了保证重要、基本、核心的服务能正常运行，将一些不重要的、不紧急的服务&lt;strong&gt;&lt;u&gt;延迟使用&lt;/u&gt;&lt;/strong&gt;或&lt;strong&gt;&lt;u&gt;暂停使用&lt;/u&gt;&lt;/strong&gt;。&lt;/p&gt;
-
-          &lt;p&gt;在缓存雪崩场景下，对于非核心数据可直接返回预定义值，不再查询缓存，等缓存恢复后再恢复相关服务。对于核心数据，仍可查询缓存或数据库，保留服务。&lt;/p&gt;
-
-          &lt;p&gt;扩展一下，服务降级的方式常见有以下几种：&lt;/p&gt;
-
-          &lt;ol&gt;
-            &lt;li&gt;延迟服务：可采用定时任务或mq延迟处理。比如可在凌晨流量较小的时候再处理，或提示用户多长时间内会处理完等等；&lt;/li&gt;
-            &lt;li&gt;暂停服务：关闭一些非核心服务。比如在双十一时候，买东西都不允许修改收货地址，不允许退货退款等等，保证核心服务下单支付正常就好；&lt;/li&gt;
-            &lt;li&gt;写降级：不需要实时写到数据库中，写到缓存中即可，由 mq 异步更新数据库，保证最终一致性即可；&lt;/li&gt;
-            &lt;li&gt;读降级：针对一些对读实时性、一致性要求不高的场景，可降级为只查询缓存。&lt;/li&gt;
-          &lt;/ol&gt;
-        &lt;/blockquote&gt;
-      &lt;/li&gt;
-    &lt;/ul&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;redis宕机了&lt;/p&gt;
-
-    &lt;ul&gt;
-      &lt;li&gt;
-        &lt;p&gt;事前预防：部署主从哨兵集群，主节点挂了，哨兵会把从节点提升为主节点。&lt;/p&gt;
-      &lt;/li&gt;
-      &lt;li&gt;
-        &lt;p&gt;如果已经发生了，可考虑服务熔断或服务限流&lt;/p&gt;
-
-        &lt;blockquote&gt;
-          &lt;p&gt;服务熔断可看做是服务降级的一种特殊情况，其初衷都差不多。&lt;/p&gt;
-
-          &lt;p&gt;区别在于服务降级是从整体负载考虑，&lt;strong&gt;从业务层面考虑，人为控制&lt;/strong&gt;。而服务熔断是为了避免由于某个服务不可用而导致整条服务链路崩溃，当触发熔断条件时自动熔断，返回 fallback 方法，&lt;strong&gt;是框架层面的，自动熔断自动恢复&lt;/strong&gt;。&lt;/p&gt;
-
-          &lt;p&gt;&lt;br /&gt;&lt;/p&gt;
-
-          &lt;p&gt;&lt;a href=&quot;https://cloud.tencent.com/developer/article/1681343&quot;&gt;关于服务限流，这篇文章讲的很好&lt;/a&gt;&lt;/p&gt;
-
-          &lt;p&gt;&lt;a href=&quot;https://segmentfault.com/a/1190000023552181&quot;&gt;限流的实现方式&lt;/a&gt;&lt;/p&gt;
-        &lt;/blockquote&gt;
-      &lt;/li&gt;
-    &lt;/ul&gt;
-  &lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
-
-&lt;h1 id=&quot;缓存击穿&quot;&gt;缓存击穿&lt;/h1&gt;
-
-&lt;p&gt;指的是针对热点数据的请求，无法在缓存中处理，导致数据库压力骤增。&lt;/p&gt;
-
-&lt;p&gt;这种情况经常发生在&lt;strong&gt;热点数据过期失效时&lt;/strong&gt;，解决办法就是&lt;strong&gt;对于热点数据，不要设置过期时间&lt;/strong&gt;。&lt;/p&gt;
-
-&lt;hr /&gt;
-
-&lt;p&gt;&lt;br /&gt;&lt;br /&gt;&lt;br /&gt;&lt;/p&gt;
-
-&lt;h1 id=&quot;缓存穿透&quot;&gt;缓存穿透&lt;/h1&gt;
-
-&lt;p&gt;指的是&lt;strong&gt;在缓存和数据库中都没有数据&lt;/strong&gt;，缓存成了摆设，如果持续有大量请求涌入，会同时给缓存和数据库带来巨大压力。&lt;/p&gt;
-
-&lt;p&gt;主要原因有两个：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;误操作，删除了缓存和数据库中的数据&lt;/li&gt;
-  &lt;li&gt;恶意攻击，专门访问不存在的数据&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;解决办法有三个：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;缓存空值或缺省值，其实相当于服务降级&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;使用布隆过滤器判断数据存不存在，如果不存在，就不用再去数据库查询了&lt;/p&gt;
-
-    &lt;blockquote&gt;
-      &lt;p&gt;布隆过滤器是基于位图的一种改进。&lt;/p&gt;
-
-      &lt;p&gt;位图是一种用来判断存在性的很好用的数据结构。比如这么一个问题：有1千万个整数，范围是1到1亿，如何快速的判断某个整数是否存在这1千万个整数中？&lt;/p&gt;
-
-      &lt;p&gt;可初始化一个长度为1亿、数据类型为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bit&lt;/code&gt; 的数组，每个数对应下标位置，比如5对应到array[5]=1。要判断整数 x 是否在这1千万个整数中，只要判断 array[x] 是否等于 1 即可。基于数组随机访问的特性，查找效率也比较高。而且相较于其他数据结构所需空间更少，1亿个 bit 只需 12M，如果采用散列表则需要 1亿 * 4byte = 40M 左右的空间。&lt;/p&gt;
-
-      &lt;p&gt;可看到位图存储空间和范围相关，如果上述问题的范围是1到10亿，则需120M存储空间。布隆过滤器就是为了解决这个问题的进一步优化。&lt;/p&gt;
-
-      &lt;p&gt;还以上面的问题为例，范围扩大到1至10亿。布隆空滤器的做法是还是申请一个长度为1亿、数据类型为 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bit&lt;/code&gt; 的数组，定义 n 个哈希函数，对每个整数进行n次哈希运算得到n个哈希值，将这n个哈希值对于下标的位置都设为 1 。进行多个哈希运算的目的是为了尽可能的降低哈希冲突的概率。&lt;/p&gt;
-
-      &lt;p&gt;判断的时候如果这n个下标对应的位置有一个不为1，则说明该数据肯定不存在。但如果都为1，也不一定说明该数据肯定存在，因为这几个位置对应的1可能是由其他数据进行哈希运算后填进去的，比如2、4、6 这3个位置都为1，有可能是由其他3个整数分别填进去的。可通过调整哈希函数的个数、位图大小与要存储的数字之间的比例，来降低误判的概率。&lt;/p&gt;
-
-      &lt;p&gt;所以，布隆过滤器的特点是&lt;strong&gt;判定为不存在的肯定不存在，而判定为存在的情况可能有误判(判定为存在，实则不存在)&lt;/strong&gt;。通过多个哈希函数来共同决定存储位置，这种方法其实误判的概率已经非常低了。所以布隆过滤器特别适合这种场景：判定不存在，或者对存在误判有一定容忍度的应用场景。&lt;/p&gt;
-
-      &lt;p&gt;具体实现有 Java 的 BitSet（位图）、Redis 的 BitMap（位图）、Guava 的 BloomFilter（布隆过滤器）。&lt;/p&gt;
-    &lt;/blockquote&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;在前端入口进行合法性检测，把恶意请求(比如请求参数不合理、请求参数是非法值、请求字段不存在等)过滤掉&lt;/p&gt;
-  &lt;/li&gt;
-&lt;/ol&gt;
-</description>
-        <pubDate>Sun, 19 Dec 2021 00:00:00 +0800</pubDate>
-        <link>http://localhost:4000/blog/2021/12/19/Redis%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%BC%93%E5%AD%98%E9%9B%AA%E5%B4%A9-%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F/</link>
-        <guid isPermaLink="true">http://localhost:4000/blog/2021/12/19/Redis%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B9%8B%E7%BC%93%E5%AD%98%E9%9B%AA%E5%B4%A9-%E5%87%BB%E7%A9%BF-%E7%A9%BF%E9%80%8F/</guid>
-        
-        <category>redis</category>
         
         
       </item>

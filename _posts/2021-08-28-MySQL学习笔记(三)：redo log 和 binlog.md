@@ -6,20 +6,22 @@ author: ""
 header-style: text
 tags:
   - mysql
-  - redo
-  - binlog
 ---
 
 
 
 # binlog
 
-MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，可理解为sql语句。
+MySQL Server层的日志，与存储引擎无关。
 
 ### 主要作用：
 
-1. 如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。
-2. 常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用系统数据来源通道。
+1. WAL
+1. 如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性
+1. 数据恢复，比如误删
+2. 常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的下游系统数据来源通道
+
+
 
 ### 如何查看？
 
@@ -61,17 +63,33 @@ MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，�
 
    STATEMENT：记录具体执行语句，如 `update t set name = 'newName' where name = 'oldName'`
 
-   ROW：记录每一行记录的变更，一个 `update` 可能产生多条日志（每条记录都会产生一行日志）
+   ROW：记录每一行记录的变更，一条 `update` 语句可能产生多条日志（每条记录都会产生一行日志）
 
-   MIXED：当满足某些条件时会自动从 `STATEMENT`切换到 `ROW`
+   MIXED：MySQL会根据当前执行语句判断使用 `STATEMENT`还是 `ROW`
 
 6. 选择哪种格式？
 
-   -  `STATEMENT` ：直接记录sql，可能会在某些情况下导致通过日志恢复出来的数据不一致，比如 [RC 和 RR 在锁问题上的区别](https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#rc-%E5%92%8C-rr-%E5%9C%A8%E9%94%81%E9%97%AE%E9%A2%98%E4%B8%8A%E7%9A%84%E5%8C%BA%E5%88%AB)、[更新的值与原来的值相同的情况下，MySQL还会执行更新吗？](/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/#%E7%A4%BA%E4%BE%8B%E4%BA%8C)、 `delete` 时走的索引不同会导致删除的记录不同、一些函数结果不同等等
+   - `STATEMENT` ：直接记录sql，可能会在某些情况下导致通过日志恢复出来的数据不一致，比如 [RC 和 RR 在锁问题上的区别](https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#rc-%E5%92%8C-rr-%E5%9C%A8%E9%94%81%E9%97%AE%E9%A2%98%E4%B8%8A%E7%9A%84%E5%8C%BA%E5%88%AB)、[更新的值与原来的值相同的情况下，MySQL还会执行更新吗？](https://luxinghong.github.io/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/#%E7%A4%BA%E4%BE%8B%E4%BA%8C)、 `delete+limit` 时走的索引不同会导致删除的记录不同、一些函数结果不同等等
 
-   - `ROW`： 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 `ROW`
+     > `delete+limit` 时走的索引不同会导致删除的记录不同：
+     >
+     > 假设存在表：t( id int, a int , created_time date)，id 是主键，a上有索引
+     >
+     > 有以下数据：
+     >
+     > (1, 1, '2022-01-01')
+     >
+     > (2, 2, '2022-01-03')
+     >
+     > (3, 3, '2022-01-02')
+     >
+     > sql：`delete from t where a>=2 and created_time<='2022-01-03' limit 1`
+     >
+     > 如果主库走的是索引a，则会删除 id=2 的记录。如果备库走的是索引 created_time，则会删除 id=3 的记录。
 
-   - `MIXED`： 需要非常熟悉切换的条件，以确保用日志恢复数据不会有问题
+   - `ROW`： 直接记录每一行记录的变更，最安全，但是日志的量会很大，MySQL 8 默认格式就是 `ROW`
+
+   - `MIXED`： 会根据当前执行语句判断使用 `STATEMENT`还是 `ROW`，比如上面那条 delete+limit 的语句就会切换到使用 ROW 格式的binlog。推荐采用这种格式。
 
 7. 切换当前连接 binlog 格式
 
@@ -92,7 +110,7 @@ MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，�
 
 ### binlog的写入时机
 
-binlog会首先写到cache里，cache满了就会暂存到磁盘上，这个参数大小由 `binlog_cache_size` 控制，默认是32K。**注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。**
+binlog会首先写到cache里，cache满了就会执行`sync_binlog`。这个参数大小由 `binlog_cache_size` 控制，默认是32K。**注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。**
 
 一个事务的binlog是不能被拆开的，无论一个事务多大，也要确保一次性写入binlog文件。
 
@@ -213,7 +231,9 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 ### 最终数据落盘的过程是？
 
-1、正常运行过程中，MySQL更新完内存后便可返回响应。内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程和redo log 毫无关系。当然，此时 redo log 中已经记录了相关数据页的改动。写盘的时候还会向前推进redo log 中 checkpoint 的位置。
+1、正常运行过程中，MySQL更新完内存后便可返回响应(首先会把该记录所在数据页读到内存中，如果发现有对应 redo_log 存在，则需要将redo_log中的内容应用到从数据页)。
+
+此时内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，**这个过程和redo log 毫无关系**(后台有定时任务：purge，会定期执行这个刷脏页的操作)。当然，此时 redo log 中已经记录了相关数据页的改动。写盘的时候还会向前推进redo log 中 checkpoint 的位置。
 
 2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将 redo log 中记录的变更应用到内存数据页中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。
 
@@ -235,7 +255,7 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 两阶段提交并不是MySQL特有的，它是一种通用的分布式处理策略。其本质说来也很直白，就是一个人的时候好办，人多的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了再继续下一步。
 
-这里有个细节，当  `innodb_flush_log_at_trx_commit=1` 时，在redo log的 `prepare` 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 `commit`（**但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性**）
+这里有个细节，当  `innodb_flush_log_at_trx_commit=1` 时，在redo log的 `prepare` 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 `commit`（**但是这个阶段只会write，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性**）
 
 <br/><br/>
 
@@ -291,7 +311,7 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 1、binlog 中没有checkpoint，不能区分哪些是已经落盘到磁盘数据文件（即最终存储数据的文件），哪些是需要应用到内存中用于崩溃恢复的
 
-2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。简而言之，binlog粒度太大。
+2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，**如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句**。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。**简而言之，binlog粒度太大**。
 
 ------
 
@@ -315,15 +335,13 @@ redo log 太小的话，会导致很快被写满，然后不得不强行刷 redo
 
 ### 组提交
 
-**写binlog在是实现上其实也分为两步：write 和 fsync**。
-
-这里 MySQL 做了一个优化：`拖时间`。即**将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前**。
-
-这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。如下图所示，在两阶段提交的图上进一步细化：
+两阶段提交更细化一下，其实是下图这个步骤：
 
 ![img](/blog/img/5ae7d074c34bc5bd55c82781de670c28.webp)
 
-与此同时，也给了binlog  组提交的机会，因为binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：
+对应第2步，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。
+
+对应第4步，binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：
 
 `binlog_group_commit_sync_delay`：表示延迟多少微秒以后才调用 fsync
 

@@ -25,10 +25,6 @@
     
     <meta property="article:tag" content="mysql">
     
-    <meta property="article:tag" content="redo">
-    
-    <meta property="article:tag" content="binlog">
-    
     
     <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
     <meta property="og:url" content="http://localhost:4000/2021/08/28/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E4%B8%89)-redo-log-%E5%92%8C-binlog/">
@@ -256,10 +252,6 @@
                         
                         <a class="tag" href="/blog/archive/?tag=mysql" title="mysql">mysql</a>
                         
-                        <a class="tag" href="/blog/archive/?tag=redo" title="redo">redo</a>
-                        
-                        <a class="tag" href="/blog/archive/?tag=binlog" title="binlog">binlog</a>
-                        
                     </div>
                     <h1>MySQL学习笔记(三)：redo log 和 binlog</h1>
                     
@@ -293,13 +285,15 @@
 
 				<h1 id="binlog">binlog</h1>
 
-<p>MySQL Server层的日志，与存储引擎无关，存储的是逻辑日志，可理解为sql语句。</p>
+<p>MySQL Server层的日志，与存储引擎无关。</p>
 
 <h3 id="主要作用">主要作用：</h3>
 
 <ol>
-  <li>如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性。</li>
-  <li>常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的应用系统数据来源通道。</li>
+  <li>WAL</li>
+  <li>如果是 Innodb 引擎，和 redo log 一起提供崩溃恢复的能力（crash-safe），保证了事务ACID中的持久性</li>
+  <li>数据恢复，比如误删</li>
+  <li>常被用于主备同步，或接入其他下游系统如 es 用于数据分析，即作为其他需要直接从数据库获取数据且有很高实时性要求的下游系统数据来源通道</li>
 </ol>
 
 <h3 id="如何查看">如何查看？</h3>
@@ -346,22 +340,40 @@
 
     <p>STATEMENT：记录具体执行语句，如 <code class="language-plaintext highlighter-rouge">update t set name = 'newName' where name = 'oldName'</code></p>
 
-    <p>ROW：记录每一行记录的变更，一个 <code class="language-plaintext highlighter-rouge">update</code> 可能产生多条日志（每条记录都会产生一行日志）</p>
+    <p>ROW：记录每一行记录的变更，一条 <code class="language-plaintext highlighter-rouge">update</code> 语句可能产生多条日志（每条记录都会产生一行日志）</p>
 
-    <p>MIXED：当满足某些条件时会自动从 <code class="language-plaintext highlighter-rouge">STATEMENT</code>切换到 <code class="language-plaintext highlighter-rouge">ROW</code></p>
+    <p>MIXED：MySQL会根据当前执行语句判断使用 <code class="language-plaintext highlighter-rouge">STATEMENT</code>还是 <code class="language-plaintext highlighter-rouge">ROW</code></p>
   </li>
   <li>
     <p>选择哪种格式？</p>
 
     <ul>
       <li>
-        <p><code class="language-plaintext highlighter-rouge">STATEMENT</code> ：直接记录sql，可能会在某些情况下导致通过日志恢复出来的数据不一致，比如 <a href="https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#rc-%E5%92%8C-rr-%E5%9C%A8%E9%94%81%E9%97%AE%E9%A2%98%E4%B8%8A%E7%9A%84%E5%8C%BA%E5%88%AB">RC 和 RR 在锁问题上的区别</a>、<a href="/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/#%E7%A4%BA%E4%BE%8B%E4%BA%8C">更新的值与原来的值相同的情况下，MySQL还会执行更新吗？</a>、 <code class="language-plaintext highlighter-rouge">delete</code> 时走的索引不同会导致删除的记录不同、一些函数结果不同等等</p>
+        <p><code class="language-plaintext highlighter-rouge">STATEMENT</code> ：直接记录sql，可能会在某些情况下导致通过日志恢复出来的数据不一致，比如 <a href="https://luxinghong.github.io/blog/2021/10/18/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AB)-MySQL%E9%94%81/#rc-%E5%92%8C-rr-%E5%9C%A8%E9%94%81%E9%97%AE%E9%A2%98%E4%B8%8A%E7%9A%84%E5%8C%BA%E5%88%AB">RC 和 RR 在锁问题上的区别</a>、<a href="https://luxinghong.github.io/blog/2021/09/19/MySQL%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0(%E5%85%AD)-MySQL%E4%BA%8B%E5%8A%A1/#%E7%A4%BA%E4%BE%8B%E4%BA%8C">更新的值与原来的值相同的情况下，MySQL还会执行更新吗？</a>、 <code class="language-plaintext highlighter-rouge">delete+limit</code> 时走的索引不同会导致删除的记录不同、一些函数结果不同等等</p>
+
+        <blockquote>
+          <p><code class="language-plaintext highlighter-rouge">delete+limit</code> 时走的索引不同会导致删除的记录不同：</p>
+
+          <p>假设存在表：t( id int, a int , created_time date)，id 是主键，a上有索引</p>
+
+          <p>有以下数据：</p>
+
+          <p>(1, 1, ‘2022-01-01’)</p>
+
+          <p>(2, 2, ‘2022-01-03’)</p>
+
+          <p>(3, 3, ‘2022-01-02’)</p>
+
+          <p>sql：<code class="language-plaintext highlighter-rouge">delete from t where a&gt;=2 and created_time&lt;='2022-01-03' limit 1</code></p>
+
+          <p>如果主库走的是索引a，则会删除 id=2 的记录。如果备库走的是索引 created_time，则会删除 id=3 的记录。</p>
+        </blockquote>
       </li>
       <li>
-        <p><code class="language-plaintext highlighter-rouge">ROW</code>： 直接记录每一行记录的变更，最安全，但是日志的量会很大，存储空间不紧张的话最好选择该格式。MySQL 8 默认格式就是 <code class="language-plaintext highlighter-rouge">ROW</code></p>
+        <p><code class="language-plaintext highlighter-rouge">ROW</code>： 直接记录每一行记录的变更，最安全，但是日志的量会很大，MySQL 8 默认格式就是 <code class="language-plaintext highlighter-rouge">ROW</code></p>
       </li>
       <li>
-        <p><code class="language-plaintext highlighter-rouge">MIXED</code>： 需要非常熟悉切换的条件，以确保用日志恢复数据不会有问题</p>
+        <p><code class="language-plaintext highlighter-rouge">MIXED</code>： 会根据当前执行语句判断使用 <code class="language-plaintext highlighter-rouge">STATEMENT</code>还是 <code class="language-plaintext highlighter-rouge">ROW</code>，比如上面那条 delete+limit 的语句就会切换到使用 ROW 格式的binlog。推荐采用这种格式。</p>
       </li>
     </ul>
   </li>
@@ -383,7 +395,7 @@
 
 <h3 id="binlog的写入时机">binlog的写入时机</h3>
 
-<p>binlog会首先写到cache里，cache满了就会暂存到磁盘上，这个参数大小由 <code class="language-plaintext highlighter-rouge">binlog_cache_size</code> 控制，默认是32K。<strong>注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。</strong></p>
+<p>binlog会首先写到cache里，cache满了就会执行<code class="language-plaintext highlighter-rouge">sync_binlog</code>。这个参数大小由 <code class="language-plaintext highlighter-rouge">binlog_cache_size</code> 控制，默认是32K。<strong>注意这个cache是单个线程拥有的，也就是说每个线程都有自己的binlog_cache，但是共用同一份binlog文件。</strong></p>
 
 <p>一个事务的binlog是不能被拆开的，无论一个事务多大，也要确保一次性写入binlog文件。</p>
 
@@ -494,7 +506,9 @@
 
 <h3 id="最终数据落盘的过程是">最终数据落盘的过程是？</h3>
 
-<p>1、正常运行过程中，MySQL更新完内存后便可返回响应。内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，这个过程和redo log 毫无关系。当然，此时 redo log 中已经记录了相关数据页的改动。写盘的时候还会向前推进redo log 中 checkpoint 的位置。</p>
+<p>1、正常运行过程中，MySQL更新完内存后便可返回响应(首先会把该记录所在数据页读到内存中，如果发现有对应 redo_log 存在，则需要将redo_log中的内容应用到从数据页)。</p>
+
+<p>此时内存中的数据页被称为脏页，最终数据落盘就是把脏页写盘，<strong>这个过程和redo log 毫无关系</strong>(后台有定时任务：purge，会定期执行这个刷脏页的操作)。当然，此时 redo log 中已经记录了相关数据页的改动。写盘的时候还会向前推进redo log 中 checkpoint 的位置。</p>
 
 <p>2、在崩溃恢复时或启动时（MySQL启动时会自动执行该过程），会先将 redo log 中记录的变更应用到内存数据页中，此时该数据页就变成了脏页，接下来的步骤就和第1种情况一样了。</p>
 
@@ -510,7 +524,7 @@
 
 <p>两阶段提交并不是MySQL特有的，它是一种通用的分布式处理策略。其本质说来也很直白，就是一个人的时候好办，人多的时候，为了保持大家步调一致，每个人准备好以后吼一声，都准备好了再继续下一步。</p>
 
-<p>这里有个细节，当  <code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit=1</code> 时，在redo log的 <code class="language-plaintext highlighter-rouge">prepare</code> 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 <code class="language-plaintext highlighter-rouge">commit</code>（<strong>但是这个阶段只会write 到page cache 中，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性</strong>）</p>
+<p>这里有个细节，当  <code class="language-plaintext highlighter-rouge">innodb_flush_log_at_trx_commit=1</code> 时，在redo log的 <code class="language-plaintext highlighter-rouge">prepare</code> 阶段就会fsync一次。然后再写binlog，再将redo log 的标识设为 <code class="language-plaintext highlighter-rouge">commit</code>（<strong>但是这个阶段只会write，不再需要fsync了，因为有后台定时线程：每1秒会fsync一次；和崩溃恢复逻辑：prepare的redo log 加上完整的binlog即可保证事务的持久性和一致性</strong>）</p>
 
 <p><br /><br /></p>
 
@@ -552,7 +566,7 @@
 
 <p>1、binlog 中没有checkpoint，不能区分哪些是已经落盘到磁盘数据文件（即最终存储数据的文件），哪些是需要应用到内存中用于崩溃恢复的</p>
 
-<p>2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。简而言之，binlog粒度太大。</p>
+<p>2、binlog中存储的是逻辑日志，即sql级别的语句。redo-log中存储的是物理日志，即数据页级别的改动。一个sql语句可能会更改到好几个数据页，<strong>如果单个数据页损坏，binlog是没有能力恢复单个数据页的，它只能应用整个sql语句</strong>。比如一个sql语句同时更改了ABC三个数据页，更新的时候发生了crash，B数据页没有正常更新，AC正常更新。如果使用binlog来恢复，它只能同时恢复ABC三个数据页，结果就是B恢复了，AC又不对了。<strong>简而言之，binlog粒度太大</strong>。</p>
 
 <hr />
 
@@ -573,15 +587,13 @@
 
 <h3 id="组提交">组提交</h3>
 
-<p><strong>写binlog在是实现上其实也分为两步：write 和 fsync</strong>。</p>
-
-<p>这里 MySQL 做了一个优化：<code class="language-plaintext highlighter-rouge">拖时间</code>。即<strong>将redo log 的 fsync 放到了 binlog的 write 之后、fsync之前</strong>。</p>
-
-<p>这样的话，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。如下图所示，在两阶段提交的图上进一步细化：</p>
+<p>两阶段提交更细化一下，其实是下图这个步骤：</p>
 
 <p><img src="/blog/img/5ae7d074c34bc5bd55c82781de670c28.webp" alt="img" /></p>
 
-<p>与此同时，也给了binlog  组提交的机会，因为binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：</p>
+<p>对应第2步，由于redo log write 完之后没有立即 fsync，而是等了一步：等binlog write完，所以有机会可以积累更多的redo log 到 page cache中，然后再一并进行 fsync。</p>
+
+<p>对应第4步，binlog fsync 之前要等待redo log fsync。但是由于通常情况下 redo log fsync会很快，所以binlog 组提交的效果不如 redo log 的明显。但是可以通过调整以下参数优化：</p>
 
 <p><code class="language-plaintext highlighter-rouge">binlog_group_commit_sync_delay</code>：表示延迟多少微秒以后才调用 fsync</p>
 
@@ -815,182 +827,177 @@
         
         
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=jmeter"
                     title="jmeter"
                     rel="1">jmeter</a>
         
-                <a data-sort="0039" 
+                <a data-sort="0040" 
                     href="/blog/archive/?tag=mysql"
                     title="mysql"
                     rel="16">mysql</a>
         
-                <a data-sort="0052" 
+                <a data-sort="0053" 
                     href="/blog/archive/?tag=Spring"
                     title="Spring"
                     rel="3">Spring</a>
         
-                <a data-sort="0052" 
+                <a data-sort="0053" 
                     href="/blog/archive/?tag=css"
                     title="css"
                     rel="3">css</a>
         
-                <a data-sort="0052" 
+                <a data-sort="0053" 
                     href="/blog/archive/?tag=shiro"
                     title="shiro"
                     rel="3">shiro</a>
         
-                <a data-sort="0052" 
+                <a data-sort="0053" 
                     href="/blog/archive/?tag=springboot"
                     title="springboot"
                     rel="3">springboot</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=%E5%A4%9A%E7%BA%BF%E7%A8%8B"
                     title="多线程"
                     rel="2">多线程</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=java"
                     title="java"
                     rel="2">java</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=log"
                     title="log"
                     rel="2">log</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=mybatis"
                     title="mybatis"
                     rel="2">mybatis</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=nginx"
                     title="nginx"
                     rel="2">nginx</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=python"
                     title="python"
                     rel="2">python</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=redis"
                     title="redis"
                     rel="2">redis</a>
         
-                <a data-sort="0053" 
+                <a data-sort="0054" 
                     href="/blog/archive/?tag=sql"
                     title="sql"
                     rel="2">sql</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1"
                     title="事务"
                     rel="1">事务</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"
                     title="数据类型"
                     rel="1">数据类型</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E6%AD%A3%E5%88%99"
                     title="正则"
                     rel="1">正则</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E6%B3%9B%E5%9E%8B"
                     title="泛型"
                     rel="1">泛型</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E6%B5%8B%E8%AF%95"
                     title="测试"
                     rel="1">测试</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E6%B5%AE%E7%82%B9%E6%95%B0"
                     title="浮点数"
                     rel="1">浮点数</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E7%B4%A2%E5%BC%95"
                     title="索引"
                     rel="1">索引</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"
                     title="设计模式"
                     rel="1">设计模式</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=%E9%94%81"
                     title="锁"
                     rel="1">锁</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=DDD"
                     title="DDD"
                     rel="1">DDD</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=Git"
                     title="Git"
                     rel="1">Git</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=JPA"
                     title="JPA"
                     rel="1">JPA</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=Manjaro"
                     title="Manjaro"
                     rel="1">Manjaro</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=Swagger"
                     title="Swagger"
                     rel="1">Swagger</a>
         
-                <a data-sort="0054" 
-                    href="/blog/archive/?tag=binlog"
-                    title="binlog"
-                    rel="1">binlog</a>
-        
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=docker"
                     title="docker"
                     rel="1">docker</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=graphql"
                     title="graphql"
                     rel="1">graphql</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=jackson"
                     title="jackson"
                     rel="1">jackson</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
+                    href="/blog/archive/?tag=jvm"
+                    title="jvm"
+                    rel="1">jvm</a>
+        
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=nodejs"
                     title="nodejs"
                     rel="1">nodejs</a>
         
-                <a data-sort="0054" 
-                    href="/blog/archive/?tag=redo"
-                    title="redo"
-                    rel="1">redo</a>
-        
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=restful"
                     title="restful"
                     rel="1">restful</a>
         
-                <a data-sort="0054" 
+                <a data-sort="0055" 
                     href="/blog/archive/?tag=starter"
                     title="starter"
                     rel="1">starter</a>
