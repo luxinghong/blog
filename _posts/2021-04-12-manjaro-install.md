@@ -151,7 +151,56 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
 
 ### pamac 安装软件超时
 
-查看安装超时的地址，手动下载后放到 `/var/tmp/pamac-build- < username> / < AppName>` ` 目录下，再重新安装即可。
+修改`/etc/makepkg.conf`使用自定义脚本通过镜像网站和`axel`多线程下载。
+
+- 修改前：
+
+  ```shell
+  DLAGENTS=('file::/usr/bin/curl -qgC - -o %o %u'
+             'ftp::/usr/bin/curl -qgfC - --ftp-pasv --retry 3 --retry-delay 3 -o %o %u'
+             'http::/usr/bin/curl -qgb "" -fLC - --retry 3 --retry-delay 3 -o %o %u'
+             'https::/usr/bin/curl -qgb "" -fLC - --retry 3 --retry-delay 3 -o %o %u'
+             'rsync::/usr/bin/rsync --no-motd -z %u %o'
+             'scp::/usr/bin/scp -C %u %o')
+  ```
+
+- 修改后：
+
+  ```shell
+  DLAGENTS=('file::/usr/bin/curl -qgC - -o %o %u'
+             'ftp::/usr/bin/axel -n 15 -a -o %o %u'
+             'http::/usr/bin/axel -n 15 -a -o %o %u'
+             'https::/usr/bin/fake_curl_makepkg %o %u'
+             'rsync::/usr/bin/rsync --no-motd -z %u %o'
+             'scp::/usr/bin/scp -C %u %o')
+  ```
+
+脚本文件 fake_curl_makepkg 如下，放到 `/usr/bin` 下，不带 `sh后缀` ：
+
+```shell
+#! /bin/bash
+# 该脚本用于处理yay安装软件时，由github下载缓慢甚至无法下载的问题
+# 检测域名是不是github，如果是，则替换为镜像网站，依旧使用curl下载
+# 如果不是github则采用axel代替curl进行15线程下载
+# 实验用链接：
+# https://download.fastgit.org/beekeeper-studio/beekeeper-studio/releases/download/v1.6.11/beekeeper-studio_1.6.11_amd64.deb
+# https://github.com/beekeeper-studio/beekeeper-studio/releases/download/v1.6.11/beekeeper-studio_1.6.11_amd64.deb
+
+domin=`echo $2 | cut -f3 -d'/'`;
+others=`echo $2 | cut -f4- -d'/'`;
+case "$domin" in 
+    "github.com")
+    url="https://download.fastgit.org/"$others;
+    echo "download from github mirror $url";
+    /usr/bin/curl -x socks5://127.0.0.1:1089 -gqb "" -fLC - --retry 3 --retry-delay 3 -o $1 $url;
+    ;;
+    *)
+    url=$2;
+    export https_proxy="https://127.0.0.1:8889"
+    /usr/bin/axel -n 15 -a -o $1 $url;
+    ;;
+esac
+```
 
 
 
