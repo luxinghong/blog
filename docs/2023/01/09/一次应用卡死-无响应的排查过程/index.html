@@ -11,28 +11,30 @@
     <meta name="theme-color" content="#000000">
     
     <!-- Open Graph -->
-    <meta property="og:title" content="nodejs中graphql的服务端和客户端实现 - 陆星宏的博客 | What a Life">
+    <meta property="og:title" content="一次应用卡死，无响应的排查过程 - 陆星宏的博客 | What a Life">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="先简单介绍一下GraphQL。
+    <meta property="og:description" content="问题情形
 ">
     
-    <meta property="article:published_time" content="2019-12-10T00:00:00Z">
+    <meta property="article:published_time" content="2023-01-09T00:00:00Z">
     
     
     <meta property="article:author" content="">
     
     
-    <meta property="article:tag" content="nodejs">
+    <meta property="article:tag" content="问题排查">
     
-    <meta property="article:tag" content="graphql">
+    <meta property="article:tag" content="事务">
+    
+    <meta property="article:tag" content="JPA">
     
     
     <meta property="og:image" content="http://localhost:4000/blog/img/微信图片_20211213132145.jpg">
-    <meta property="og:url" content="http://localhost:4000/2019/12/10/nodejs%E4%B8%ADgraphql%E7%9A%84%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%92%8C%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%AE%9E%E7%8E%B0/">
+    <meta property="og:url" content="http://localhost:4000/2023/01/09/%E4%B8%80%E6%AC%A1%E5%BA%94%E7%94%A8%E5%8D%A1%E6%AD%BB-%E6%97%A0%E5%93%8D%E5%BA%94%E7%9A%84%E6%8E%92%E6%9F%A5%E8%BF%87%E7%A8%8B/">
     <meta property="og:site_name" content="陆星宏的博客 | What a Life">
     
-    <title>nodejs中graphql的服务端和客户端实现 - 陆星宏的博客 | What a Life</title>
+    <title>一次应用卡死，无响应的排查过程 - 陆星宏的博客 | What a Life</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/blog/pwa/manifest.json">
@@ -41,7 +43,7 @@
     <link rel="shortcut icon" href="/blog/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/blog/2019/12/10/nodejs%E4%B8%ADgraphql%E7%9A%84%E6%9C%8D%E5%8A%A1%E7%AB%AF%E5%92%8C%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%AE%9E%E7%8E%B0/">
+    <link rel="canonical" href="http://localhost:4000/blog/2023/01/09/%E4%B8%80%E6%AC%A1%E5%BA%94%E7%94%A8%E5%8D%A1%E6%AD%BB-%E6%97%A0%E5%93%8D%E5%BA%94%E7%9A%84%E6%8E%92%E6%9F%A5%E8%BF%87%E7%A8%8B/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/blog/css/bootstrap.min.css">
@@ -252,15 +254,17 @@
                 <div class="post-heading">
                     <div class="tags">
                         
-                        <a class="tag" href="/blog/archive/?tag=nodejs" title="nodejs">nodejs</a>
+                        <a class="tag" href="/blog/archive/?tag=%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5" title="问题排查">问题排查</a>
                         
-                        <a class="tag" href="/blog/archive/?tag=graphql" title="graphql">graphql</a>
+                        <a class="tag" href="/blog/archive/?tag=%E4%BA%8B%E5%8A%A1" title="事务">事务</a>
+                        
+                        <a class="tag" href="/blog/archive/?tag=JPA" title="JPA">JPA</a>
                         
                     </div>
-                    <h1>nodejs中graphql的服务端和客户端实现</h1>
+                    <h1>一次应用卡死，无响应的排查过程</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">December 10, 2019</span>
+                    <span class="meta">January 9, 2023</span>
                 </div>
             </div>
         </div>
@@ -287,34 +291,120 @@
                 <!-- Multi-Lingual -->
                 
 
-				<p>先简单介绍一下GraphQL。</p>
+				<h3 id="问题情形">问题情形</h3>
 
-<p>GraphQL 是一门出自Facebook，用于api的查询语言，被称作是Restful的替代品，已经有越来越多的公司和系统使用GraphQL来代替Restful。</p>
+<p>springboot + jpa + querydsl + mysql + druid 的web应用，服务启动后，几次请求之后便无响应，甚至请求都没有进到controller断点，无任何报错。</p>
 
-<p>它的几个主要特点是：</p>
+<h3 id="排查过程">排查过程</h3>
 
 <ol>
-  <li>只返回你想要的数据。传统Restful中返回的是对象的所有字段，而往往我们需要的只是其中几个字段，这样无疑造成了很大的带宽浪费。GraphQL中由你定义你的查询请求，想要什么就只给你返回什么，所以GraphQL也被称作是由前端自由定义的查询语言。</li>
-  <li>一次请求中就可以获取多个资源，被称作数据聚合。传统Restful中经常会先发起一个请求获取某个资源，再根据这个资源的某个字段请求其他资源，最后由前端聚合成最终想要的数据。而GraphQL在一次请求中就可以拿到所有你想要的资源，并且遵循第一个特点，只包括你想要的字段。</li>
+  <li><code class="language-plaintext highlighter-rouge">jps</code> 查看应用进程号 (可选步骤：<code class="language-plaintext highlighter-rouge">top -Hp 进程号</code> 显示该进程下的线程)</li>
+  <li><code class="language-plaintext highlighter-rouge">jstack -l 进程号 </code>  查看该进程的堆栈</li>
+  <li>搜索应用包名关键字，定位到具体某个线程，查看该线程的状态，发现都是 <code class="language-plaintext highlighter-rouge">waiting</code> 状态</li>
+  <li>查看堆栈轨迹，发现都卡在了 druid 获取数据库连接上，连接池中没有可用连接，新进来的请求全部卡在 一个锁上，等待有连接释放。且由于没有配置 <code class="language-plaintext highlighter-rouge">maxWait</code>，不会超时，会无限期永远等待下去，造成了应用卡死的表象</li>
 </ol>
 
-<p>由于如今前后端分离越来越普遍，前端对于api的要求也越来越灵活和复杂，GraphQL正是下一代的API技术。</p>
+<h3 id="原因">原因</h3>
 
-<p>服务端实现</p>
+<p>本地测试环境，并没有什么并发，数据库连接也足够，所以怀疑是哪里没有释放连接，即连接泄露造成的。</p>
 
-<p>这里采用了Nest的Node.js框架。在nest中实现GraphQL服务端非常方便。它的官方文档也写得非常清楚。这里不再作说明。推荐采用代码优先的方式，我们只需使用它提供的各种装饰器即可生成相应的 GraphQL 架构。说白了就是各种注解。</p>
+<p>查看druid的监控页面，发现activeCount（活跃连接数）一直在增加，poolingCount（池中连接数）一直在减少，直到降为了0，然后卡主。怀疑得到了佐证。</p>
 
-<p>客户端</p>
+<p>但是又发现有些接口是正常的，activeCount 和 poolingCount 都是正常的，只是个别接口会有上述情况。观察问题接口，里面有2个查询方法，怀疑其中有查询没有释放连接，最后定位到是 querydsl 的 transform 方法在没有加事务的情况下不会释放连接，这是querydsl的bug，github上也有相关issue，使用版本是5.0 。</p>
 
-<p>这是本篇文章的重点。包括 GraphQL 的 <strong>Query、Mutations、Subscriptions</strong> 的 3 种操作。</p>
+<h3 id="解决办法">解决办法</h3>
 
-<p>客户端使用的是 Apollo Client。它和各种UI框架作了很好的集成，如React 和 Vue ，可以直接将查询和变更操作绑定到组件上。</p>
+<p>加上spring事务注解 <code class="language-plaintext highlighter-rouge">Transactional(readonly=true)</code> 解决</p>
 
-<p>但我们也可以在 nodejs 环境种单独使用，它其中的 Apollo-Link 模块就提供了这种方式。</p>
+<h3 id="原理">原理</h3>
 
-<p>1、下面是针对 Query、Mutations 的示例代码：</p>
+<h4 id="entitymanager的创建">EntityManager的创建</h4>
 
-<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+<p><code class="language-plaintext highlighter-rouge">SharedEntityManagerCreator</code> 的 <code class="language-plaintext highlighter-rouge">createSharedEntityManager</code> 方法，返回的是一个 jdk 动态代理，Invocation Handler 是 <strong><code class="language-plaintext highlighter-rouge">SharedEntityManagerInvocationHandler</code></strong>.</p>
+
+<p>凡是与JPA集成的所有框架的增删改查操作本质上都是操作 EntityManager，querydsl 也不例外.</p>
+
+<p>都是一样的套路：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class="rouge-code"><pre><span class="nc">Query</span> <span class="n">query</span><span class="o">=</span><span class="n">entityManager</span><span class="o">.</span><span class="na">createQuery</span><span class="o">(...);</span>
+<span class="n">query</span><span class="o">.</span><span class="na">getResultList</span><span class="o">()</span> <span class="c1">//或其他方法</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>下面从 没有加事务 和 加了事务 两种情况来讨论</p>
+
+<h4 id="未加事务时">未加事务时</h4>
+
+<p>从 <code class="language-plaintext highlighter-rouge">entityManager.createQuery</code> 入手，因为 entityManager  是一个动态代理，会进到 <code class="language-plaintext highlighter-rouge">SharedEntityManagerInvocationHandler</code> 中的  <code class="language-plaintext highlighter-rouge">invoke</code> 方法，首先会获取到当前真正要使用的 entityManager：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre><span class="c1">// Determine current EntityManager: either the transactional one</span>
+<span class="c1">// managed by the factory or a temporary one for the given invocation.</span>
+<span class="nc">EntityManager</span> <span class="n">target</span> <span class="o">=</span> <span class="nc">EntityManagerFactoryUtils</span><span class="o">.</span><span class="na">doGetTransactionalEntityManager</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">targetFactory</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">properties</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">synchronizedWithTransaction</span><span class="o">);</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>因为没有加事务，此处获取到的是 null.</p>
+
+<p>接着往下走，会创建一个新的 entityManager：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre><span class="k">if</span> <span class="o">(</span><span class="n">target</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+	<span class="n">logger</span><span class="o">.</span><span class="na">debug</span><span class="o">(</span><span class="s">"Creating new EntityManager for shared EntityManager invocation"</span><span class="o">);</span>
+	<span class="n">target</span> <span class="o">=</span> <span class="o">(!</span><span class="nc">CollectionUtils</span><span class="o">.</span><span class="na">isEmpty</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">properties</span><span class="o">)</span> <span class="o">?</span>
+						<span class="k">this</span><span class="o">.</span><span class="na">targetFactory</span><span class="o">.</span><span class="na">createEntityManager</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">properties</span><span class="o">)</span> <span class="o">:</span>
+						<span class="k">this</span><span class="o">.</span><span class="na">targetFactory</span><span class="o">.</span><span class="na">createEntityManager</span><span class="o">());</span>
+	<span class="n">isNewEm</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>然后就是正常的反射调用：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class="rouge-code"><pre>				<span class="nc">Object</span> <span class="n">result</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="na">invoke</span><span class="o">(</span><span class="n">target</span><span class="o">,</span> <span class="n">args</span><span class="o">);</span>
+				<span class="k">if</span> <span class="o">(</span><span class="n">result</span> <span class="k">instanceof</span> <span class="nc">Query</span><span class="o">)</span> <span class="o">{</span>
+					<span class="nc">Query</span> <span class="n">query</span> <span class="o">=</span> <span class="o">(</span><span class="nc">Query</span><span class="o">)</span> <span class="n">result</span><span class="o">;</span>
+					<span class="k">if</span> <span class="o">(</span><span class="n">isNewEm</span><span class="o">)</span> <span class="o">{</span>
+						<span class="nc">Class</span><span class="o">&lt;?&gt;[]</span> <span class="n">ifcs</span> <span class="o">=</span> <span class="n">cachedQueryInterfaces</span><span class="o">.</span><span class="na">computeIfAbsent</span><span class="o">(</span><span class="n">query</span><span class="o">.</span><span class="na">getClass</span><span class="o">(),</span> <span class="n">key</span> <span class="o">-&gt;</span>
+								<span class="nc">ClassUtils</span><span class="o">.</span><span class="na">getAllInterfacesForClass</span><span class="o">(</span><span class="n">key</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">proxyClassLoader</span><span class="o">));</span>
+						<span class="n">result</span> <span class="o">=</span> <span class="nc">Proxy</span><span class="o">.</span><span class="na">newProxyInstance</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">proxyClassLoader</span><span class="o">,</span> <span class="n">ifcs</span><span class="o">,</span>
+								<span class="k">new</span> <span class="nf">DeferredQueryInvocationHandler</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="n">target</span><span class="o">));</span>
+						<span class="n">isNewEm</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+					<span class="o">}</span>
+					<span class="k">else</span> <span class="o">{</span>
+						<span class="nc">EntityManagerFactoryUtils</span><span class="o">.</span><span class="na">applyTransactionTimeout</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">targetFactory</span><span class="o">);</span>
+					<span class="o">}</span>
+				<span class="o">}</span>
+				<span class="k">return</span> <span class="n">result</span><span class="o">;</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>重点来了，当返回结果类型是 <code class="language-plaintext highlighter-rouge">Query</code> 时，会对结果再进行一次动态代理，Invocation Handler 是 <code class="language-plaintext highlighter-rouge">DeferredQueryInvocationHandler</code>。而上面提到的的 <code class="language-plaintext highlighter-rouge">createQuery</code>  方法便正是要创建 Query，所以，后续该query上的所有增删改查操作都会进入到 <code class="language-plaintext highlighter-rouge">DeferredQueryInvocationHandler</code> 中的 invoke 方法.</p>
+
+<p>在  <code class="language-plaintext highlighter-rouge">DeferredQueryInvocationHandler</code> 中的 invoke 方法中最后有一个finally块，其中便包含了 entityManager 的关闭操作，最终会转到 datasource 上，也就是在此时druid连接池进行连接的回收（DruidDataSource 的 recycle 方法）：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
 3
 4
@@ -339,78 +429,36 @@
 23
 24
 25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-</pre></td><td class="rouge-code"><pre><span class="kd">const</span> <span class="p">{</span> <span class="nx">execute</span><span class="p">,</span> <span class="nx">makePromise</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">apollo-link</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="p">{</span> <span class="nx">HttpLink</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">apollo-link-http</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="nx">gql</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">graphql-tag</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="nx">fetch</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">node-fetch</span><span class="dl">'</span><span class="p">);</span>
-
-<span class="kd">const</span> <span class="nx">query</span> <span class="o">=</span> <span class="nx">gql</span><span class="s2">`query { photos {id,name,isPublished}}`</span><span class="p">;</span>
-
-<span class="kd">const</span> <span class="nx">mutation</span> <span class="o">=</span> <span class="nx">gql</span><span class="s2">`mutation($input:NewPhotoInput!) {
-    addPhoto(newPhotoData:$input) {
-        id,
-        name,
-        isPublished
-    }
-}`</span><span class="p">;</span>
-
-<span class="kd">const</span> <span class="nx">variables</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="dl">'</span><span class="s1">input</span><span class="dl">'</span><span class="p">:</span> <span class="p">{</span>
-    <span class="dl">'</span><span class="s1">name</span><span class="dl">'</span><span class="p">:</span> <span class="dl">'</span><span class="s1">安东尼</span><span class="dl">'</span><span class="p">,</span>
-    <span class="dl">'</span><span class="s1">description</span><span class="dl">'</span><span class="p">:</span> <span class="dl">'</span><span class="s1">瓜哥</span><span class="dl">'</span><span class="p">,</span>
-  <span class="p">},</span>
-<span class="p">};</span>
-
-<span class="kd">const</span> <span class="nx">uri</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">http://localhost:3000/graphql</span><span class="dl">'</span><span class="p">;</span>
-<span class="kd">const</span> <span class="nx">link</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">HttpLink</span><span class="p">({</span> <span class="nx">uri</span><span class="p">,</span> <span class="nx">fetch</span> <span class="p">});</span>
-<span class="kd">const</span> <span class="nx">operation</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="na">query</span><span class="p">:</span> <span class="nx">mutation</span><span class="p">,</span>
-  <span class="nx">variables</span><span class="p">,</span> <span class="c1">//optional</span>
-  <span class="c1">// operationName: {}, //optional</span>
-  <span class="c1">// context: {}, //optional</span>
-  <span class="c1">// extensions: {}, //optional</span>
-<span class="p">};</span>
-
-<span class="c1">// execute returns an Observable so it can be subscribed to</span>
-<span class="nx">execute</span><span class="p">(</span><span class="nx">link</span><span class="p">,</span> <span class="nx">operation</span><span class="p">).</span><span class="nx">subscribe</span><span class="p">({</span>
-  <span class="na">next</span><span class="p">:</span> <span class="nx">res</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">),</span>
-  <span class="na">error</span><span class="p">:</span> <span class="nx">error</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">`received error </span><span class="p">${</span><span class="nx">error</span><span class="p">}</span><span class="s2">`</span><span class="p">),</span>
-  <span class="na">complete</span><span class="p">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">`complete`</span><span class="p">),</span>
-<span class="p">});</span>
-
-<span class="c1">// For single execution operations, a Promise can be used</span>
-<span class="c1">// makePromise(execute(link, operation))</span>
-<span class="c1">//   .then(res =&gt; console.log(res.data))</span>
-<span class="c1">//   .catch(error =&gt; console.log(`received error ${error}`));</span>
+</pre></td><td class="rouge-code"><pre>			<span class="k">finally</span> <span class="o">{</span>
+				<span class="k">if</span> <span class="o">(</span><span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">method</span><span class="o">.</span><span class="na">getName</span><span class="o">()))</span> <span class="o">{</span>
+					<span class="c1">// Actual execution of the query: close the EntityManager right</span>
+					<span class="c1">// afterwards, since that was the only reason we kept it open.</span>
+					<span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">outputParameters</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="na">target</span> <span class="k">instanceof</span> <span class="nc">StoredProcedureQuery</span><span class="o">)</span> <span class="o">{</span>
+						<span class="nc">StoredProcedureQuery</span> <span class="n">storedProc</span> <span class="o">=</span> <span class="o">(</span><span class="nc">StoredProcedureQuery</span><span class="o">)</span> <span class="k">this</span><span class="o">.</span><span class="na">target</span><span class="o">;</span>
+						<span class="k">for</span> <span class="o">(</span><span class="nc">Map</span><span class="o">.</span><span class="na">Entry</span><span class="o">&lt;</span><span class="nc">Object</span><span class="o">,</span> <span class="nc">Object</span><span class="o">&gt;</span> <span class="n">entry</span> <span class="o">:</span> <span class="k">this</span><span class="o">.</span><span class="na">outputParameters</span><span class="o">.</span><span class="na">entrySet</span><span class="o">())</span> <span class="o">{</span>
+							<span class="k">try</span> <span class="o">{</span>
+								<span class="nc">Object</span> <span class="n">key</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
+								<span class="k">if</span> <span class="o">(</span><span class="n">key</span> <span class="k">instanceof</span> <span class="nc">Integer</span><span class="o">)</span> <span class="o">{</span>
+									<span class="n">entry</span><span class="o">.</span><span class="na">setValue</span><span class="o">(</span><span class="n">storedProc</span><span class="o">.</span><span class="na">getOutputParameterValue</span><span class="o">((</span><span class="nc">Integer</span><span class="o">)</span> <span class="n">key</span><span class="o">));</span>
+								<span class="o">}</span>
+								<span class="k">else</span> <span class="o">{</span>
+									<span class="n">entry</span><span class="o">.</span><span class="na">setValue</span><span class="o">(</span><span class="n">storedProc</span><span class="o">.</span><span class="na">getOutputParameterValue</span><span class="o">(</span><span class="n">key</span><span class="o">.</span><span class="na">toString</span><span class="o">()));</span>
+								<span class="o">}</span>
+							<span class="o">}</span>
+							<span class="k">catch</span> <span class="o">(</span><span class="nc">IllegalArgumentException</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+								<span class="n">entry</span><span class="o">.</span><span class="na">setValue</span><span class="o">(</span><span class="n">ex</span><span class="o">);</span>
+							<span class="o">}</span>
+						<span class="o">}</span>
+					<span class="o">}</span>
+					<span class="nc">EntityManagerFactoryUtils</span><span class="o">.</span><span class="na">closeEntityManager</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">entityManager</span><span class="o">);</span>
+					<span class="k">this</span><span class="o">.</span><span class="na">entityManager</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+				<span class="o">}</span>
+			<span class="o">}</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p><a href="https://www.apollographql.com/docs/link/#standalone">具体细节参考官方文档</a></p>
+<p>EntityManagerFactoryUtils.closeEntityManager 其实就是调用了 entityManager（此处的 entityManager 是 Hibernate的实现 SessionImpl） 的 close 方法：</p>
 
-<p>需要注意的一点是需要安装 <code class="language-plaintext highlighter-rouge">node-fetch</code>，在创建HttpLink的时候传递到它的选项对象中去。</p>
-
-<p>execute 和 makePromise 方法选一个就行。</p>
-
-<p>2、对于Subscriptions 操作就不能使用上面的 HttpLink 了。因为是订阅操作嘛，所以得使用 Websocket 连接。</p>
-
-<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
 3
 4
@@ -422,62 +470,96 @@
 10
 11
 12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-</pre></td><td class="rouge-code"><pre><span class="kd">const</span> <span class="p">{</span> <span class="nx">WebSocketLink</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">apollo-link-ws</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="nx">ws</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">ws</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="p">{</span> <span class="nx">SubscriptionClient</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">subscriptions-transport-ws</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="p">{</span> <span class="nx">execute</span><span class="p">,</span> <span class="nx">makePromise</span> <span class="p">}</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">apollo-link</span><span class="dl">'</span><span class="p">);</span>
-<span class="kd">const</span> <span class="nx">gql</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">graphql-tag</span><span class="dl">'</span><span class="p">);</span>
-
-
-<span class="kd">const</span> <span class="nx">GRAPHQL_ENDPOINT</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">ws://localhost:3000/graphql</span><span class="dl">'</span><span class="p">;</span>
-
-<span class="kd">const</span> <span class="nx">client</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">SubscriptionClient</span><span class="p">(</span><span class="nx">GRAPHQL_ENDPOINT</span><span class="p">,</span> <span class="p">{</span>
-  <span class="na">reconnect</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-<span class="p">},</span> <span class="nx">ws</span><span class="p">);</span>
-
-<span class="kd">const</span> <span class="nx">link</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">WebSocketLink</span><span class="p">(</span><span class="nx">client</span><span class="p">);</span>
-<span class="kd">const</span> <span class="nx">operation</span> <span class="o">=</span> <span class="p">{</span>
-  <span class="na">query</span><span class="p">:</span> <span class="nx">gql</span><span class="s2">`subscription {photoAdded {id,name,isPublished}}`</span><span class="p">,</span>
-<span class="p">};</span>
-
-<span class="nx">execute</span><span class="p">(</span><span class="nx">link</span><span class="p">,</span> <span class="nx">operation</span><span class="p">).</span><span class="nx">subscribe</span><span class="p">({</span>
-  <span class="na">next</span><span class="p">:</span> <span class="nx">res</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">data</span><span class="p">),</span>
-<span class="p">});</span>
+</pre></td><td class="rouge-code"><pre>	<span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">closeEntityManager</span><span class="o">(</span><span class="nd">@Nullable</span> <span class="nc">EntityManager</span> <span class="n">em</span><span class="o">)</span> <span class="o">{</span>
+		<span class="k">if</span> <span class="o">(</span><span class="n">em</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+			<span class="k">try</span> <span class="o">{</span>
+				<span class="k">if</span> <span class="o">(</span><span class="n">em</span><span class="o">.</span><span class="na">isOpen</span><span class="o">())</span> <span class="o">{</span>
+					<span class="n">em</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+				<span class="o">}</span>
+			<span class="o">}</span>
+			<span class="k">catch</span> <span class="o">(</span><span class="nc">Throwable</span> <span class="n">ex</span><span class="o">)</span> <span class="o">{</span>
+				<span class="n">logger</span><span class="o">.</span><span class="na">error</span><span class="o">(</span><span class="s">"Failed to release JPA EntityManager"</span><span class="o">,</span> <span class="n">ex</span><span class="o">);</span>
+			<span class="o">}</span>
+		<span class="o">}</span>
+	<span class="o">}</span>
 </pre></td></tr></tbody></table></code></pre></div></div>
 
-<p>不同之处在于使用的是 subscriptions-transport-ws 模块中的 <code class="language-plaintext highlighter-rouge">SubscriptionClient</code>  作为客户端，表示建立的是 Websocket 连接。</p>
+<p><strong>所以，是Spring 为我们自动加上了创建连接和关闭连接的代码，从而我们无需在应用代码中手动调用。</strong></p>
 
-<p>另外建立的连接也不是 HttpLink，而是 apollo-link-ws 中的 <code class="language-plaintext highlighter-rouge">WebSocketLink</code> 。</p>
+<p>那为什么 querydsl 的transform方法没有释放连接呢？</p>
 
-<p><a href="https://github.com/apollographql/apollo-link/tree/master/packages/apollo-link-ws">具体细节参考</a></p>
+<p>回看上面的 <code class="language-plaintext highlighter-rouge">DeferredQueryInvocationHandler</code> 的 finally 块，它有一个 <strong><code class="language-plaintext highlighter-rouge">if条件</code></strong>：</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre><span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">method</span><span class="o">.</span><span class="na">getName</span><span class="o">())</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>而</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class="rouge-code"><pre>	<span class="kd">static</span> <span class="o">{</span>
+		<span class="o">...</span>
+
+		<span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"execute"</span><span class="o">);</span>  <span class="c1">// JPA 2.1 StoredProcedureQuery</span>
+		<span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"executeUpdate"</span><span class="o">);</span>
+		<span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"getSingleResult"</span><span class="o">);</span>
+		<span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"getResultStream"</span><span class="o">);</span>
+		<span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"getResultList"</span><span class="o">);</span>
+		<span class="n">queryTerminatingMethods</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s">"list"</span><span class="o">);</span>  <span class="c1">// Hibernate Query.list() method</span>
+	<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>所以就很明显，只有这6个方法，Spring会帮我们自动关闭entityManager，从而释放连接。<code class="language-plaintext highlighter-rouge">transform</code> 并没有在其中，需要我们手动释放。自然，querydsl的 <code class="language-plaintext highlighter-rouge">getResultList</code> 方法是没问题的。</p>
+
+<p>这也是一个 querydsl 的bug，github issue 上有提到。</p>
+
+<h4 id="加了spring的事务">加了Spring的事务</h4>
+
+<p>那为什么加上事务便OK了呢？</p>
+
+<p>首先还是从 entityManager.createQuery 开始，与上面不同的是，由于加了事务，<code class="language-plaintext highlighter-rouge">EntityManagerFactoryUtils.doGetTransactionalEntityManager</code> 能得到值，便不会进入 <code class="language-plaintext highlighter-rouge">target==null 的 if块</code>，因此 <code class="language-plaintext highlighter-rouge">isNewEm 为 false</code>，得到 query 后会进入</p>
+
+<div class="language-java highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>				<span class="k">else</span> <span class="o">{</span>
+						<span class="nc">EntityManagerFactoryUtils</span><span class="o">.</span><span class="na">applyTransactionTimeout</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="k">this</span><span class="o">.</span><span class="na">targetFactory</span><span class="o">);</span>
+					<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>即此时的query不会是动态代理对象，而是原生的 hibernate 的 QueryImpl。因此此时query上的增删改查便不会自动释放连接，那这个工作由谁来完成？自然是Spring.</p>
+
+<p>加了事务注解后，Spring 会为目标对象生成cglib代理（具体体现在 spring-aop 的 TransactionInterceptor），在方法开始前会开启事务，获取连接，方法结束后，会释放连接，并且保证同一个事务内使用的是同一个连接。保证了连接的释放。</p>
+
+<h4 id="总结">总结</h4>
+
+<p>Spring大量使用了代理，包括基于jdk和基于字节码的代理。</p>
+
+<p>未加事务时，生成的query是个代理对象，在目标方法调用结束后会自动释放连接（entityManager.close）</p>
+
+<p>加了事务，生成的query是hibernate的原生QueryImpl对象，但是service类或方法是Spring生成的cglib代理对象，在方法开始前会开启事务，获取连接，方法结束后，会释放连接，并且保证同一个事务内使用的是同一个连接。保证了连接的释放。</p>
+
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/blog/2019/12/02/openresty%E4%BD%BF%E7%94%A8uuid/" data-toggle="tooltip" data-placement="top" title="openresty使用uuid">
+                        <a href="/blog/2022/03/26/%E5%BC%BA%E8%BD%AF%E5%BC%B1%E8%99%9A%E5%BC%95%E7%94%A8/" data-toggle="tooltip" data-placement="top" title="强软弱虚引用">
                         Previous<br>
-                        <span>openresty使用uuid</span>
+                        <span>强软弱虚引用</span>
                         </a>
                     </li>
                     
-                    
-                    <li class="next">
-                        <a href="/blog/2019/12/17/%E4%B8%80%E4%B8%AA%E5%AF%86%E7%A0%81%E9%AA%8C%E8%AF%81%E7%9A%84%E6%AD%A3%E5%88%99%E8%A1%A8%E8%BE%BE%E5%BC%8F/" data-toggle="tooltip" data-placement="top" title="一个密码验证的正则表达式">
-                        Next<br>
-                        <span>一个密码验证的正则表达式</span>
-                        </a>
-                    </li>
                     
                 </ul>
                 <hr style="visibility: hidden;">
