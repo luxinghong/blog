@@ -389,6 +389,16 @@ XMODIFIERS=@im=fcitx
 
 <p>参考着来，不需要完全照搬</p>
 
+<h3 id="pamac-常用命令">pamac 常用命令</h3>
+
+<ul>
+  <li>查看所有已安装的软件包：pamac list –installed</li>
+  <li>查看某个特定软件包的信息：pamac info <package-name></package-name></li>
+  <li>检查更新：pamac checkupdates</li>
+  <li>更新系统：pamac upgrade 或者 pamac update</li>
+  <li>想要在更新之前查看详细的操作（比如哪些包会被更新，哪些包会被移除等），可以添加 <code class="language-plaintext highlighter-rouge">-v</code> 参数： pamac upgrade -v 或 pamac update -v</li>
+</ul>
+
 <h3 id="pamac-安装软件超时">pamac 安装软件超时</h3>
 
 <p>修改<code class="language-plaintext highlighter-rouge">/etc/makepkg.conf</code>使用自定义脚本通过镜像网站和<code class="language-plaintext highlighter-rouge">axel</code>多线程下载。</p>

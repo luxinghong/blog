@@ -147,6 +147,18 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
 
 
 
+ 
+
+### pamac 常用命令
+
+- 查看所有已安装的软件包：pamac list --installed
+- 查看某个特定软件包的信息：pamac info <package-name>
+- 检查更新：pamac checkupdates
+- 更新系统：pamac upgrade 或者 pamac update
+- 想要在更新之前查看详细的操作（比如哪些包会被更新，哪些包会被移除等），可以添加 `-v` 参数： pamac upgrade -v 或 pamac update -v
+
+
+
 
 
 ### pamac 安装软件超时
