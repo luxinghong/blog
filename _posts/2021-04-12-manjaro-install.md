@@ -155,7 +155,7 @@ Manjaro安装了 Application Title 插件后所有应用的菜单都会在顶部
 - 查看某个特定软件包的信息：pamac info <package-name>
 - 检查更新：pamac checkupdates
 - 更新系统：pamac upgrade 或者 pamac update
-- 想要在更新之前查看详细的操作（比如哪些包会被更新，哪些包会被移除等），可以添加 `-v` 参数： pamac upgrade -v 或 pamac update -v
+- 想要在更新之前查看详细的操作（比如哪些包会被更新，哪些包会被移除等），可以在update或upgrade后添加 `--dry-run` 参数
 
 
 
